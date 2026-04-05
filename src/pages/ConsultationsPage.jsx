@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Search, Video, CalendarClock, CheckCircle, XCircle, Clock,
   AlertCircle, RefreshCw, X, FileText, Stethoscope, User,
@@ -36,7 +37,7 @@ function mapRow(c) {
     patientToken:    c.patient_token,
     summary:         c.summary,
     followUpPlan:    c.follow_up_plan,
-    consultType:     c.consultation_type || 'in_person',
+    consultType:     c.consultation_type || 'video',
     createdAt:       c.created_at,
     consultationFee: c.consultation_fee ?? null,
     clinicAddress:   c.clinic_address || '',
@@ -265,21 +266,15 @@ function DetailDrawer({ c, onClose }) {
                 💳 Please pay to confirm your consultation
               </div>
             )}
-            {c.rawStatus === 'scheduled' && c.consultType === 'video' && (
-              c.roomUrl ? (
-                <button
-                  type="button"
-                  onClick={() => window.open(c.roomUrl + '?t=' + c.patientToken, '_blank')}
-                  style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#1930AA,#00AFEF)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                  <Video size={16} /> Join Video Call
-                </button>
-              ) : (
-                <div style={{ padding: '12px 16px', borderRadius: 12, background: 'rgba(0,175,239,0.07)', border: '1px solid rgba(0,175,239,0.25)', fontSize: 13, color: '#0088cc', textAlign: 'center', fontWeight: 600 }}>
-                  Booking confirmed — video call link will be shared shortly
-                </div>
-              )
+            {(c.rawStatus === 'scheduled' || c.rawStatus === 'ongoing') && c.consultType === 'video' && (
+              <button
+                type="button"
+                onClick={() => navigate(`/consultation/${c.id}/call`)}
+                style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#1930AA,#00AFEF)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <Video size={16} /> Join Video Call
+              </button>
             )}
-            {c.rawStatus === 'scheduled' && c.consultType !== 'video' && (
+            {(c.rawStatus === 'scheduled' || c.rawStatus === 'ongoing') && c.consultType !== 'video' && (
               <div style={{ padding: '12px 16px', borderRadius: 12, background: 'rgba(0,180,100,0.07)', border: '1px solid rgba(0,180,100,0.25)', fontSize: 13, color: '#00a855', textAlign: 'center', fontWeight: 600 }}>
                 Booking confirmed — visit {c.doctorName} at their clinic
                 {c.clinicAddress && <div style={{ fontSize: 12, fontWeight: 400, marginTop: 4, color: '#00a855' }}>{c.clinicAddress}</div>}
@@ -318,6 +313,7 @@ function Row({ label, value }) {
 
 /* ── Main Page ───────────────────────────────────────── */
 export default function ConsultationsPage() {
+  const navigate = useNavigate()
   const [query, setQuery]               = useState('')
   const [statusTab, setStatusTab]       = useState('All')
   const [consultations, setConsultations] = useState([])
@@ -491,21 +487,15 @@ export default function ConsultationsPage() {
 
                   {/* Quick actions inline — stop propagation so card click doesn't also trigger */}
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 4 }} onClick={e => e.stopPropagation()}>
-                    {c.rawStatus === 'scheduled' && c.consultType === 'video' && (
-                      c.roomUrl ? (
-                        <button
-                          type="button"
-                          onClick={() => window.open(c.roomUrl + '?t=' + c.patientToken, '_blank')}
-                          style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#1930AA,#00AFEF)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-                          <Video size={14} /> Join Video Call
-                        </button>
-                      ) : (
-                        <span style={{ fontSize: 12, color: 'var(--cyan)', fontWeight: 600, alignSelf: 'center', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                          <Video size={13} /> Video call link will be shared shortly
-                        </span>
-                      )
+                    {(c.rawStatus === 'scheduled' || c.rawStatus === 'ongoing') && c.consultType === 'video' && (
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/consultation/${c.id}/call`)}
+                        style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#1930AA,#00AFEF)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                        <Video size={14} /> Join Video Call
+                      </button>
                     )}
-                    {c.rawStatus === 'scheduled' && c.consultType !== 'video' && (
+                    {(c.rawStatus === 'scheduled' || c.rawStatus === 'ongoing') && c.consultType !== 'video' && (
                       <span style={{ fontSize: 12, color: '#00a855', fontWeight: 600, alignSelf: 'center', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                         <CheckCircle size={13} /> Visit {c.doctorName} at their clinic
                       </span>

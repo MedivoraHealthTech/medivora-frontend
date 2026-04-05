@@ -18,6 +18,7 @@ import PrescriptionsPage from './pages/PrescriptionsPage'
 import BookAppointment from './pages/BookAppointment'
 import PaymentPage from './pages/PaymentPage'
 import DashboardPage from './pages/DashboardPage'
+import VideoCallPage from './pages/VideoCallPage'
 import AppLayout from './pages/AppLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 import DoctorLayout from './pages/doctor/DoctorLayout'
@@ -38,6 +39,7 @@ export default function App() {
       {/* Patient routes */}
       <Route element={<ProtectedRoute />}>
         <Route path="payment" element={<PaymentPage />} />
+        <Route path="consultation/:id/call" element={<VideoCallPage />} />
         <Route element={<AppLayout />}>
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="chat" element={<ChatPage />} />
@@ -52,6 +54,7 @@ export default function App() {
 
       {/* Doctor routes */}
       <Route element={<ProtectedRoute requiredRole="doctor" redirectTo="/login" />}>
+        <Route path="doctor/consultation/:id/call" element={<VideoCallPage />} />
         <Route element={<DoctorLayout />}>
           <Route path="doctor" element={<DoctorDashboard />} />
           <Route path="doctor/consultations" element={<DoctorConsultations />} />

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   CalendarDays, Clock, CheckCircle, XCircle, Video,
   User, ChevronDown, ChevronUp, Calendar, AlertTriangle, X,
@@ -33,6 +34,7 @@ function Modal({ title, onClose, children }) {
 
 export default function DoctorConsultations() {
   const { getToken } = useAuth()
+  const navigate = useNavigate()
 
   const [consultations, setConsultations] = useState([])
   const [loading,       setLoading]       = useState(true)
@@ -108,13 +110,14 @@ export default function DoctorConsultations() {
   async function handleJoin(session) {
     setActionLoading(session.id)
     try {
-      const data = await doctorAPI.joinConsultation(session.id, getToken())
-      if (data?.room_url) window.open(data.room_url, '_blank')
+      // Mark doctor as joined (updates status / sets doctor_id)
+      await doctorAPI.joinConsultation(session.id, getToken())
     } catch (err) {
-      setError(err.message || 'Failed to join consultation')
+      // Non-fatal — navigate to call regardless
     } finally {
       setActionLoading(null)
     }
+    navigate(`/doctor/consultation/${session.id}/call`)
   }
 
   if (loading) return (
