@@ -41,16 +41,17 @@ const statusColor = {
 
 export default function DashboardPage() {
   const navigate = useNavigate()
-  const { displayName } = useAuth()
+  const { displayName, session, initialized } = useAuth()
 
   const [consultations, setConsultations] = useState([])
   const [prescriptions, setPrescriptions] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!initialized) return
     ;(async () => {
       try {
-        const token   = await getToken()
+        const token   = session?.access_token || await getToken()
         const headers = token ? { Authorization: `Bearer ${token}` } : {}
         const [cRes, pRes] = await Promise.all([
           fetch(`${API_BASE}/consultation/my`, { headers }),
@@ -63,7 +64,7 @@ export default function DashboardPage() {
       } catch { /* ignore */ }
       finally { setLoading(false) }
     })()
-  }, [])
+  }, [initialized])
 
   const pendingCount = prescriptions.filter(p => (p.status || '').toLowerCase() === 'pending').length
 

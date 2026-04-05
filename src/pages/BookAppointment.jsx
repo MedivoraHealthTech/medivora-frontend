@@ -1,25 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { ArrowLeft, Star, MapPin, Clock, IndianRupee, CheckCircle, CreditCard, Stethoscope, Video, CalendarClock } from 'lucide-react'
+import { ArrowLeft, Star, MapPin, Clock, IndianRupee, Stethoscope, Video, CalendarClock, CheckCircle, CreditCard } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from './supabase'
 import TimeSlotPicker from '../components/TimeSlotPicker'
 
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
+const IS_DEV   = import.meta.env.VITE_DEV_PAYMENT === 'true'
 
-/* ─── Load Razorpay checkout script once ─── */
-function loadRazorpayScript() {
-  return new Promise((resolve) => {
-    if (window.Razorpay) { resolve(true); return }
-    const script = document.createElement('script')
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
-    script.onload  = () => resolve(true)
-    script.onerror = () => resolve(false)
-    document.body.appendChild(script)
-  })
-}
-
-/* ─── Auth token helper (same pattern as DoctorsPage) ─── */
+/* ─── Auth token helper ─── */
 async function getAuthToken() {
   try {
     const { data: { session } } = await supabase.auth.getSession()
@@ -76,20 +65,73 @@ function resolveSpecialty(locationState) {
 export default function BookAppointment() {
   const navigate  = useNavigate()
   const location  = useLocation()
-  const { user, displayName } = useAuth()
+  const formRef   = useRef(null)
+  useAuth()
 
   const recommendedSpecialty = resolveSpecialty(location.state)
   const preSelectedDoctor    = location.state?.preSelectedDoctor || null
   const videoConsultation    = location.state?.videoConsultation || false
 
-  const [doctors,         setDoctors]         = useState([])
-  const [loading,         setLoading]         = useState(true)
-  const [selectedDoctor,  setSelectedDoctor]  = useState(preSelectedDoctor || null)
-  const [selectedSlot,    setSelectedSlot]    = useState(location.state?.selectedSlot || null)
-  const [showSlotPicker,  setShowSlotPicker]  = useState(false)
-  const [paymentDone,     setPaymentDone]     = useState(false)
+  const [doctors,        setDoctors]        = useState([])
+  const [loading,        setLoading]        = useState(true)
+  const [selectedDoctor, setSelectedDoctor] = useState(preSelectedDoctor || null)
+  const [selectedSlot,   setSelectedSlot]   = useState(location.state?.selectedSlot || null)
+  const [showSlotPicker, setShowSlotPicker] = useState(false)
   const [paying,          setPaying]          = useState(false)
   const [payError,        setPayError]        = useState(null)
+  const [formFields,      setFormFields]      = useState(null)
+  const [promoCode,       setPromoCode]       = useState('')
+  const [promoApplied,    setPromoApplied]    = useState(null)  // { discount_percent, discount_amount, description }
+  const [promoError,      setPromoError]      = useState(null)
+  const [promoLoading,    setPromoLoading]    = useState(false)
+
+  const fee            = selectedDoctor?.consultation_fee || 500
+  const gst            = Math.round(fee * 0.18)
+  const baseTotal      = fee + gst
+  const discountAmount = promoApplied ? Math.round(baseTotal * promoApplied.discount_percent / 100) : 0
+  const total          = baseTotal - discountAmount
+
+  // Show error from Razorpay cancel redirect, then clean up the URL
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    if (params.get('payment_error') === 'cancelled') {
+      setPayError('Payment was cancelled. Please try again.')
+      navigate('/book-appointment', { replace: true, state: location.state })
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Clear Razorpay URL from browser history when user returns via Back button.
+  // Two cases:
+  //   1. Normal reload  — bfcache disabled, useEffect runs fresh
+  //   2. bfcache restore — page thaws without re-running JS; we need pageshow
+  useEffect(() => {
+    function clearRazorpayHistory() {
+      if (sessionStorage.getItem('razorpay_pending')) {
+        sessionStorage.removeItem('razorpay_pending')
+        // pushState clears all forward entries (Razorpay URL gone from history)
+        window.history.pushState(null, '', window.location.href)
+      }
+      // Also reset frozen UI state so the Pay button isn't stuck on "Redirecting…"
+      setPaying(false)
+      setFormFields(null)
+    }
+
+    // Case 1: normal mount after full reload
+    clearRazorpayHistory()
+
+    // Case 2: bfcache thaw (e.persisted === true)
+    const onPageShow = (e) => { if (e.persisted) clearRazorpayHistory() }
+    window.addEventListener('pageshow', onPageShow)
+    return () => window.removeEventListener('pageshow', onPageShow)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-submit Razorpay hosted checkout form once fields are ready
+  useEffect(() => {
+    if (formFields && formRef.current) {
+      sessionStorage.setItem('razorpay_pending', '1')
+      formRef.current.submit()
+    }
+  }, [formFields])
 
   /* ─── Fetch doctors with auth token ─── */
   useEffect(() => {
@@ -119,140 +161,83 @@ export default function BookAppointment() {
     })()
   }, [])
 
-  const IS_DEV = import.meta.env.DEV
-
-  /* ─── Razorpay checkout ─── */
+  /* ─── Pay: call backend then redirect to Razorpay ─── */
   const handlePay = async () => {
-    if (!selectedDoctor || paying) return
-    // Require a time slot before payment
-    if (!selectedSlot) {
-      setShowSlotPicker(true)
-      return
-    }
+    if (!selectedDoctor) return
+    if (!selectedSlot) { setShowSlotPicker(true); return }
+    setPaying(true)
+    setPayError(null)
+    try {
+      const token   = await getAuthToken()
+      const headers = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+      const docName = stripDr(selectedDoctor.full_name || selectedDoctor.name || 'Doctor')
 
-    // Dev mode — skip payment, confirm booking in DB directly
-    if (IS_DEV) {
-      try {
-        const token = await getAuthToken()
-        await fetch(`${API_BASE}/payment/dev-confirm`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
+      if (IS_DEV) {
+        const res = await fetch(`${API_BASE}/payment/dev-confirm`, {
+          method: 'POST', headers,
           body: JSON.stringify({
             doctor_id:         selectedDoctor.id,
-            specialty:         (selectedDoctor.specialties?.[0] || selectedDoctor.specialization || 'general_medicine'),
-            patient_note:      `Dev booking with ${selectedDoctor.full_name || selectedDoctor.name}`,
+            specialty:         selectedDoctor.specialties?.[0] || selectedDoctor.specialization || 'general_medicine',
+            patient_note:      `Dev booking with Dr. ${docName}`,
             scheduled_at:      selectedSlot?.iso || null,
             consultation_type: videoConsultation ? 'video' : 'in_person',
           }),
         })
-      } catch { /* non-fatal — show success anyway */ }
-      setPaymentDone(true)
-      return
-    }
-
-    setPaying(true)
-    setPayError(null)
-
-    // 1. Load Razorpay SDK
-    const loaded = await loadRazorpayScript()
-    if (!loaded) {
-      setPayError('Unable to load payment gateway. Check your internet connection.')
-      setPaying(false)
-      return
-    }
-
-    const fee     = selectedDoctor.consultation_fee || 500
-    const gst     = Math.round(fee * 0.18)
-    const total   = fee + gst
-    const docName = stripDr(selectedDoctor.full_name || selectedDoctor.name || 'Doctor')
-
-    try {
-      // 2. Create Razorpay order from backend
-      const token = await getAuthToken()
-      const orderRes = await fetch(`${API_BASE}/payment/create-order`, {
-        method:  'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          amount:      total,
-          doctor_id:   selectedDoctor.id,
-          doctor_name: docName,
-        }),
-      })
-
-      if (!orderRes.ok) {
-        const err = await orderRes.json().catch(() => ({}))
-        throw new Error(err.detail || `Order creation failed (${orderRes.status})`)
+        if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Booking failed') }
+        const { session_id } = await res.json()
+        navigate(`/payment?success=true&session_id=${session_id || ''}`, { replace: true })
+      } else {
+        const res = await fetch(`${API_BASE}/payments/create-hosted-order`, {
+          method: 'POST', headers,
+          body: JSON.stringify({
+            amount:            total * 100,
+            doctor_id:         selectedDoctor.id,
+            doctor_name:       docName,
+            specialty:         selectedDoctor.specialties?.[0] || selectedDoctor.specialization || 'general_medicine',
+            scheduled_at:      selectedSlot?.iso || '',
+            consultation_type: videoConsultation ? 'video' : 'in_person',
+            patient_note:      `Consultation with Dr. ${docName}`,
+          }),
+        })
+        if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Could not initiate payment') }
+        setFormFields(await res.json())   // triggers useEffect → form.submit()
       }
-
-      const { order_id, amount, currency, key_id } = await orderRes.json()
-
-      // 3. Open Razorpay checkout
-      const options = {
-        key:         key_id,
-        amount,
-        currency,
-        name:        'Medivora',
-        description: `${videoConsultation ? 'Video Consultation' : 'Consultation'} with Dr. ${docName}`,
-        order_id,
-        prefill: {
-          name:    displayName || '',
-          email:   user?.email || '',
-          contact: '',
-        },
-        theme: { color: '#1930AA' },
-        handler: async (response) => {
-          try {
-            const token = await getAuthToken()
-            const verifyRes = await fetch(`${API_BASE}/payments/verify`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                ...(token ? { Authorization: `Bearer ${token}` } : {}),
-              },
-              body: JSON.stringify({
-                razorpay_order_id:   response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature:  response.razorpay_signature,
-                doctor_id:           selectedDoctor.id,
-                specialty:           (selectedDoctor.specialties?.[0] || selectedDoctor.specialization || 'general_medicine'),
-                note:                `Consultation with ${selectedDoctor.full_name || selectedDoctor.name || 'Doctor'}`,
-                scheduled_at:        selectedSlot?.iso || '',
-                consultation_type:   videoConsultation ? 'video' : 'in_person',
-              }),
-            })
-            if (!verifyRes.ok) {
-              const err = await verifyRes.json().catch(() => ({}))
-              throw new Error(err.detail || 'Booking confirmation failed')
-            }
-            setPaymentDone(true)
-          } catch (err) {
-            setPayError(err.message || 'Payment received but booking failed. Please contact support.')
-          }
-          setPaying(false)
-        },
-        modal: {
-          ondismiss: () => setPaying(false),
-        },
-      }
-
-      const rzp = new window.Razorpay(options)
-      rzp.open()
     } catch (err) {
       setPayError(err.message || 'Payment could not be initiated. Please try again.')
       setPaying(false)
     }
   }
 
+  /* ─── Promo code ─── */
+  const handleApplyPromo = async () => {
+    if (!promoCode.trim()) return
+    setPromoLoading(true)
+    setPromoError(null)
+    setPromoApplied(null)
+    try {
+      const token = await getAuthToken()
+      const res = await fetch(`${API_BASE}/promocode/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ code: promoCode.trim().toUpperCase(), amount: fee + Math.round(fee * 0.18) }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || 'Invalid promo code')
+      setPromoApplied({ discount_percent: data.discount_percent, discount_amount: data.discount_amount, description: data.description })
+    } catch (err) {
+      setPromoError(err.message || 'Could not apply promo code')
+    } finally {
+      setPromoLoading(false)
+    }
+  }
+
+  const handleRemovePromo = () => {
+    setPromoApplied(null)
+    setPromoCode('')
+    setPromoError(null)
+  }
+
   /* ─── Derived values ─── */
-  const fee   = selectedDoctor?.consultation_fee || 500
-  const gst   = Math.round(fee * 0.18)
-  const total = fee + gst
   const specs = selectedDoctor?.specialties?.length
     ? selectedDoctor.specialties
     : [selectedDoctor?.specialization || 'General Physician']
@@ -398,153 +383,191 @@ export default function BookAppointment() {
             </div>
 
             <div style={{ padding: '20px' }}>
-              {paymentDone ? (
-                <div style={{ textAlign: 'center', padding: '28px 0' }}>
-                  <CheckCircle size={48} color="#00c853" style={{ marginBottom: 12 }} />
-                  <div style={{ fontSize: 15, fontWeight: 700, color: '#111', marginBottom: 6 }}>
-                    {videoConsultation ? 'Video Consultation Booked!' : 'Booking Confirmed!'}
-                  </div>
-                  <div style={{ fontSize: 12, color: '#666', marginBottom: 20, lineHeight: 1.6 }}>
-                    {videoConsultation
-                      ? <>Your video consultation has been booked.<br />You will receive a meeting link shortly.</>
-                      : <>Your appointment has been booked.<br />The doctor will be in touch shortly.</>
-                    }
-                  </div>
-                  <button
-                    onClick={() => navigate('/consultations')}
-                    style={{
-                      padding: '10px 22px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                      background: '#1930AA', color: '#fff', fontSize: 13, fontWeight: 600,
-                      fontFamily: 'inherit',
-                    }}
-                  >
-                    View My Consultations
-                  </button>
-                </div>
-              ) : (
+              {selectedDoctor ? (
                 <>
-                  {selectedDoctor ? (
-                    <>
-                      {/* Doctor summary */}
-                      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 16 }}>
-                        <div style={{
-                          width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
-                          background: 'linear-gradient(135deg, #1930AA, #00AFEF)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 13, fontWeight: 700, color: '#fff',
-                        }}>
-                          {initials(selectedDoctor.full_name || selectedDoctor.name)}
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>
-                            Dr. {stripDr(selectedDoctor.full_name || selectedDoctor.name || 'Doctor')}
-                          </div>
-                          <div style={{ fontSize: 11, color: '#1930AA' }}>{specs.slice(0, 2).join(' · ')}</div>
-                        </div>
-                      </div>
-
-                      {/* Time slot selector */}
-                      <div
-                        onClick={() => setShowSlotPicker(true)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px',
-                          borderRadius: 10, border: selectedSlot ? '1.5px solid rgba(25,48,170,0.2)' : '1.5px dashed rgba(0,0,0,0.15)',
-                          cursor: 'pointer', marginBottom: 14, transition: 'all 0.18s',
-                          background: selectedSlot ? 'rgba(25,48,170,0.04)' : 'rgba(0,0,0,0.02)',
-                        }}
-                      >
-                        <CalendarClock size={14} color={selectedSlot ? '#1930AA' : '#aaa'} />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          {selectedSlot ? (
-                            <>
-                              <div style={{ fontSize: 11, fontWeight: 700, color: '#1930AA' }}>Appointment Slot</div>
-                              <div style={{ fontSize: 12, color: '#333', marginTop: 1 }}>{selectedSlot.label}</div>
-                            </>
-                          ) : (
-                            <div style={{ fontSize: 12, color: '#aaa', fontWeight: 600 }}>Select appointment slot →</div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Fee breakdown */}
-                      <div style={{ borderTop: '1px solid rgba(0,0,0,0.07)', paddingTop: 14, marginBottom: 16 }}>
-                        {[
-                          { label: videoConsultation ? 'Video Consultation Fee' : 'Consultation Fee', value: `₹${fee}` },
-                          { label: 'Platform Fee',     value: '₹0' },
-                          { label: 'GST (18%)',        value: `₹${gst}` },
-                        ].map(({ label, value }) => (
-                          <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#666', marginBottom: 8 }}>
-                            <span>{label}</span>
-                            <span style={{ fontWeight: 600, color: '#333' }}>{value}</span>
-                          </div>
-                        ))}
-                        <div style={{
-                          display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 800,
-                          color: '#111', borderTop: '1.5px solid rgba(0,0,0,0.08)', paddingTop: 10, marginTop: 4,
-                        }}>
-                          <span>Total</span>
-                          <span style={{ color: '#1930AA' }}>₹{total}</span>
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div style={{ fontSize: 13, color: '#999', textAlign: 'center', padding: '18px 0', marginBottom: 16 }}>
-                      Select a doctor to continue
-                    </div>
-                  )}
-
-                  {payError && (
+                  {/* Doctor summary */}
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 16 }}>
                     <div style={{
-                      fontSize: 12, color: '#c62828', background: 'rgba(198,40,40,0.07)',
-                      padding: '9px 12px', borderRadius: 8, marginBottom: 12, lineHeight: 1.5,
+                      width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
+                      background: 'linear-gradient(135deg, #1930AA, #00AFEF)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 13, fontWeight: 700, color: '#fff',
                     }}>
-                      {payError}
+                      {initials(selectedDoctor.full_name || selectedDoctor.name)}
                     </div>
-                  )}
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>
+                        Dr. {stripDr(selectedDoctor.full_name || selectedDoctor.name || 'Doctor')}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#1930AA' }}>{specs.slice(0, 2).join(' · ')}</div>
+                    </div>
+                  </div>
 
-                  <button
-                    onClick={handlePay}
-                    disabled={!selectedDoctor || paying}
+                  {/* Time slot selector */}
+                  <div
+                    onClick={() => setShowSlotPicker(true)}
                     style={{
-                      width: '100%', padding: '13px 0', borderRadius: 10, border: 'none',
-                      cursor: selectedDoctor && !paying ? 'pointer' : 'default',
-                      background: selectedDoctor && !paying
-                        ? 'linear-gradient(135deg, #1930AA, #00AFEF)'
-                        : 'rgba(0,0,0,0.07)',
-                      color: selectedDoctor && !paying ? '#fff' : '#bbb',
-                      fontSize: 14, fontWeight: 700, fontFamily: 'inherit',
-                      boxShadow: selectedDoctor && !paying ? '0 4px 16px rgba(25,48,170,0.22)' : 'none',
-                      transition: 'all 0.2s',
+                      display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px',
+                      borderRadius: 10, border: selectedSlot ? '1.5px solid rgba(25,48,170,0.2)' : '1.5px dashed rgba(0,0,0,0.15)',
+                      cursor: 'pointer', marginBottom: 14, transition: 'all 0.18s',
+                      background: selectedSlot ? 'rgba(25,48,170,0.04)' : 'rgba(0,0,0,0.02)',
                     }}
                   >
-                    {paying
-                      ? 'Opening Payment…'
-                      : !selectedDoctor
-                        ? 'Pay'
-                        : !selectedSlot
-                          ? 'Select a Time Slot'
-                          : IS_DEV
-                            ? `Book Free (Dev Mode)`
-                            : `Pay ₹${total}`
-                    }
-                  </button>
-
-                  {/* Razorpay badge */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 12 }}>
-                    <svg width="16" height="16" viewBox="0 0 32 32" fill="none">
-                      <rect width="32" height="32" rx="6" fill="#072654"/>
-                      <path d="M8 22l4-12h4l-2 6h4l-4 6H8z" fill="#00BAF2"/>
-                      <path d="M16 10l4 6h-4l-2-6h2z" fill="#fff"/>
-                    </svg>
-                    <span style={{ fontSize: 10, color: '#bbb' }}>Secured by Razorpay</span>
+                    <CalendarClock size={14} color={selectedSlot ? '#1930AA' : '#aaa'} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {selectedSlot ? (
+                        <>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: '#1930AA' }}>Appointment Slot</div>
+                          <div style={{ fontSize: 12, color: '#333', marginTop: 1 }}>{selectedSlot.label}</div>
+                        </>
+                      ) : (
+                        <div style={{ fontSize: 12, color: '#aaa', fontWeight: 600 }}>Select appointment slot →</div>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Fee breakdown */}
+                  <div style={{ borderTop: '1px solid rgba(0,0,0,0.07)', paddingTop: 14, marginBottom: 12 }}>
+                    {[
+                      { label: videoConsultation ? 'Video Consultation Fee' : 'Consultation Fee', value: `₹${fee}` },
+                      { label: 'Platform Fee', value: '₹0' },
+                      { label: 'GST (18%)',    value: `₹${gst}` },
+                    ].map(({ label, value }) => (
+                      <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#666', marginBottom: 8 }}>
+                        <span>{label}</span>
+                        <span style={{ fontWeight: 600, color: '#333' }}>{value}</span>
+                      </div>
+                    ))}
+                    {promoApplied && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#00a040', marginBottom: 8 }}>
+                        <span>Promo ({promoApplied.discount_percent}% off)</span>
+                        <span style={{ fontWeight: 700 }}>− ₹{discountAmount}</span>
+                      </div>
+                    )}
+                    <div style={{
+                      display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 800,
+                      color: '#111', borderTop: '1.5px solid rgba(0,0,0,0.08)', paddingTop: 10, marginTop: 4,
+                    }}>
+                      <span>Total</span>
+                      <div style={{ textAlign: 'right' }}>
+                        {promoApplied && (
+                          <div style={{ fontSize: 11, color: '#aaa', textDecoration: 'line-through', fontWeight: 400 }}>₹{baseTotal}</div>
+                        )}
+                        <span style={{ color: '#1930AA' }}>₹{total}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Promo code */}
+                  {!promoApplied ? (
+                    <div style={{ marginBottom: 14 }}>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <input
+                          type="text"
+                          placeholder="Enter promo code"
+                          value={promoCode}
+                          onChange={e => { setPromoCode(e.target.value.toUpperCase()); setPromoError(null) }}
+                          onKeyDown={e => e.key === 'Enter' && handleApplyPromo()}
+                          style={{
+                            flex: 1, padding: '8px 10px', borderRadius: 8, fontSize: 12, fontFamily: 'inherit',
+                            border: promoError ? '1.5px solid #c62828' : '1.5px solid rgba(0,0,0,0.12)',
+                            outline: 'none', letterSpacing: 1,
+                          }}
+                        />
+                        <button
+                          onClick={handleApplyPromo}
+                          disabled={promoLoading || !promoCode.trim()}
+                          style={{
+                            padding: '8px 12px', borderRadius: 8, border: 'none', fontSize: 12, fontWeight: 700,
+                            cursor: (promoLoading || !promoCode.trim()) ? 'default' : 'pointer',
+                            background: (promoLoading || !promoCode.trim()) ? 'rgba(0,0,0,0.07)' : 'linear-gradient(135deg, #1930AA, #00AFEF)',
+                            color: (promoLoading || !promoCode.trim()) ? '#bbb' : '#fff',
+                            fontFamily: 'inherit', transition: 'all 0.2s', whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {promoLoading ? '…' : 'Apply'}
+                        </button>
+                      </div>
+                      {promoError && (
+                        <div style={{ fontSize: 11, color: '#c62828', marginTop: 5 }}>{promoError}</div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      background: 'rgba(0,160,64,0.07)', border: '1px solid rgba(0,160,64,0.2)',
+                      borderRadius: 8, padding: '8px 10px', marginBottom: 14,
+                    }}>
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#00a040' }}>
+                          {promoCode} applied — {promoApplied.discount_percent}% off
+                        </div>
+                        {promoApplied.description && (
+                          <div style={{ fontSize: 10, color: '#666', marginTop: 1 }}>{promoApplied.description}</div>
+                        )}
+                      </div>
+                      <button
+                        onClick={handleRemovePromo}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#aaa', padding: '0 2px', lineHeight: 1 }}
+                      >✕</button>
+                    </div>
+                  )}
                 </>
+              ) : (
+                <div style={{ fontSize: 13, color: '#999', textAlign: 'center', padding: '18px 0', marginBottom: 16 }}>
+                  Select a doctor to continue
+                </div>
               )}
+
+              {payError && (
+                <div style={{ fontSize: 12, color: '#c62828', background: 'rgba(198,40,40,0.07)', padding: '10px 12px', borderRadius: 8, marginBottom: 10 }}>
+                  {payError}
+                </div>
+              )}
+
+              <button
+                onClick={handlePay}
+                disabled={!selectedDoctor || paying}
+                style={{
+                  width: '100%', padding: '13px 0', borderRadius: 10, border: 'none',
+                  cursor: (selectedDoctor && !paying) ? 'pointer' : 'default',
+                  background: (selectedDoctor && !paying) ? 'linear-gradient(135deg, #1930AA, #00AFEF)' : 'rgba(0,0,0,0.07)',
+                  color: (selectedDoctor && !paying) ? '#fff' : '#bbb',
+                  fontSize: 14, fontWeight: 700, fontFamily: 'inherit',
+                  boxShadow: (selectedDoctor && !paying) ? '0 4px 16px rgba(25,48,170,0.22)' : 'none',
+                  transition: 'all 0.2s',
+                }}
+              >
+                {paying ? 'Redirecting…' : !selectedDoctor ? 'Select a Doctor' : !selectedSlot ? 'Select a Time Slot' : `Pay ₹${total}`}
+              </button>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 12 }}>
+                <svg width="16" height="16" viewBox="0 0 32 32" fill="none">
+                  <rect width="32" height="32" rx="6" fill="#072654"/>
+                  <path d="M8 22l4-12h4l-2 6h4l-4 6H8z" fill="#00BAF2"/>
+                  <path d="M16 10l4 6h-4l-2-6h2z" fill="#fff"/>
+                </svg>
+                <span style={{ fontSize: 10, color: '#bbb' }}>Secured by Razorpay</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
+
+    {/* Hidden form auto-submitted to Razorpay hosted checkout */}
+    {formFields && (
+      <form
+        ref={formRef}
+        action="https://api.razorpay.com/v1/checkout/embedded"
+        method="POST"
+        style={{ display: 'none' }}
+      >
+        {Object.entries(formFields).map(([key, val]) => (
+          <input key={key} type="hidden" name={key} value={val ?? ''} />
+        ))}
+      </form>
+    )}
 
     {showSlotPicker && selectedDoctor && (
       <TimeSlotPicker

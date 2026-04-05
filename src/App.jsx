@@ -1,5 +1,12 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { useAuth } from './context/AuthContext'
 import HomePage from './pages/HomePage'
+
+function RootRoute() {
+  const { isAuthenticated, loading, initialized } = useAuth()
+  if (loading || !initialized) return null
+  return isAuthenticated ? <Navigate to="/dashboard" replace /> : <HomePage />
+}
 import ChatPage from './pages/ChatPage'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
@@ -9,6 +16,7 @@ import DoctorPublicProfile from './pages/DoctorPublicProfile'
 import ConsultationsPage from './pages/ConsultationsPage'
 import PrescriptionsPage from './pages/PrescriptionsPage'
 import BookAppointment from './pages/BookAppointment'
+import PaymentPage from './pages/PaymentPage'
 import DashboardPage from './pages/DashboardPage'
 import AppLayout from './pages/AppLayout'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -22,13 +30,14 @@ import PrescriptionReview from './pages/doctor/PrescriptionReview'
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<HomePage />} />
+      <Route path="/" element={<RootRoute />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/doctor/login" element={<DoctorLoginPage />} />
 
       {/* Patient routes */}
       <Route element={<ProtectedRoute />}>
+        <Route path="payment" element={<PaymentPage />} />
         <Route element={<AppLayout />}>
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="chat" element={<ChatPage />} />
