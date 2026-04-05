@@ -430,7 +430,6 @@ export default function HomePage() {
             ))}
             <div style={{ width: 1, height: 18, background: 'rgba(0,0,0,0.1)', margin: '0 4px' }} />
             <Link to="/login" style={{ fontSize: 13, fontWeight: 600, color: 'var(--g300)', padding: '7px 12px', borderRadius: 8, textDecoration: 'none' }}>Log in</Link>
-            <Link to="/signup" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 18px', borderRadius: 50, fontSize: 13, fontWeight: 700, background: 'linear-gradient(135deg,var(--blue),var(--cyan))', color: 'var(--g300)', textDecoration: 'none' }}>Sign up</Link>
           </div>
         </nav>
 

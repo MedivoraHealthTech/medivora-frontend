@@ -256,7 +256,7 @@ export default function BookAppointment() {
 
   return (
     <>
-    <div style={{ minHeight: '100vh', background: '#f0f4fa', fontFamily: 'var(--font, Inter, sans-serif)', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ height: '100%', background: '#f0f4fa', fontFamily: 'var(--font, Inter, sans-serif)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
       {/* ── Header ── */}
       <div style={{ padding: '14px 24px', background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.07)', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
@@ -291,10 +291,10 @@ export default function BookAppointment() {
       </div>
 
       {/* ── Body ── */}
-      <div style={{ flex: 1, display: 'flex', gap: 20, maxWidth: 1060, margin: '24px auto', width: '100%', padding: '0 24px', alignItems: 'flex-start', boxSizing: 'border-box' }}>
+      <div style={{ flex: 1, display: 'flex', gap: 20, maxWidth: 1060, margin: '24px auto', width: '100%', padding: '0 24px', alignItems: 'flex-start', boxSizing: 'border-box', overflow: 'hidden', minHeight: 0 }}>
 
         {/* ── LEFT: Doctor list ── */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0, maxHeight: 'calc(100vh - 110px)', overflowY: 'auto', paddingRight: 4, flexBasis: 0 }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0, height: '100%', overflowY: 'auto', paddingRight: 4, flexBasis: 0, paddingBottom: 24 }}>
           {loading ? (
             [0, 1, 2].map(i => (
               <div key={i} style={{ background: '#fff', borderRadius: 14, padding: '18px', border: '1.5px solid rgba(0,0,0,0.07)', opacity: 0.6 }}>
