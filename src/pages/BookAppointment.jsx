@@ -27,9 +27,12 @@ async function getAuthToken() {
   } catch { return null }
 }
 
+/* ─── Strip leading "Dr." prefix ─── */
+function stripDr(name = '') { return name.replace(/^Dr\.?\s*/i, '').trim() }
+
 /* ─── Initials helper ─── */
 function initials(name = '') {
-  const parts = name.replace(/^Dr\.\s*/i, '').trim().split(/\s+/)
+  const parts = stripDr(name).split(/\s+/)
   return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase() || '?'
 }
 
@@ -164,7 +167,7 @@ export default function BookAppointment() {
     const fee     = selectedDoctor.consultation_fee || 500
     const gst     = Math.round(fee * 0.18)
     const total   = fee + gst
-    const docName = selectedDoctor.full_name || selectedDoctor.name || 'Doctor'
+    const docName = stripDr(selectedDoctor.full_name || selectedDoctor.name || 'Doctor')
 
     try {
       // 2. Create Razorpay order from backend
@@ -284,7 +287,7 @@ export default function BookAppointment() {
           )}
           {preSelectedDoctor && (
             <p style={{ fontSize: 11, color: '#1930AA', margin: '2px 0 0', fontWeight: 600 }}>
-              Dr. {preSelectedDoctor.full_name || preSelectedDoctor.name} selected
+              Dr. {stripDr(preSelectedDoctor.full_name || preSelectedDoctor.name)} selected
             </p>
           )}
         </div>
@@ -315,7 +318,7 @@ export default function BookAppointment() {
               const exp        = doc.years_of_experience ?? doc.experience ?? null
               const rating     = doc.rating || 4.5
               const clinic     = doc.clinic_name || 'Medivora Clinic'
-              const name       = doc.full_name || doc.name || 'Doctor'
+              const name       = stripDr(doc.full_name || doc.name || 'Doctor')
 
               return (
                 <div
@@ -434,7 +437,7 @@ export default function BookAppointment() {
                         </div>
                         <div>
                           <div style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>
-                            Dr. {selectedDoctor.full_name || selectedDoctor.name || 'Doctor'}
+                            Dr. {stripDr(selectedDoctor.full_name || selectedDoctor.name || 'Doctor')}
                           </div>
                           <div style={{ fontSize: 11, color: '#1930AA' }}>{specs.slice(0, 2).join(' · ')}</div>
                         </div>
