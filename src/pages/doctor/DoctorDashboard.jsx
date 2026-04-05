@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   Users, CalendarDays, ClipboardList, TrendingUp,
   Clock, CheckCircle, AlertTriangle, ChevronRight,
-  Activity, Stethoscope,
+  Activity, Stethoscope, IndianRupee,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { doctorAPI } from '../../api/client'
@@ -25,16 +25,19 @@ export default function DoctorDashboard() {
           doctorAPI.getConsultations(token),
           doctorAPI.getPendingApprovals(token),
         ])
-        const consults  = cData.status === 'fulfilled' ? (cData.value?.sessions || []) : []
+        const cValue    = cData.status === 'fulfilled' ? cData.value : {}
+        const consults  = cValue?.sessions || []
+        const totalIncome = cValue?.total_income || 0
         const approvalList = aData.status === 'fulfilled' ? (aData.value?.approvals || []) : []
         setConsultations(consults)
         setApprovals(approvalList)
         setStats({
-          total:     consults.length,
-          pending:   consults.filter(c => c.status === 'requested').length,
-          scheduled: consults.filter(c => c.status === 'scheduled').length,
-          completed: consults.filter(c => c.status === 'completed').length,
-          pendingRx: approvalList.length,
+          total:       consults.length,
+          pending:     consults.filter(c => c.status === 'requested').length,
+          scheduled:   consults.filter(c => c.status === 'scheduled').length,
+          completed:   consults.filter(c => c.status === 'completed').length,
+          pendingRx:   approvalList.length,
+          totalIncome,
         })
       } catch (e) {
         console.error('Dashboard load error:', e)
@@ -51,6 +54,7 @@ export default function DoctorDashboard() {
     { label: 'Pending Requests',    value: stats.pending,   icon: Clock,       color: 'var(--warn)', bg: 'rgba(255,179,0,0.1)'   },
     { label: 'Scheduled',           value: stats.scheduled, icon: CalendarDays, color: 'var(--cyan)', bg: 'rgba(0,188,212,0.1)'   },
     { label: 'Pending Rx Review',   value: stats.pendingRx, icon: ClipboardList, color: 'var(--err)',  bg: 'rgba(255,61,0,0.08)'  },
+    { label: 'Total Income',        value: `₹${stats.totalIncome.toLocaleString('en-IN')}`, icon: IndianRupee, color: '#00897b', bg: 'rgba(0,137,123,0.08)', raw: true },
   ] : []
 
   const recentConsults = consultations.slice(0, 5)
@@ -102,7 +106,7 @@ export default function DoctorDashboard() {
                 <s.icon size={16} color={s.color} />
               </div>
             </div>
-            <p style={{ fontSize: 28, fontWeight: 800, color: s.color, margin: 0 }}>{s.value}</p>
+            <p style={{ fontSize: s.raw ? 22 : 28, fontWeight: 800, color: s.color, margin: 0 }}>{s.value}</p>
           </div>
         ))}
       </div>
