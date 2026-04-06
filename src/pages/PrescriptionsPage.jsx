@@ -75,6 +75,22 @@ function formatDate(iso) {
   catch { return iso }
 }
 
+async function downloadPdf(prescriptionId) {
+  const token = await getToken()
+  if (!token) return
+  const res = await fetch(`${API_BASE}/prescriptions/${prescriptionId}/download-pdf`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) { alert('PDF not available yet.'); return }
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `prescription_${prescriptionId}.pdf`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export default function PrescriptionsPage() {
   const [prescriptions, setPrescriptions] = useState([])
   const [loading, setLoading]             = useState(true)
@@ -237,9 +253,9 @@ export default function PrescriptionsPage() {
 
                   <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
                     <button
-                      onClick={() => p.pdfUrl && window.open(p.pdfUrl, '_blank')}
-                      disabled={!p.pdfUrl}
-                      style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(0,0,0,0.12)', background: '#fff', color: p.pdfUrl ? 'var(--g400)' : 'var(--g700)', fontSize: 13, fontWeight: 600, cursor: p.pdfUrl ? 'pointer' : 'not-allowed', fontFamily: 'var(--font)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                      onClick={() => downloadPdf(p.id)}
+                      disabled={p.status === 'pending'}
+                      style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(0,0,0,0.12)', background: '#fff', color: p.status !== 'pending' ? 'var(--g400)' : 'var(--g700)', fontSize: 13, fontWeight: 600, cursor: p.status !== 'pending' ? 'pointer' : 'not-allowed', fontFamily: 'var(--font)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
                     >
                       <Download size={15} /> PDF
                     </button>
