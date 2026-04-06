@@ -144,6 +144,12 @@ export const doctorAPI = {
   generatePdf: (approvalId, token) =>
     apiFetch(`/prescriptions/${approvalId}/generate-pdf`, { method: 'POST', token }),
 
+  // Consultation prescriptions
+  generateConsultationPrescription: (consultationId, token) =>
+    apiFetch(`/consultation/${consultationId}/generate-prescription`, { method: 'POST', token }),
+  submitConsultationPrescription: (consultationId, data, token) =>
+    apiFetch(`/consultation/${consultationId}/submit-prescription`, { method: 'POST', body: data, token }),
+
   // Patients
   getPatients: (token) =>
     apiFetch('/doctors/patients', { token }),
