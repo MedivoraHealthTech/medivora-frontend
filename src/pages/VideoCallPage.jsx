@@ -52,6 +52,21 @@ export default function VideoCallPage() {
     } catch { /* ignore */ }
   }, [id, getToken])
 
+  const endAndGoBack = useCallback(async () => {
+    // Mark consultation as completed (best-effort) before navigating away
+    try {
+      const token = getToken()
+      if (token) {
+        await fetch(`${API_BASE}/consultation/${id}/end`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        })
+      }
+    } catch { /* ignore */ }
+    const isDoctor = callDetails?.role === 'doctor'
+    navigate(isDoctor ? '/doctor/consultations' : '/consultations')
+  }, [id, getToken, callDetails, navigate])
+
   const goBack = () => {
     const isDoctor = callDetails?.role === 'doctor'
     navigate(isDoctor ? '/doctor/consultations' : '/consultations')
@@ -87,13 +102,14 @@ export default function VideoCallPage() {
     </div>
   )
 
+
   /* ── Active call ── */
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 1000, display: 'flex', flexDirection: 'column' }}>
       {/* Top bar */}
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10, display: 'flex', alignItems: 'center', padding: '10px 16px', background: 'linear-gradient(to bottom, rgba(0,0,0,0.7), transparent)', pointerEvents: 'none' }}>
         <button
-          onClick={goBack}
+          onClick={endAndGoBack}
           style={{ pointerEvents: 'all', display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 10, border: 'none', background: 'rgba(255,255,255,0.12)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', backdropFilter: 'blur(6px)' }}
         >
           <ArrowLeft size={14} /> Exit
