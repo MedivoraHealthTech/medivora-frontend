@@ -2,10 +2,13 @@ import { useState, useEffect } from 'react'
 import {
   UserCircle, Save, Edit3, Activity, Phone, MapPin, DollarSign,
   Award, BookOpen, CheckCircle, AlertCircle, AlertTriangle, X,
+  Clock, Plus, Trash2,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { doctorAPI, profileAPI } from '../../api/client'
+
+const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 const SPECIALTIES_LIST = [
   'general_medicine', 'cardiology', 'neurology', 'dermatology', 'pediatrics',
@@ -46,6 +49,7 @@ export default function DoctorProfile() {
   const [expYears,     setExpYears]     = useState('')
   const [nmc,          setNmc]          = useState('')
   const [specialties,  setSpecialties]  = useState([])
+  const [slots,        setSlots]        = useState([])
 
   useEffect(() => {
     async function load() {
@@ -60,6 +64,7 @@ export default function DoctorProfile() {
         setExpYears(data.experience_years != null ? String(data.experience_years) : '')
         setNmc(data.nmc_number || '')
         setSpecialties(Array.isArray(data.specialties) ? data.specialties : [])
+        setSlots(Array.isArray(data.available_slots) ? data.available_slots : [])
       } catch (e) {
         setError('Could not load profile. ' + (e.message || ''))
       } finally {
@@ -75,6 +80,18 @@ export default function DoctorProfile() {
     )
   }
 
+  function addSlot() {
+    setSlots(prev => [...prev, { day: 'Monday', start: '09:00', end: '17:00' }])
+  }
+
+  function removeSlot(idx) {
+    setSlots(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  function updateSlot(idx, field, value) {
+    setSlots(prev => prev.map((s, i) => i === idx ? { ...s, [field]: value } : s))
+  }
+
   async function handleSave(e) {
     e.preventDefault()
     setSaving(true); setError(''); setSaved(false)
@@ -88,6 +105,7 @@ export default function DoctorProfile() {
         experience_years: expYears,
         nmc_number:       nmc,
         specialties:      specialties.join(','),
+        available_slots:  JSON.stringify(slots),
       }, getToken())
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
@@ -173,6 +191,62 @@ export default function DoctorProfile() {
               }}>
                 {opt.label}
               </button>
+            ))}
+          </div>
+        </section>
+
+        {/* Available Slots */}
+        <section style={section}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <h3 style={{ ...sectionTitle, margin: 0 }}><Clock size={15} /> Available Slots</h3>
+            <button type="button" onClick={addSlot} style={{
+              display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8,
+              border: '1.5px solid rgba(25,48,170,0.3)', background: 'rgba(25,48,170,0.06)',
+              color: '#1930AA', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 700,
+            }}>
+              <Plus size={13} /> Add Slot
+            </button>
+          </div>
+
+          {slots.length === 0 && (
+            <p style={{ fontSize: 13, color: 'var(--g600)', textAlign: 'center', padding: '16px 0', margin: 0 }}>
+              No slots added yet. Click "Add Slot" to set your weekly availability.
+            </p>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {slots.map((slot, idx) => (
+              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <select
+                  value={slot.day}
+                  onChange={e => updateSlot(idx, 'day', e.target.value)}
+                  style={{ ...slotSelect, minWidth: 120 }}
+                >
+                  {DAYS_OF_WEEK.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+                <span style={{ fontSize: 12, color: 'var(--g500)', flexShrink: 0 }}>from</span>
+                <input
+                  type="time"
+                  value={slot.start}
+                  onChange={e => updateSlot(idx, 'start', e.target.value)}
+                  style={slotSelect}
+                />
+                <span style={{ fontSize: 12, color: 'var(--g500)', flexShrink: 0 }}>to</span>
+                <input
+                  type="time"
+                  value={slot.end}
+                  onChange={e => updateSlot(idx, 'end', e.target.value)}
+                  style={slotSelect}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeSlot(idx)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--g500)', padding: 4, display: 'flex', alignItems: 'center', flexShrink: 0 }}
+                  title="Remove slot"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
             ))}
           </div>
         </section>
@@ -330,3 +404,4 @@ const section = { borderRadius: 14, background: 'var(--pw)', border: '1px solid 
 const sectionTitle = { fontSize: 14, fontWeight: 700, color: 'var(--g300)', margin: '0 0 14px', display: 'flex', alignItems: 'center', gap: 7 }
 const fieldLabel = { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--g500)', marginBottom: 7, textTransform: 'uppercase', letterSpacing: 0.6 }
 const fieldInput = { width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid rgba(0,0,0,0.1)', background: 'rgba(0,0,0,0.02)', color: 'var(--g300)', fontFamily: 'var(--font)', fontSize: 14, outline: 'none', boxSizing: 'border-box', display: 'block', transition: 'border-color 0.2s' }
+const slotSelect = { padding: '9px 12px', borderRadius: 8, border: '1.5px solid rgba(0,0,0,0.1)', background: 'rgba(0,0,0,0.02)', color: 'var(--g300)', fontFamily: 'var(--font)', fontSize: 13, outline: 'none', cursor: 'pointer' }
