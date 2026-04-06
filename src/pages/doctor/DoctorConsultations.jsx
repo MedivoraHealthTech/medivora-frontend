@@ -76,7 +76,11 @@ export default function DoctorConsultations() {
     setLoading(true)
     try {
       const data = await doctorAPI.getConsultations(getToken())
-      setConsultations(data?.sessions || [])
+      const sessions = data?.sessions || []
+      setConsultations(sessions)
+      // Pre-populate from backend so the state survives refresh
+      const alreadySent = new Set(sessions.filter(s => s.has_prescription).map(s => s.id))
+      setSubmittedRxIds(alreadySent)
     } catch (e) {
       setError('Could not load consultations.')
     } finally {
@@ -342,7 +346,7 @@ export default function DoctorConsultations() {
                         </span>
                         {submittedRxIds.has(c.id) ? (
                           <span style={{ fontSize: 12, color: 'var(--ok)', display: 'flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 8, background: 'rgba(0,200,83,0.08)', border: '1.5px solid rgba(0,200,83,0.3)' }}>
-                            <FileText size={13} /> Prescription Submitted
+                            <FileText size={13} /> Prescription Sent
                           </span>
                         ) : (
                           <button
