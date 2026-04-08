@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { Link, useNavigate, Navigate } from 'react-router-dom'
 import { Phone, ArrowLeft, Shield, Stethoscope } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { useBreakpoint } from '../../hooks/useBreakpoint'
 
 const inp = {
   width: '100%', padding: '14px 18px', borderRadius: 12, fontSize: 15,
@@ -22,6 +23,7 @@ export default function DoctorLoginPage() {
 
   const { sendDoctorOtp, verifyDoctorOtp, isAuthenticated, isDoctor, loading: authLoading } = useAuth()
   const navigate = useNavigate()
+  const { isMobile } = useBreakpoint()
 
   if (!authLoading && isAuthenticated && isDoctor) return <Navigate to="/doctor" replace />
 
@@ -75,7 +77,7 @@ export default function DoctorLoginPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f8fc', padding: 24 }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f8fc', padding: isMobile ? 16 : 24 }}>
       <div style={{ width: '100%', maxWidth: 420 }}>
 
         {/* Logo */}
@@ -93,7 +95,7 @@ export default function DoctorLoginPage() {
         </div>
 
         {/* Card */}
-        <div style={{ padding: '40px 36px', borderRadius: 20, background: '#ffffff', border: '1.5px solid #e0eaf8', boxShadow: '0 4px 24px rgba(25,48,170,0.07)' }}>
+        <div style={{ padding: isMobile ? '16px' : '40px 36px', borderRadius: 20, background: '#ffffff', border: '1.5px solid #e0eaf8', boxShadow: '0 4px 24px rgba(25,48,170,0.07)', width: '100%', boxSizing: 'border-box' }}>
 
           <h2 style={{ fontSize: 24, fontWeight: 800, color: '#111111', marginBottom: 6, textAlign: 'center', fontFamily: 'var(--serif)' }}>Doctor Login</h2>
           <p style={{ textAlign: 'center', fontSize: 13, color: '#666666', marginBottom: 28 }}>Sign in with your registered phone number</p>

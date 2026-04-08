@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import Logo from '../components/Logo'
 import ComingSoonModal from '../components/ComingSoonModal'
+import { useBreakpoint } from '../hooks/useBreakpoint'
 
 function useReveal() {
   const ref = useRef(null)
@@ -69,6 +70,7 @@ const TESTIMONIALS = [
 
 function EmbeddedChat() {
   const navigate = useNavigate()
+  const { isMobile } = useBreakpoint()
   const [isOpen, setIsOpen] = useState(false)
   const [isVisible, setIsVisible] = useState(false)
   const [messages, setMessages] = useState([
@@ -292,7 +294,7 @@ function EmbeddedChat() {
           onClick={e => { if (e.target === e.currentTarget) setIsOpen(false) }}
           style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(10,20,60,0.55)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, opacity: isVisible ? 1 : 0, transition: 'opacity 0.25s ease' }}
         >
-          <div style={{ width: '100%', maxWidth: 640, height: 580, borderRadius: 24, overflow: 'hidden', background: '#fff', boxShadow: '0 32px 100px rgba(0,0,0,0.35)', display: 'flex', flexDirection: 'column', transform: isVisible ? 'scale(1) translateY(0)' : 'scale(0.95) translateY(20px)', transition: 'transform 0.35s cubic-bezier(0.16,1,0.3,1), opacity 0.25s ease', opacity: isVisible ? 1 : 0 }}>
+          <div style={{ width: '100%', maxWidth: isMobile ? '100%' : 640, height: isMobile ? '100svh' : 580, borderRadius: isMobile ? 0 : 24, overflow: 'hidden', background: '#fff', boxShadow: '0 32px 100px rgba(0,0,0,0.35)', display: 'flex', flexDirection: 'column', transform: isVisible ? 'scale(1) translateY(0)' : 'scale(0.95) translateY(20px)', transition: 'transform 0.35s cubic-bezier(0.16,1,0.3,1), opacity 0.25s ease', opacity: isVisible ? 1 : 0 }}>
             {/* Header */}
             <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(0,0,0,0.07)', display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(240,246,255,0.97)', flexShrink: 0 }}>
               <div style={{ width: 9, height: 9, borderRadius: '50%', background: 'var(--ok)', animation: 'pulse 2s infinite' }} />
@@ -392,6 +394,7 @@ function FlowCard({ steps, cta, ctaTo, onCtaClick, side }) {
 export default function HomePage() {
   const navigate = useNavigate()
   const [comingSoon, setComingSoon] = useState(null) // feature label or null
+  const { isMobile, isTablet } = useBreakpoint()
 
   function startChat(symptom) {
     sessionStorage.setItem('quick_symptom', symptom)
@@ -422,20 +425,20 @@ export default function HomePage() {
       <div style={{ fontFamily: 'var(--font)', background: 'var(--dark)', color: 'var(--g300)', overflowX: 'hidden' }}>
 
         {/* NAV */}
-        <nav style={{ position: 'sticky', top: 0, zIndex: 100, height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 40px', background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+        <nav style={{ position: 'sticky', top: 0, zIndex: 100, height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: isMobile ? '0 16px' : '0 40px', background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
           <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}><Logo size={28} showText={true} /></Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            {['Features','Doctors','Contact'].map(l => (
+            {!isMobile && ['Features','Doctors','Contact'].map(l => (
               <a key={l} href={`#${l.toLowerCase()}`} style={{ fontSize: 13, fontWeight: 500, color: 'var(--g400)', padding: '6px 10px', borderRadius: 6, textDecoration: 'none' }} onMouseEnter={e => e.target.style.color='var(--navy)'} onMouseLeave={e => e.target.style.color='var(--g400)'}>{l}</a>
             ))}
-            <div style={{ width: 1, height: 18, background: 'rgba(0,0,0,0.1)', margin: '0 4px' }} />
+            {!isMobile && <div style={{ width: 1, height: 18, background: 'rgba(0,0,0,0.1)', margin: '0 4px' }} />}
             <Link to="/login" style={{ fontSize: 13, fontWeight: 600, color: 'var(--g300)', padding: '7px 12px', borderRadius: 8, textDecoration: 'none' }}>Log in</Link>
           </div>
         </nav>
 
         {/* HERO */}
-        <section style={{ padding: '80px 40px 60px', maxWidth: 1140, margin: '0 auto' }}>
-          <div className="hero-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 60, alignItems: 'center' }}>
+        <section style={{ padding: isMobile ? '48px 20px 40px' : '80px 40px 60px', maxWidth: 1140, margin: '0 auto' }}>
+          <div className="hero-grid" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 32 : 60, alignItems: 'center' }}>
             <div className="animate-fade-up">
               <Tag color="var(--cyan)">🇮🇳 Built for India</Tag>
               <h1 style={{ fontSize: 'clamp(34px,4.5vw,56px)', fontWeight: 800, color: 'var(--g300)', lineHeight: 1.1, margin: '18px 0 20px', fontFamily: 'var(--serif)', letterSpacing: -1 }}>
@@ -456,7 +459,7 @@ export default function HomePage() {
         </section>
 
         {/* QUICK SYMPTOM START */}
-        <section style={{ padding: '0 40px 64px', maxWidth: 1140, margin: '0 auto' }}>
+        <section style={{ padding: isMobile ? '0 20px 48px' : '0 40px 64px', maxWidth: 1140, margin: '0 auto' }}>
           <Rv>
             <div style={{ padding: '28px 32px', borderRadius: 20, background: '#fafbff', border: '1px solid var(--g800)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
@@ -466,7 +469,7 @@ export default function HomePage() {
                 </div>
                 <Link to="/chat" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--cyan)', textDecoration: 'none' }}>Full check <ChevronRight size={14} /></Link>
               </div>
-              <div className="symptom-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(8,1fr)', gap: 10 }}>
+              <div className="symptom-grid" style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(4,1fr)' : 'repeat(8,1fr)', gap: 10 }}>
                 {SYMPTOMS.map(s => (
                   <button key={s.q} onClick={() => startChat(s.q)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '14px 8px', borderRadius: 12, background: '#fafbff', border: '1px solid rgba(0,0,0,0.09)', cursor: 'pointer', transition: 'all .2s', fontFamily: 'var(--font)' }} onMouseEnter={e => { e.currentTarget.style.borderColor='var(--cyan)'; e.currentTarget.style.background='rgba(0,188,212,0.06)' }} onMouseLeave={e => { e.currentTarget.style.borderColor='rgba(0,0,0,0.09)'; e.currentTarget.style.background='rgba(255,255,255,0.02)' }}>
                     <s.icon size={20} color="var(--cyan)" />
@@ -479,9 +482,9 @@ export default function HomePage() {
         </section>
 
         {/* STATS */}
-        <section style={{ padding: '0 40px 64px', maxWidth: 1140, margin: '0 auto' }}>
+        <section style={{ padding: isMobile ? '0 20px 48px' : '0 40px 64px', maxWidth: 1140, margin: '0 auto' }}>
           <Rv>
-            <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
+            <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)', gap: 14 }}>
               {STATS.map((s, i) => (
                 <div key={i} style={{ padding: '26px 22px', borderRadius: 14, background: '#ffffff', border: '1px solid var(--g800)', textAlign: 'center' }}>
                   <div style={{ fontSize: 30, fontWeight: 800, color: 'var(--g300)', marginBottom: 5, fontFamily: 'var(--serif)' }}>{s.val}</div>
@@ -493,7 +496,7 @@ export default function HomePage() {
         </section>
 
         {/* DUAL FLOW */}
-        <section id="features" style={{ padding: '0 40px 80px', maxWidth: 1140, margin: '0 auto' }}>
+        <section id="features" style={{ padding: isMobile ? '0 20px 48px' : '0 40px 80px', maxWidth: 1140, margin: '0 auto' }}>
           <Rv>
             <div style={{ textAlign: 'center', marginBottom: 48 }}>
               <Tag color="var(--cyan)">Complete Journeys</Tag>
@@ -501,7 +504,7 @@ export default function HomePage() {
               <p style={{ fontSize: 15, color: 'var(--g500)', maxWidth: 480, margin: '0 auto' }}>Whether you are seeking care or providing it — Medivora guides every step.</p>
             </div>
           </Rv>
-          <div className="flow-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+          <div className="flow-grid" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : isTablet ? 'repeat(2,1fr)' : '1fr 1fr', gap: 24 }}>
             {/* Patient card */}
             <Rv delay={0.05}>
               <div style={{ borderRadius: 20, overflow: 'hidden', background: '#fafbff', border: '1px solid rgba(0,188,212,0.2)' }}>
@@ -528,14 +531,14 @@ export default function HomePage() {
         </section>
 
         {/* HOW IT WORKS */}
-        <section style={{ padding: '0 40px 80px', maxWidth: 1140, margin: '0 auto' }} id="doctors">
+        <section style={{ padding: isMobile ? '0 20px 48px' : '0 40px 80px', maxWidth: 1140, margin: '0 auto' }} id="doctors">
           <Rv>
             <div style={{ textAlign: 'center', marginBottom: 40 }}>
               <Tag color="var(--purple)">How It Works</Tag>
               <h2 style={{ fontSize: 32, fontWeight: 800, color: 'var(--g300)', margin: '16px 0 0', fontFamily: 'var(--serif)' }}>Symptom to Prescription — 4 Steps</h2>
             </div>
           </Rv>
-          <div className="how-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
+          <div className="how-grid" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : isTablet ? 'repeat(2,1fr)' : 'repeat(4,1fr)', gap: 14 }}>
             {[
               { n:'01', icon: MessageSquare, title:'Describe Symptoms',  desc:'Chat in Hindi ya English. AI sunta hai bina judge kiye.',                 color:'var(--cyan)' },
               { n:'02', icon: Brain,         title:'AI Triage',          desc:'Severity assess karta hai — emergency ya routine, clearly batata hai.',    color:'var(--purple)' },
@@ -555,14 +558,14 @@ export default function HomePage() {
         </section>
 
         {/* TESTIMONIALS */}
-        <section style={{ padding: '0 40px 80px', maxWidth: 1140, margin: '0 auto' }}>
+        <section style={{ padding: isMobile ? '0 20px 48px' : '0 40px 80px', maxWidth: 1140, margin: '0 auto' }}>
           <Rv>
             <div style={{ textAlign: 'center', marginBottom: 36 }}>
               <Tag color="var(--ok)">Real Stories</Tag>
               <h2 style={{ fontSize: 30, fontWeight: 800, color: 'var(--g300)', margin: '14px 0 0', fontFamily: 'var(--serif)' }}>Patients and Doctors Trust Medivora</h2>
             </div>
           </Rv>
-          <div className="testi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
+          <div className="testi-grid" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : isTablet ? 'repeat(2,1fr)' : 'repeat(3,1fr)', gap: 14 }}>
             {TESTIMONIALS.map((t, i) => (
               <Rv key={i} delay={i * 0.1}>
                 <div style={{ padding: 22, borderRadius: 14, background: '#ffffff', border: '1px solid var(--g800)' }}>
@@ -579,7 +582,7 @@ export default function HomePage() {
         </section>
 
         {/* FINAL CTA */}
-        <section id="contact" style={{ padding: '0 40px 80px', maxWidth: 1140, margin: '0 auto' }}>
+        <section id="contact" style={{ padding: isMobile ? '0 20px 48px' : '0 40px 80px', maxWidth: 1140, margin: '0 auto' }}>
           <Rv>
             <div style={{ padding: '52px 48px', borderRadius: 22, background: 'linear-gradient(135deg,rgba(21,101,192,0.1),rgba(0,188,212,0.06))', border: '1px solid rgba(0,188,212,0.14)', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: -80, right: -80, width: 280, height: 280, borderRadius: '50%', background: 'radial-gradient(circle,rgba(0,188,212,0.06),transparent 70%)', pointerEvents: 'none' }} />
@@ -600,7 +603,7 @@ export default function HomePage() {
         </section>
 
         {/* FOOTER */}
-        <footer style={{ padding: '18px 40px', borderTop: '1px solid rgba(0,0,0,0.04)', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, maxWidth: 1140, margin: '0 auto' }}>
+        <footer style={{ padding: isMobile ? '18px 20px' : '18px 40px', borderTop: '1px solid rgba(0,0,0,0.04)', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, maxWidth: 1140, margin: '0 auto' }}>
           <p style={{ fontSize: 11, color: 'var(--g700)' }}>© 2026 Medivora Health · themedivora.com</p>
           <p style={{ fontSize: 11, color: 'var(--g700)' }}>AI-assisted only — not a substitute for professional medical advice. Emergency: 102/108.</p>
         </footer>

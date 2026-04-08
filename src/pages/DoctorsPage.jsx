@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from './supabase'
 import ComingSoonModal from '../components/ComingSoonModal'
 import TimeSlotPicker from '../components/TimeSlotPicker'
+import { useBreakpoint } from '../hooks/useBreakpoint'
 
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
 
@@ -39,6 +40,7 @@ async function apiFetchDoctors() {
 
 export default function DoctorsPage() {
   const navigate = useNavigate()
+  const { isMobile } = useBreakpoint()
   const [doctors, setDoctors]           = useState([])
   const [loading, setLoading]           = useState(true)
   const [error, setError]               = useState(null)
@@ -82,7 +84,7 @@ export default function DoctorsPage() {
   return (
     <div style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', background: 'var(--dark)', fontFamily: 'var(--font)', overflow: 'hidden' }}>
 
-      <div style={{ flexShrink: 0, padding: '20px 20px 12px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+      <div style={{ flexShrink: 0, padding: isMobile ? '16px 16px 12px' : '20px 20px 12px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
           <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--g300)', margin: 0, fontFamily: 'var(--serif)' }}>
             Find Doctors
@@ -96,7 +98,7 @@ export default function DoctorsPage() {
           Search by name or city. Filter by specialization.
         </p>
 
-        <div style={{ marginTop: 16, position: 'relative', maxWidth: 480 }}>
+        <div style={{ marginTop: 16, position: 'relative', maxWidth: isMobile ? '100%' : 480 }}>
           <Search size={18} color="var(--g500)" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           <input
             type="search" value={query} onChange={(e) => setQuery(e.target.value)}
@@ -120,7 +122,7 @@ export default function DoctorsPage() {
         </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px 24px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '12px 16px 24px' : '16px 20px 24px' }}>
 
         {loading && (
           <div style={{ textAlign: 'center', padding: '60px 24px', color: 'var(--g500)' }}>
@@ -141,7 +143,7 @@ export default function DoctorsPage() {
             <p style={{ fontSize: 12, color: 'var(--g500)', marginBottom: 14 }}>
               {filtered.length} doctor{filtered.length !== 1 ? 's' : ''} found
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16 }}>
               {filtered.map((d) => {
                 const status = STATUS_COLOR[d.available_status] || STATUS_COLOR.offline
                 return (

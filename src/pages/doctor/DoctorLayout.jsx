@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
+import { useBreakpoint } from '../../hooks/useBreakpoint'
 import {
   LayoutDashboard, CalendarDays, ClipboardList, UserCircle,
   Bell, Moon, Sun, X, CheckCircle, Info, AlertTriangle, LogOut,
@@ -30,6 +31,7 @@ export default function DoctorLayout() {
   const { displayName, logout, getToken } = useAuth()
   const navigate  = useNavigate()
   const location  = useLocation()
+  const { isMobile, isSmallScreen } = useBreakpoint()
 
   const [darkMode,   setDarkMode]   = useState(() => localStorage.getItem('darkMode') === 'true')
   const [notifOpen,  setNotifOpen]  = useState(false)
@@ -58,7 +60,7 @@ export default function DoctorLayout() {
       {/* ── Header ── */}
       <header style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '0 24px', height: 56, flexShrink: 0, zIndex: 100,
+        padding: isMobile ? '0 12px' : '0 24px', height: 56, flexShrink: 0, zIndex: 100,
         borderBottom: `1px solid ${borderCol}`,
         background: headerBg, backdropFilter: 'blur(20px)',
       }}>
@@ -71,7 +73,7 @@ export default function DoctorLayout() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginRight: 8 }}>
+          <div style={{ display: isMobile ? 'none' : 'flex', alignItems: 'center', gap: 5, marginRight: 8 }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)' }} />
             <span style={{ fontSize: 11, color: 'var(--ok)' }}>Online</span>
           </div>
@@ -162,7 +164,8 @@ export default function DoctorLayout() {
         </aside>
 
         {/* ── Main content ── */}
-        <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+          className={isSmallScreen ? 'has-bottom-nav' : ''}>
           <Outlet />
         </div>
 
@@ -171,7 +174,7 @@ export default function DoctorLayout() {
           <div onClick={() => setNotifOpen(false)} style={{ position: 'absolute', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.25)' }} />
         )}
         <div style={{
-          position: 'absolute', top: 0, right: 0, bottom: 0, width: 320, zIndex: 201,
+          position: 'absolute', top: 0, right: 0, bottom: 0, width: isMobile ? '100%' : 320, zIndex: 201,
           background: darkMode ? '#161b22' : '#ffffff',
           borderLeft: `1px solid ${borderCol}`,
           display: 'flex', flexDirection: 'column',
@@ -217,7 +220,39 @@ export default function DoctorLayout() {
           </div>
         </div>
       </div>
-      <style>{`@media (max-width: 768px) { .hide-mobile { display: none !important; } }`}</style>
+
+      {/* ── Mobile Bottom Navigation ── */}
+      {isSmallScreen && (
+        <nav style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 300,
+          height: 64, display: 'flex', alignItems: 'stretch',
+          background: darkMode ? '#161b22' : '#ffffff',
+          borderTop: `1px solid ${borderCol}`,
+          boxShadow: '0 -2px 16px rgba(0,0,0,0.08)',
+        }}>
+          {navItems.map(item => {
+            const isActive = location.pathname === item.path
+            return (
+              <button
+                key={item.id}
+                onClick={() => navigate(item.path)}
+                style={{
+                  flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  justifyContent: 'center', gap: 4, border: 'none', cursor: 'pointer',
+                  background: 'transparent', fontFamily: 'var(--font)',
+                  color: isActive ? '#1930AA' : 'var(--g500)',
+                  borderTop: isActive ? '2px solid #1930AA' : '2px solid transparent',
+                }}
+              >
+                <item.icon size={20} color={isActive ? '#1930AA' : 'var(--g500)'} strokeWidth={isActive ? 2.2 : 1.8} />
+                <span style={{ fontSize: 9, fontWeight: isActive ? 700 : 500 }}>{item.label}</span>
+              </button>
+            )
+          })}
+        </nav>
+      )}
+
+      <style>{`@media (max-width: 1023px) { .hide-mobile { display: none !important; } }`}</style>
     </div>
   )
 }

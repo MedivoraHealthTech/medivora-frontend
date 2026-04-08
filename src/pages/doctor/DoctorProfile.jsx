@@ -7,6 +7,7 @@ import {
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { doctorAPI, profileAPI } from '../../api/client'
+import { useBreakpoint } from '../../hooks/useBreakpoint'
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
@@ -27,6 +28,7 @@ const STATUS_OPTIONS = [
 export default function DoctorProfile() {
   const { displayName, getToken, logout } = useAuth()
   const navigate = useNavigate()
+  const { isMobile } = useBreakpoint()
 
   const [profile,  setProfile]  = useState(null)
   const [loading,  setLoading]  = useState(true)
@@ -139,7 +141,7 @@ export default function DoctorProfile() {
   const initials = cleanName.charAt(0).toUpperCase()
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px', background: 'var(--dark)' }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '16px' : '24px 28px', background: 'var(--dark)' }}>
 
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 20, fontWeight: 800, color: 'var(--g300)', fontFamily: 'var(--serif)', margin: '0 0 4px' }}>My Profile</h1>
@@ -254,7 +256,7 @@ export default function DoctorProfile() {
         {/* Credentials */}
         <section style={section}>
           <h3 style={sectionTitle}><Award size={15} /> Credentials</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16 }}>
             <div>
               <label style={fieldLabel}>NMC / License Number</label>
               <input value={nmc} onChange={e => setNmc(e.target.value)} placeholder="e.g. NMC-12345" style={fieldInput} />
@@ -291,7 +293,7 @@ export default function DoctorProfile() {
         {/* Clinic */}
         <section style={section}>
           <h3 style={sectionTitle}><MapPin size={15} /> Clinic Information</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16 }}>
             <div style={{ gridColumn: '1 / -1' }}>
               <label style={fieldLabel}>Clinic / Hospital Name</label>
               <input value={clinicName} onChange={e => setClinicName(e.target.value)} placeholder="e.g. City Health Clinic" style={fieldInput} />
@@ -345,7 +347,7 @@ export default function DoctorProfile() {
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000,
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
         }}>
-          <div style={{ background: 'var(--pw)', borderRadius: 16, padding: '28px 32px', width: '100%', maxWidth: 440, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+          <div style={{ background: 'var(--pw)', borderRadius: 16, padding: '28px 32px', width: '100%', maxWidth: isMobile ? 'calc(100vw - 32px)' : '440px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <AlertTriangle size={20} color="#d93a00" />

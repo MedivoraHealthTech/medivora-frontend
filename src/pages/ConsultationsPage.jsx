@@ -6,6 +6,7 @@ import {
   ChevronRight, ClipboardList, CreditCard, IndianRupee,
 } from 'lucide-react'
 import { supabase } from './supabase'
+import { useBreakpoint } from '../hooks/useBreakpoint'
 
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
 
@@ -84,6 +85,7 @@ async function confirmPayment(consultation, token) {
 }
 
 function PaymentModal({ consultation, token, onSuccess, onClose }) {
+  const { isMobile } = useBreakpoint()
   const fee   = consultation.consultationFee
   const [state, setState] = useState('idle') // idle | paying | success | error
   const [errMsg, setErrMsg] = useState('')
@@ -106,8 +108,8 @@ function PaymentModal({ consultation, token, onSuccess, onClose }) {
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300 }} />
       <div style={{
         position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
-        background: '#fff', borderRadius: 20, padding: '32px 28px', zIndex: 301,
-        width: '100%', maxWidth: 380, boxShadow: '0 12px 48px rgba(0,0,0,0.18)',
+        background: '#fff', borderRadius: 20, padding: isMobile ? '20px 16px' : '32px 28px', zIndex: 301,
+        width: '100%', maxWidth: isMobile ? 'calc(100vw - 32px)' : 380, boxShadow: '0 12px 48px rgba(0,0,0,0.18)',
         fontFamily: 'var(--font)', display: 'flex', flexDirection: 'column', gap: 16,
       }}>
         {/* Header */}
@@ -178,6 +180,7 @@ function PaymentModal({ consultation, token, onSuccess, onClose }) {
 
 /* ── Detail Drawer ───────────────────────────────────── */
 function DetailDrawer({ c, onClose }) {
+  const { isMobile } = useBreakpoint()
   if (!c) return null
   return (
     <>
@@ -189,7 +192,8 @@ function DetailDrawer({ c, onClose }) {
 
       {/* Panel */}
       <div style={{
-        position: 'fixed', right: 0, top: 0, bottom: 0, width: '100%', maxWidth: 440,
+        position: 'fixed', right: 0, top: 0, bottom: 0,
+        width: isMobile ? '100%' : '440px',
         background: '#fff', zIndex: 101, display: 'flex', flexDirection: 'column',
         boxShadow: '-4px 0 32px rgba(0,0,0,0.15)', fontFamily: 'var(--font)',
         overflowY: 'auto',
@@ -313,6 +317,7 @@ function Row({ label, value }) {
 
 /* ── Main Page ───────────────────────────────────────── */
 export default function ConsultationsPage() {
+  const { isMobile } = useBreakpoint()
   const navigate = useNavigate()
   const [query, setQuery]               = useState('')
   const [statusTab, setStatusTab]       = useState('All')
@@ -384,7 +389,7 @@ export default function ConsultationsPage() {
     <div style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', background: 'var(--dark)', fontFamily: 'var(--font)', overflow: 'hidden' }}>
 
       {/* ── Header ── */}
-      <div style={{ flexShrink: 0, padding: '20px 20px 12px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+      <div style={{ flexShrink: 0, padding: isMobile ? '16px 16px 12px' : '20px 20px 12px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
           <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--g300)', margin: 0, fontFamily: 'var(--serif)' }}>
             Consultations
@@ -411,8 +416,8 @@ export default function ConsultationsPage() {
           />
         </div>
 
-        <div style={{ marginTop: 14, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--g500)', marginRight: 4 }}>Status</span>
+        <div style={{ marginTop: 14, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', overflowX: 'auto' }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--g500)', marginRight: 4, flexShrink: 0 }}>Status</span>
           {STATUS_TABS.map(tab => {
             const active = statusTab === tab
             return (
@@ -429,7 +434,7 @@ export default function ConsultationsPage() {
       </div>
 
       {/* ── Body ── */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px 24px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '16px 16px 24px' : '16px 20px 24px' }}>
 
         {error && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderRadius: 12, background: 'rgba(255,61,0,0.06)', border: '1px solid rgba(255,61,0,0.15)', color: '#d93a00', fontSize: 13, marginBottom: 16 }}>

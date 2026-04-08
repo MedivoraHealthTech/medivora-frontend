@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { doctorAPI } from '../../api/client'
+import { useBreakpoint } from '../../hooks/useBreakpoint'
 
 const RISK_COLOR = r => {
   const l = (r || '').toLowerCase()
@@ -22,9 +23,13 @@ const STATUS_BADGE = {
 }
 
 function Modal({ title, onClose, children, wide = false }) {
+  const { isMobile, isTablet } = useBreakpoint()
+  const maxWidth = wide
+    ? (isMobile ? 'calc(100vw - 32px)' : isTablet ? 'calc(100vw - 48px)' : '680px')
+    : (isMobile ? 'calc(100vw - 32px)' : '480px')
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, overflowY: 'auto' }}>
-      <div style={{ background: 'var(--dark)', borderRadius: 16, padding: '28px', width: '100%', maxWidth: wide ? 680 : 480, boxShadow: '0 12px 40px rgba(0,0,0,0.2)', border: '1px solid rgba(0,0,0,0.08)', marginTop: 'auto', marginBottom: 'auto' }}>
+      <div style={{ background: 'var(--dark)', borderRadius: 16, padding: '28px', width: '100%', maxWidth, boxShadow: '0 12px 40px rgba(0,0,0,0.2)', border: '1px solid rgba(0,0,0,0.08)', marginTop: 'auto', marginBottom: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--g300)' }}>{title}</span>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}><X size={18} color='var(--g500)' /></button>
@@ -36,8 +41,14 @@ function Modal({ title, onClose, children, wide = false }) {
 }
 
 function MedRow({ med, idx, onChange, onRemove }) {
+  const { isMobile, isTablet } = useBreakpoint()
+  const gridCols = isMobile
+    ? 'repeat(2, 1fr)'
+    : isTablet
+    ? 'repeat(3, 1fr)'
+    : '2fr 1fr 1fr 1fr 1fr 32px'
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 32px', gap: 8, marginBottom: 8, alignItems: 'start' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 8, marginBottom: 8, alignItems: 'start' }}>
       {[
         ['medicine_name', 'Medicine name'],
         ['dosage',        'Dosage'],
@@ -57,6 +68,7 @@ function MedRow({ med, idx, onChange, onRemove }) {
 
 export default function PrescriptionReview() {
   const { displayName, getToken } = useAuth()
+  const { isMobile, isTablet } = useBreakpoint()
 
   const [approvals,  setApprovals]  = useState([])
   const [loading,    setLoading]    = useState(true)
@@ -195,7 +207,7 @@ export default function PrescriptionReview() {
   )
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px', background: 'var(--dark)' }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '16px' : isTablet ? '20px 24px' : '28px 32px', background: 'var(--dark)' }}>
 
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 20, fontWeight: 800, color: 'var(--g300)', fontFamily: 'var(--serif)', margin: '0 0 4px' }}>Prescription Reviews</h1>
@@ -437,11 +449,13 @@ export default function PrescriptionReview() {
 
             {/* Medication editor */}
             <div style={{ padding: '4px 0 12px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 32px', gap: 8, marginBottom: 6, paddingLeft: 2 }}>
-                {['Medicine', 'Dosage', 'Frequency', 'Duration', 'Instructions', ''].map((h, i) => (
-                  <span key={i} style={{ fontSize: 10, fontWeight: 700, color: 'var(--g700)', textTransform: 'uppercase', letterSpacing: 0.6 }}>{h}</span>
-                ))}
-              </div>
+              {!isMobile && !isTablet && (
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 32px', gap: 8, marginBottom: 6, paddingLeft: 2 }}>
+                  {['Medicine', 'Dosage', 'Frequency', 'Duration', 'Instructions', ''].map((h, i) => (
+                    <span key={i} style={{ fontSize: 10, fontWeight: 700, color: 'var(--g700)', textTransform: 'uppercase', letterSpacing: 0.6 }}>{h}</span>
+                  ))}
+                </div>
+              )}
               {modifyMeds.map((med, idx) => (
                 <MedRow key={idx} med={med} idx={idx} onChange={updateMed} onRemove={removeMed} />
               ))}

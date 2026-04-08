@@ -4,6 +4,7 @@ import { ArrowLeft, Star, MapPin, Clock, IndianRupee, Stethoscope, Video, Calend
 import { useAuth } from '../context/AuthContext'
 import { supabase } from './supabase'
 import TimeSlotPicker from '../components/TimeSlotPicker'
+import { useBreakpoint } from '../hooks/useBreakpoint'
 
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
 const IS_DEV   = import.meta.env.VITE_DEV_PAYMENT === 'true'
@@ -63,6 +64,7 @@ function resolveSpecialty(locationState) {
 }
 
 export default function BookAppointment() {
+  const { isMobile } = useBreakpoint()
   const navigate  = useNavigate()
   const location  = useLocation()
   const formRef   = useRef(null)
@@ -247,7 +249,7 @@ export default function BookAppointment() {
     <div style={{ height: '100%', background: '#f0f4fa', fontFamily: 'var(--font, Inter, sans-serif)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
       {/* ── Header ── */}
-      <div style={{ padding: '14px 24px', background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.07)', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+      <div style={{ padding: isMobile ? '10px 16px' : '14px 24px', background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.07)', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
         <button
           onClick={() => navigate(-1)}
           style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 10, border: '1px solid rgba(0,0,0,0.1)', background: 'none', cursor: 'pointer', fontSize: 13, color: '#444', fontFamily: 'inherit' }}
@@ -279,10 +281,10 @@ export default function BookAppointment() {
       </div>
 
       {/* ── Body ── */}
-      <div style={{ flex: 1, display: 'flex', gap: 20, maxWidth: 1060, margin: '24px auto', width: '100%', padding: '0 24px', alignItems: 'flex-start', boxSizing: 'border-box', overflow: 'hidden', minHeight: 0 }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 20, maxWidth: 1060, margin: isMobile ? '16px auto' : '24px auto', width: '100%', padding: isMobile ? '0 16px' : '0 24px', alignItems: 'flex-start', boxSizing: 'border-box', overflow: isMobile ? 'auto' : 'hidden', minHeight: 0 }}>
 
         {/* ── LEFT: Doctor list ── */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0, height: '100%', overflowY: 'auto', paddingRight: 4, flexBasis: 0, paddingBottom: 24 }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0, height: isMobile ? 'auto' : '100%', overflowY: isMobile ? 'visible' : 'auto', paddingRight: isMobile ? 0 : 4, flexBasis: 0, paddingBottom: 24 }}>
           {loading ? (
             [0, 1, 2].map(i => (
               <div key={i} style={{ background: '#fff', borderRadius: 14, padding: '18px', border: '1.5px solid rgba(0,0,0,0.07)', opacity: 0.6 }}>
@@ -369,7 +371,7 @@ export default function BookAppointment() {
         </div>
 
         {/* ── RIGHT: Payment panel ── */}
-        <div style={{ flex: 1, flexBasis: 0, position: 'sticky', top: 24 }}>
+        <div style={{ flex: 1, flexBasis: 0, position: isMobile ? 'static' : 'sticky', top: 24, width: isMobile ? '100%' : undefined, paddingBottom: isMobile ? 24 : 0 }}>
           <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid rgba(0,0,0,0.08)', overflow: 'hidden', boxShadow: '0 4px 24px rgba(0,0,0,0.07)' }}>
 
             {/* Panel header */}

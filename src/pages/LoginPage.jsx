@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { Link, useNavigate, Navigate } from 'react-router-dom'
 import { Phone, ArrowLeft, Shield } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useBreakpoint } from '../hooks/useBreakpoint'
 
 /* ── shared input style ── */
 const inp = {
@@ -12,6 +13,7 @@ const inp = {
 }
 
 export default function LoginPage() {
+  const { isMobile } = useBreakpoint()
   const [phone, setPhone]             = useState('')
   const [countryCode, setCountryCode] = useState('+91')
   const [otp, setOtp]                 = useState(['', '', '', '', '', ''])
@@ -77,7 +79,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f8fc', padding: 24 }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f8fc', padding: isMobile ? 16 : 24 }}>
       <div style={{ width: '100%', maxWidth: 420 }}>
 
         {/* Logo */}
@@ -92,7 +94,7 @@ export default function LoginPage() {
         </div>
 
         {/* Card */}
-        <div style={{ padding: '40px 36px', borderRadius: 20, background: '#ffffff', border: '1.5px solid #e0eaf8', boxShadow: '0 4px 24px rgba(25,48,170,0.07)' }}>
+        <div style={{ padding: isMobile ? '16px' : '40px 36px', width: '100%', borderRadius: 20, background: '#ffffff', border: '1.5px solid #e0eaf8', boxShadow: '0 4px 24px rgba(25,48,170,0.07)', boxSizing: 'border-box' }}>
 
           <h2 style={{ fontSize: 24, fontWeight: 800, color: '#111111', marginBottom: 6, textAlign: 'center', fontFamily: 'var(--serif)' }}>Log In</h2>
           <p style={{ textAlign: 'center', fontSize: 13, color: '#666666', marginBottom: 28 }}>Sign in with your phone number</p>

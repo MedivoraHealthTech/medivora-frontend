@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useBreakpoint } from '../hooks/useBreakpoint'
 import {
   MessageSquare, Users, ClipboardList, CalendarDays,
   Heart, Clock, FileText, Calendar,
@@ -42,6 +43,7 @@ const statusColor = {
 export default function DashboardPage() {
   const navigate = useNavigate()
   const { displayName, session, initialized } = useAuth()
+  const { isMobile, isTablet } = useBreakpoint()
 
   const [consultations, setConsultations] = useState([])
   const [prescriptions, setPrescriptions] = useState([])
@@ -76,7 +78,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', background: '#f0f4fa', fontFamily: 'var(--font)', padding: '28px 32px', minHeight: 0 }}>
+    <div style={{ flex: 1, overflowY: 'auto', background: '#f0f4fa', fontFamily: 'var(--font)', padding: isMobile ? '16px' : isTablet ? '20px 24px' : '28px 32px', minHeight: 0 }}>
 
       {/* Greeting */}
       <div style={{ marginBottom: 24 }}>
@@ -87,7 +89,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Stat cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
         {[
           { icon: <Calendar size={20} color="#1930AA" />, value: loading ? '—' : consultations.length, label: 'Total Consultations' },
           { icon: <FileText size={20} color="#7C3AED" />, value: loading ? '—' : prescriptions.length, label: 'Prescriptions' },
@@ -104,7 +106,7 @@ export default function DashboardPage() {
       {/* ── Quick Actions ── */}
       <div style={{ marginBottom: 8 }}>
         <h2 style={{ fontSize: 14, fontWeight: 700, color: '#333', margin: '0 0 14px' }}>Quick Actions</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 14 }}>
           {[
             { icon: MessageSquare, color: '#1930AA', bg: 'rgba(25,48,170,0.07)', label: 'Chat with Medi', sub: 'Describe symptoms', path: '/chat' },
             { icon: Users,         color: '#0EA5E9', bg: 'rgba(14,165,233,0.07)', label: 'Find a Doctor',  sub: 'Book consultation', path: '/doctors' },
@@ -129,7 +131,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Bottom two panels ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16, marginTop: 20 }}>
 
         {/* Recent Consultations */}
         <div style={{ ...card, padding: '20px' }}>
@@ -209,7 +211,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Bottom CTA banner ── */}
-      <div style={{ ...card, padding: '20px 24px', marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(25,48,170,0.03)', border: '1px solid rgba(25,48,170,0.1)' }}>
+      <div style={{ ...card, padding: isMobile ? '16px' : '20px 24px', marginTop: 16, display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', gap: isMobile ? 12 : 0, background: 'rgba(25,48,170,0.03)', border: '1px solid rgba(25,48,170,0.1)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'rgba(25,48,170,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <Heart size={18} color="#1930AA" />
@@ -221,7 +223,7 @@ export default function DashboardPage() {
         </div>
         <button
           onClick={() => navigate('/chat')}
-          style={{ padding: '10px 22px', borderRadius: 10, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #1930AA, #00AFEF)', color: '#fff', fontSize: 13, fontWeight: 700, fontFamily: 'inherit', whiteSpace: 'nowrap', marginLeft: 20, boxShadow: '0 4px 14px rgba(25,48,170,0.2)' }}
+          style={{ padding: '10px 22px', borderRadius: 10, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #1930AA, #00AFEF)', color: '#fff', fontSize: 13, fontWeight: 700, fontFamily: 'inherit', whiteSpace: 'nowrap', marginLeft: isMobile ? 0 : 20, alignSelf: isMobile ? 'stretch' : 'auto', boxShadow: '0 4px 14px rgba(25,48,170,0.2)' }}
         >
           Chat Now →
         </button>

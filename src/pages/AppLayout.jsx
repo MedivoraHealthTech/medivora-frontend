@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
+import { useBreakpoint } from '../hooks/useBreakpoint'
 import {
   Bell, Moon, Sun, Activity,
   MessageSquare, Users, CalendarDays, ClipboardList,
@@ -93,6 +94,7 @@ export default function AppLayout() {
   const { user, displayName, role, getToken, logout } = useAuth()
   const navigate  = useNavigate()
   const location  = useLocation()
+  const { isMobile, isSmallScreen } = useBreakpoint()
 
   /* ── Returning user detection ── */
   const [isReturningUser, setIsReturningUser] = useState(() => sessionStorage.getItem(RETURNING_KEY) === 'true')
@@ -262,7 +264,7 @@ export default function AppLayout() {
       {/* ── Top Header ── */}
       <header style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '0 24px', height: 56, flexShrink: 0, position: 'relative', zIndex: 100,
+        padding: isMobile ? '0 12px' : '0 24px', height: 56, flexShrink: 0, position: 'relative', zIndex: 100,
         borderBottom: `1px solid ${borderCol}`,
         background: headerBg, backdropFilter: 'blur(20px)',
       }}>
@@ -272,7 +274,7 @@ export default function AppLayout() {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {/* Online status */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginRight: 8 }}>
+          <div style={{ display: isMobile ? 'none' : 'flex', alignItems: 'center', gap: 5, marginRight: 8 }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)', animation: 'pulse 2s infinite' }} />
             <span style={{ fontSize: 11, color: 'var(--ok)' }}>Online</span>
           </div>
@@ -465,7 +467,8 @@ export default function AppLayout() {
         </aside>
 
         {/* ── Center: nested route content ── */}
-        <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+          className={isSmallScreen ? 'has-bottom-nav' : ''}>
           <Outlet />
         </div>
 
@@ -571,7 +574,7 @@ export default function AppLayout() {
         )}
         <div style={{
           position: 'absolute', top: 0, right: 0, bottom: 0,
-          width: 320, zIndex: 201,
+          width: isMobile ? '100%' : 320, zIndex: 201,
           background: darkMode ? '#161b22' : '#ffffff',
           borderLeft: `1px solid ${borderCol}`,
           display: 'flex', flexDirection: 'column',
@@ -658,9 +661,60 @@ export default function AppLayout() {
         </div>
       </div>
 
+      {/* ── Mobile Bottom Navigation ── */}
+      {isSmallScreen && (
+        <nav style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 300,
+          height: 64, display: 'flex', alignItems: 'stretch',
+          background: darkMode ? '#161b22' : '#ffffff',
+          borderTop: `1px solid ${borderCol}`,
+          boxShadow: '0 -2px 16px rgba(0,0,0,0.08)',
+        }}>
+          {navItems.filter(item => !item.soon).map(item => {
+            const isActive = item.path && location.pathname === item.path
+            return (
+              <button
+                key={item.id}
+                onClick={() => item.path && navigate(item.path)}
+                style={{
+                  flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  justifyContent: 'center', gap: 4, border: 'none', cursor: 'pointer',
+                  background: 'transparent', fontFamily: 'var(--font)',
+                  color: isActive ? '#1930AA' : 'var(--g500)',
+                  borderTop: isActive ? '2px solid #1930AA' : '2px solid transparent',
+                  transition: 'color 0.2s',
+                }}
+              >
+                <item.icon size={20} color={isActive ? '#1930AA' : 'var(--g500)'} strokeWidth={isActive ? 2.2 : 1.8} />
+                <span style={{ fontSize: 9, fontWeight: isActive ? 700 : 500 }}>{item.label}</span>
+              </button>
+            )
+          })}
+          <button
+            onClick={() => navigate('/settings')}
+            style={{
+              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+              justifyContent: 'center', gap: 4, border: 'none', cursor: 'pointer',
+              background: 'transparent', fontFamily: 'var(--font)',
+              color: location.pathname === '/settings' ? '#1930AA' : 'var(--g500)',
+              borderTop: location.pathname === '/settings' ? '2px solid #1930AA' : '2px solid transparent',
+            }}
+          >
+            <div style={{
+              width: 24, height: 24, borderRadius: '50%',
+              background: 'linear-gradient(135deg, #1930AA, #00AFEF)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <span style={{ color: '#fff', fontSize: 11, fontWeight: 700 }}>{initials}</span>
+            </div>
+            <span style={{ fontSize: 9, fontWeight: location.pathname === '/settings' ? 700 : 500 }}>Profile</span>
+          </button>
+        </nav>
+      )}
+
       <style>{`
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-        @media (max-width: 768px) { .hide-mobile { display: none !important; } }
+        @media (max-width: 1023px) { .hide-mobile { display: none !important; } }
       `}</style>
     </div>
   )

@@ -7,10 +7,12 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { doctorAPI } from '../../api/client'
+import { useBreakpoint } from '../../hooks/useBreakpoint'
 
 export default function DoctorDashboard() {
   const { displayName, getToken } = useAuth()
   const navigate = useNavigate()
+  const { isMobile, isTablet } = useBreakpoint()
 
   const [stats,         setStats]         = useState(null)
   const [consultations, setConsultations] = useState([])
@@ -86,7 +88,7 @@ export default function DoctorDashboard() {
   )
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px', background: 'var(--dark)' }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '16px' : isTablet ? '20px 24px' : '28px 32px', background: 'var(--dark)' }}>
 
       {/* Header */}
       <div style={{ marginBottom: 28 }}>
@@ -112,7 +114,7 @@ export default function DoctorDashboard() {
       </div>
 
       {/* Two-column below */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 20 }}>
 
         {/* Recent Consultations */}
         <div style={{ borderRadius: 14, background: 'var(--pw)', border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
@@ -198,7 +200,7 @@ export default function DoctorDashboard() {
       </div>
 
       {/* Quick actions */}
-      <div style={{ marginTop: 20, display: 'flex', gap: 12 }}>
+      <div style={{ marginTop: 20, display: 'flex', gap: 12, flexWrap: 'wrap', flexDirection: isMobile ? 'column' : 'row' }}>
         <button onClick={() => navigate('/doctor/consultations')} style={{
           display: 'flex', alignItems: 'center', gap: 8, padding: '12px 20px', borderRadius: 10,
           border: '1.5px solid rgba(25,48,170,0.2)', background: 'rgba(25,48,170,0.04)',

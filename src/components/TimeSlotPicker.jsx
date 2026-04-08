@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { X, Clock, ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
 import { supabase } from '../pages/supabase'
+import { useBreakpoint } from '../hooks/useBreakpoint'
 
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
 
@@ -47,6 +48,7 @@ function fmt12(time24) {
      onClose()    — called when modal is dismissed
    ══════════════════════════════════════════════════════════════ */
 export default function TimeSlotPicker({ doctor, onConfirm, onClose }) {
+  const { isMobile } = useBreakpoint()
   const [slotsMap,      setSlotsMap]      = useState({})   // { "2026-04-03": ["09:00", ...] }
   const [loading,       setLoading]       = useState(true)
   const [error,         setError]         = useState(null)
@@ -139,7 +141,8 @@ export default function TimeSlotPicker({ doctor, onConfirm, onClose }) {
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          background: '#fff', borderRadius: 20, width: '100%', maxWidth: 480,
+          background: '#fff', borderRadius: 20, width: '100%',
+          maxWidth: isMobile ? 'calc(100vw - 16px)' : 480,
           boxShadow: '0 20px 60px rgba(0,0,0,0.2)', overflow: 'hidden',
           fontFamily: 'var(--font, Inter, sans-serif)',
         }}
@@ -159,7 +162,7 @@ export default function TimeSlotPicker({ doctor, onConfirm, onClose }) {
         </div>
 
         {/* Body */}
-        <div style={{ padding: '16px 20px 20px', maxHeight: '72vh', overflowY: 'auto' }}>
+        <div style={{ padding: isMobile ? '12px 16px 16px' : '16px 20px 20px', maxHeight: '72vh', overflowY: 'auto' }}>
 
           {loading && (
             <div style={{ textAlign: 'center', padding: '40px 0', color: '#999', fontSize: 13 }}>
@@ -192,7 +195,7 @@ export default function TimeSlotPicker({ doctor, onConfirm, onClose }) {
                   <ChevronLeft size={14} />
                 </button>
 
-                <div style={{ flex: 1, display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none' }}>
+                <div style={{ flex: 1, display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
                   {dates.map((d, i) => {
                     const { label, sub } = formatDate(d)
                     const active = i === dateIndex

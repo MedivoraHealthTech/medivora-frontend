@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, Navigate } from 'react-router-dom'
 import { ArrowRight, Mail, Lock, Eye, EyeOff, User, ArrowLeft, CheckCircle, RefreshCw } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useBreakpoint } from '../hooks/useBreakpoint'
 
 const inp = {
   width: '100%', padding: '14px 18px', borderRadius: 12, fontSize: 15,
@@ -13,6 +14,7 @@ const inp = {
 const STEPS = ['Details', 'Password']
 
 export default function SignupPage() {
+  const { isMobile } = useBreakpoint()
   const [step, setStep]           = useState(1)   // 1=Details, 2=Password, 3=ConfirmEmail
   const [fullName, setFullName]   = useState('')
   const [email, setEmail]         = useState('')
@@ -64,7 +66,7 @@ export default function SignupPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f8fc', padding: 24 }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f8fc', padding: isMobile ? 16 : 24 }}>
       <div style={{ width: '100%', maxWidth: 440 }}>
 
         {/* Logo */}
@@ -86,12 +88,12 @@ export default function SignupPage() {
               <div key={n} style={{ display: 'flex', alignItems: 'center' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
                   <div style={{
-                    width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', fontSize: 12, fontWeight: 700,
+                    width: isMobile ? 26 : 30, height: isMobile ? 26 : 30, borderRadius: '50%', display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', fontSize: isMobile ? 11 : 12, fontWeight: 700,
                     background: done ? '#00C853' : active ? '#1930AA' : '#e0eaf8',
                     color: done || active ? '#ffffff' : '#aab',
                   }}>{done ? '✓' : n}</div>
-                  <span style={{ fontSize: 11, color: active ? '#1930AA' : done ? '#00C853' : '#aab', fontWeight: active || done ? 600 : 400 }}>{label}</span>
+                  <span style={{ fontSize: isMobile ? 10 : 11, color: active ? '#1930AA' : done ? '#00C853' : '#aab', fontWeight: active || done ? 600 : 400 }}>{label}</span>
                 </div>
                 {n < 2 && <div style={{ width: 60, height: 2, background: step > n ? '#1930AA' : '#e0eaf8', margin: '0 6px', marginBottom: 20, borderRadius: 2 }} />}
               </div>
@@ -100,7 +102,7 @@ export default function SignupPage() {
         </div>
 
         {/* Card */}
-        <div style={{ padding: '36px 36px', borderRadius: 20, background: '#ffffff', border: '1.5px solid #e0eaf8', boxShadow: '0 4px 24px rgba(25,48,170,0.07)' }}>
+        <div style={{ padding: isMobile ? '16px' : '36px 36px', width: '100%', borderRadius: 20, background: '#ffffff', border: '1.5px solid #e0eaf8', boxShadow: '0 4px 24px rgba(25,48,170,0.07)', boxSizing: 'border-box' }}>
 
           {/* ── Step 1: Name + Email ── */}
           {step === 1 && (

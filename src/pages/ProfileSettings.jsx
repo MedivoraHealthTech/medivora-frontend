@@ -9,6 +9,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { profileAPI, chatHistoryAPI, consultationAPI } from '../api/client'
 import { supabase } from './supabase'
+import { useBreakpoint } from '../hooks/useBreakpoint'
 
 /* ─── Chat session key (same as ChatPage) ─── */
 const CHAT_SESSION_KEY = 'medivora_chat_session'
@@ -50,6 +51,7 @@ const tabBtn = (active) => ({
 })
 
 export default function ProfileSettings() {
+  const { isMobile } = useBreakpoint()
   const navigate = useNavigate()
   const { user, session, displayName, logout, getToken } = useAuth()
   const token = getToken ? getToken() : (session?.access_token || null)
@@ -296,7 +298,7 @@ export default function ProfileSettings() {
   return (
     <div style={{ height: '100%', minHeight: 0, overflow: 'auto', background: '#f5f8fc', fontFamily: 'var(--font)' }}>
 
-      <div style={{ maxWidth: 640, margin: '0 auto', padding: '24px 16px' }}>
+      <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '16px 12px' : '24px 16px' }}>
         <button onClick={() => navigate('/chat')} type="button" style={{
           background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex',
           alignItems: 'center', gap: 6, color: '#1930AA', fontWeight: 600, fontSize: 13,
@@ -355,7 +357,7 @@ export default function ProfileSettings() {
                   </h3>
 
                   {/* First Name + Last Name */}
-                  <div style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 14 }}>
                     <div style={{ flex: 1 }}>
                       <label style={labelStyle}><User size={12} /> First Name</label>
                       <input
@@ -436,7 +438,7 @@ export default function ProfileSettings() {
                   </div>
 
                   {/* Age + Gender */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 14 }}>
                     <div>
                       <label style={labelStyle}><Calendar size={12} /> Age</label>
                       <input
@@ -562,7 +564,7 @@ export default function ProfileSettings() {
               {/* ── Delete confirmation modal ── */}
               {showDeleteModal && (
                 <div style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-                  <div style={{ background: '#ffffff', borderRadius: 16, padding: '28px', width: '100%', maxWidth: 420, boxShadow: '0 12px 40px rgba(0,0,0,0.2)' }}>
+                  <div style={{ background: '#ffffff', borderRadius: 16, padding: isMobile ? '20px 16px' : '28px', width: '100%', maxWidth: isMobile ? 'calc(100vw - 32px)' : 420, boxShadow: '0 12px 40px rgba(0,0,0,0.2)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <AlertTriangle size={18} color='#d93a00' />

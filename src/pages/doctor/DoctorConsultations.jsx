@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { doctorAPI } from '../../api/client'
+import { useBreakpoint } from '../../hooks/useBreakpoint'
 
 const STATUS_TABS = ['All', 'Requested', 'Scheduled', 'Completed', 'Cancelled']
 
@@ -20,9 +21,13 @@ const statusColor = s => {
 }
 
 function Modal({ title, onClose, children, wide }) {
+  const { isMobile, isTablet } = useBreakpoint()
+  const maxWidth = wide
+    ? (isMobile ? 'calc(100vw - 32px)' : isTablet ? 'calc(100vw - 48px)' : '720px')
+    : (isMobile ? 'calc(100vw - 32px)' : '440px')
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, overflowY: 'auto' }}>
-      <div style={{ background: 'var(--dark)', borderRadius: 16, padding: '28px 28px', width: '100%', maxWidth: wide ? 720 : 440, boxShadow: '0 12px 40px rgba(0,0,0,0.2)', border: '1px solid rgba(0,0,0,0.08)', maxHeight: '90vh', overflowY: 'auto' }}>
+      <div style={{ background: 'var(--dark)', borderRadius: 16, padding: '28px 28px', width: '100%', maxWidth, boxShadow: '0 12px 40px rgba(0,0,0,0.2)', border: '1px solid rgba(0,0,0,0.08)', maxHeight: '90vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--g300)' }}>{title}</span>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}><X size={18} color='var(--g500)' /></button>
@@ -40,6 +45,7 @@ const EMPTY_MEDICINE = () => ({
 export default function DoctorConsultations() {
   const { getToken } = useAuth()
   const navigate = useNavigate()
+  const { isMobile, isTablet } = useBreakpoint()
 
   const [consultations, setConsultations] = useState([])
   const [loading,       setLoading]       = useState(true)
@@ -221,7 +227,7 @@ export default function DoctorConsultations() {
   )
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px', background: 'var(--dark)' }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '16px' : isTablet ? '20px 24px' : '28px 32px', background: 'var(--dark)' }}>
 
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 20, fontWeight: 800, color: 'var(--g300)', fontFamily: 'var(--serif)', margin: '0 0 4px' }}>Consultations</h1>
@@ -296,7 +302,7 @@ export default function DoctorConsultations() {
               {/* Expanded details */}
               {expanded === c.id && (
                 <div style={{ padding: '0 20px 20px', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
-                  <div style={{ paddingTop: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                  <div style={{ paddingTop: 16, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 16 }}>
                     <div style={detailBox}>
                       <span style={detailLabel}>Patient Note</span>
                       <span style={detailVal}>{c.patient_note || '—'}</span>
@@ -489,7 +495,7 @@ export default function DoctorConsultations() {
                         <Trash2 size={14} color='var(--err)' />
                       </button>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 8 }}>
                       <div>
                         <label style={inlineLabel}>Medicine Name</label>
                         <input value={med.medicine_name} onChange={e => updateMedicine(idx, 'medicine_name', e.target.value)} style={formInput} placeholder="e.g. Paracetamol 500mg" />

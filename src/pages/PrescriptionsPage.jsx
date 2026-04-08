@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Search, Pill, Download, RefreshCw } from 'lucide-react'
 import { supabase } from './supabase'
 import ComingSoonModal from '../components/ComingSoonModal'
+import { useBreakpoint } from '../hooks/useBreakpoint'
 
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
 const STATUS_TABS = ['All', 'Approved', 'Pending', 'Expired']
@@ -92,6 +93,7 @@ async function downloadPdf(prescriptionId) {
 }
 
 export default function PrescriptionsPage() {
+  const { isMobile } = useBreakpoint()
   const [prescriptions, setPrescriptions] = useState([])
   const [loading, setLoading]             = useState(true)
   const [error, setError]                 = useState(null)
@@ -141,7 +143,7 @@ export default function PrescriptionsPage() {
   return (
     <div style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', background: 'var(--dark)', fontFamily: 'var(--font)', overflow: 'hidden' }}>
 
-      <div style={{ flexShrink: 0, padding: '20px 20px 12px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+      <div style={{ flexShrink: 0, padding: isMobile ? '16px 16px 12px' : '20px 20px 12px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
           <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--g300)', margin: 0, fontFamily: 'var(--serif)' }}>
             Prescriptions
@@ -166,8 +168,8 @@ export default function PrescriptionsPage() {
           />
         </div>
 
-        <div style={{ marginTop: 14, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--g500)', marginRight: 4 }}>Status</span>
+        <div style={{ marginTop: 14, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', overflowX: 'auto' }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--g500)', marginRight: 4, flexShrink: 0 }}>Status</span>
           {STATUS_TABS.map((tab) => {
             const active = statusTab === tab
             return (
@@ -179,7 +181,7 @@ export default function PrescriptionsPage() {
         </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px 24px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '16px 16px 24px' : '16px 20px 24px' }}>
 
         {loading && (
           <div style={{ textAlign: 'center', padding: '60px 24px', color: 'var(--g500)' }}>
@@ -201,7 +203,7 @@ export default function PrescriptionsPage() {
               {filtered.length} prescription{filtered.length !== 1 ? 's' : ''}
             </p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
               {filtered.map((p) => (
                 <article key={p.id} style={{ borderRadius: 14, border: '1px solid rgba(0,0,0,0.08)', background: '#fff', padding: 18, display: 'flex', flexDirection: 'column', gap: 12, boxShadow: '0 2px 12px rgba(25,48,170,0.06)' }}>
                   <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>

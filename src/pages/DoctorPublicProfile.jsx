@@ -5,6 +5,7 @@ import {
   BadgeCheck, Activity, IndianRupee, RefreshCw,
 } from 'lucide-react'
 import { supabase } from './supabase'
+import { useBreakpoint } from '../hooks/useBreakpoint'
 
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
 
@@ -44,6 +45,7 @@ function StatCard({ icon: Icon, label, value, accent = '#1930AA' }) {
 export default function DoctorPublicProfile() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { isMobile } = useBreakpoint()
   const [doctor, setDoctor] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -81,7 +83,7 @@ export default function DoctorPublicProfile() {
         position: 'sticky', top: 0, zIndex: 10,
         background: 'rgba(245,248,252,0.96)', backdropFilter: 'blur(12px)',
         borderBottom: '1px solid rgba(0,0,0,0.07)',
-        padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12,
+        padding: isMobile ? '12px 16px' : '14px 20px', display: 'flex', alignItems: 'center', gap: 12,
       }}>
         <button
           onClick={() => navigate(-1)}
@@ -117,7 +119,7 @@ export default function DoctorPublicProfile() {
 
       {/* ── Profile ── */}
       {!loading && doctor && (
-        <div style={{ maxWidth: 640, margin: '0 auto', padding: '24px 20px 48px' }}>
+        <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '16px 16px 48px' : '24px 20px 48px' }}>
 
           {/* ── Hero card ── */}
           <div style={{
@@ -125,7 +127,7 @@ export default function DoctorPublicProfile() {
             boxShadow: '0 4px 24px rgba(25,48,170,0.08)',
             padding: '28px 24px', marginBottom: 20,
           }}>
-            <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 14 : 20, alignItems: isMobile ? 'flex-start' : 'flex-start', flexWrap: 'wrap' }}>
               {/* Avatar */}
               <div style={{
                 width: 80, height: 80, borderRadius: '50%', flexShrink: 0,

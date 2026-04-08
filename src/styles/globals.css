@@ -69,3 +69,30 @@ button { font-family: var(--font); }
 
 .animate-fade-up  { animation: fadeUp  0.8s ease-out both; }
 .animate-slide-in { animation: slideIn 1s  ease-out 0.3s both; }
+
+/* ── Responsive utilities ── */
+@media (max-width: 639px) {
+  .hide-mobile      { display: none !important; }
+  .mobile-col-1     { grid-template-columns: 1fr !important; }
+  .mobile-col-2     { grid-template-columns: repeat(2, 1fr) !important; }
+  .mobile-p-sm      { padding: 16px !important; }
+  .mobile-stack     { flex-direction: column !important; }
+  .mobile-full      { width: 100% !important; max-width: 100% !important; }
+  .modal-responsive { max-width: calc(100vw - 32px) !important; width: 100% !important; }
+}
+@media (min-width: 640px) and (max-width: 1023px) {
+  .hide-tablet      { display: none !important; }
+  .tablet-col-2     { grid-template-columns: repeat(2, 1fr) !important; }
+  .modal-responsive { max-width: calc(100vw - 48px) !important; }
+}
+@media (max-width: 1023px) {
+  .hide-small       { display: none !important; }
+}
+
+/* Mobile bottom nav safe area */
+.has-bottom-nav {
+  padding-bottom: 64px;
+}
+@media (min-width: 1024px) {
+  .has-bottom-nav { padding-bottom: 0; }
+}
