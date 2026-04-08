@@ -54,7 +54,7 @@ export default function TimeSlotPicker({ doctor, onConfirm, onClose }) {
   const [dateIndex,     setDateIndex]     = useState(0)    // which date tab is active
   const [selectedSlot,  setSelectedSlot]  = useState(null) // { date, time }
 
-  const rawName = doctor?.full_name || doctor?.name || 'Doctor'
+  const rawName = [doctor?.first_name, doctor?.last_name].filter(Boolean).join(' ') || doctor?.name || 'Doctor'
   const docName = rawName.replace(/^Dr\.?\s*/i, '')
 
   useEffect(() => {

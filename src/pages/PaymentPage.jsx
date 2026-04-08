@@ -32,7 +32,7 @@ export default function PaymentPage() {
   const [error,      setError]      = useState(isError ? 'Payment could not be verified. Please try again.' : '')
   const [formFields, setFormFields] = useState(null)  // set when order is ready to submit
 
-  const docName = stripDr(doctor?.full_name || doctor?.name || 'Doctor')
+  const docName = stripDr([doctor?.first_name, doctor?.last_name].filter(Boolean).join(' ') || doctor?.name || 'Doctor')
   const specs   = doctor?.specialties?.length
     ? doctor.specialties
     : [doctor?.specialization || 'General Physician']

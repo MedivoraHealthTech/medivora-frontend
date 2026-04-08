@@ -71,7 +71,7 @@ export default function DoctorsPage() {
     const q = query.trim().toLowerCase()
     if (q) {
       list = list.filter((d) =>
-        (d.full_name || '').toLowerCase().includes(q) ||
+        (`${d.first_name || ''} ${d.last_name || ''}`).toLowerCase().includes(q) ||
         (d.city || '').toLowerCase().includes(q) ||
         (d.specialization || '').toLowerCase().includes(q),
       )
@@ -148,11 +148,11 @@ export default function DoctorsPage() {
                   <article key={d.id} style={{ borderRadius: 14, border: '1px solid rgba(0,0,0,0.08)', background: '#fff', padding: 18, display: 'flex', flexDirection: 'column', gap: 12, boxShadow: '0 2px 12px rgba(25,48,170,0.06)' }}>
                     <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
                       <div style={{ width: 52, height: 52, borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg, #1930AA, #00AFEF)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 16, fontWeight: 700 }}>
-                        {initials(d.full_name)}
+                        {initials(`${d.first_name || ''} ${d.last_name || ''}`)}
                       </div>
                       <div style={{ minWidth: 0, flex: 1 }}>
                         <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--g300)', margin: '0 0 4px', lineHeight: 1.3 }}>
-                          {d.full_name || 'Doctor'}
+                          {[d.first_name, d.last_name].filter(Boolean).join(' ') || 'Doctor'}
                         </h2>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: 'var(--cyan)', background: 'rgba(0,175,239,0.1)', padding: '3px 8px', borderRadius: 6 }}>

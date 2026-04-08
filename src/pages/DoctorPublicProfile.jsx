@@ -68,7 +68,7 @@ export default function DoctorPublicProfile() {
   }, [id])
 
   const status = STATUS_META[doctor?.available_status] || STATUS_META.offline
-  const name = (doctor?.full_name || 'Doctor').replace(/^Dr\.\s*/i, '')
+  const name = ([doctor?.first_name, doctor?.last_name].filter(Boolean).join(' ') || 'Doctor').replace(/^Dr\.\s*/i, '')
   const specialties = doctor?.specialties || (doctor?.specialization ? [doctor.specialization] : [])
 
   return (
@@ -134,7 +134,7 @@ export default function DoctorPublicProfile() {
                 color: '#fff', fontSize: 26, fontWeight: 800,
                 boxShadow: '0 4px 16px rgba(25,48,170,0.2)',
               }}>
-                {initials(doctor.full_name)}
+                {initials(`${doctor.first_name || ''} ${doctor.last_name || ''}`)}
               </div>
 
               <div style={{ flex: 1, minWidth: 0 }}>

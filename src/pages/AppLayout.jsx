@@ -498,7 +498,7 @@ export default function AppLayout() {
             ) : recommendedDoctors.map((d, i) => (
               <div key={d.id || i} style={{ ...dynRecentCard, cursor: 'pointer' }} onClick={() => navigate('/doctors')}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                  <p style={{ fontSize: 11, color: 'var(--g300)', fontWeight: 600, margin: 0 }}>{d.full_name}</p>
+                  <p style={{ fontSize: 11, color: 'var(--g300)', fontWeight: 600, margin: 0 }}>{[d.first_name, d.last_name].filter(Boolean).join(' ')}</p>
                   {d.rating > 0 && <span style={{ fontSize: 10, color: 'var(--warn)' }}>★ {Number(d.rating).toFixed(1)}</span>}
                 </div>
                 <p style={{ fontSize: 10, color: 'var(--cyan)', margin: 0 }}>{d.specialization}</p>

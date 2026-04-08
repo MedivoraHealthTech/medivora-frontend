@@ -170,7 +170,7 @@ export default function BookAppointment() {
     try {
       const token   = await getAuthToken()
       const headers = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }
-      const docName = stripDr(selectedDoctor.full_name || selectedDoctor.name || 'Doctor')
+      const docName = stripDr([selectedDoctor.first_name, selectedDoctor.last_name].filter(Boolean).join(' ') || selectedDoctor.name || 'Doctor')
 
       if (IS_DEV) {
         const res = await fetch(`${API_BASE}/payment/dev-confirm`, {
@@ -272,7 +272,7 @@ export default function BookAppointment() {
           )}
           {preSelectedDoctor && (
             <p style={{ fontSize: 11, color: '#1930AA', margin: '2px 0 0', fontWeight: 600 }}>
-              Dr. {stripDr(preSelectedDoctor.full_name || preSelectedDoctor.name)} selected
+              Dr. {stripDr([preSelectedDoctor.first_name, preSelectedDoctor.last_name].filter(Boolean).join(' ') || preSelectedDoctor.name)} selected
             </p>
           )}
         </div>
@@ -303,7 +303,7 @@ export default function BookAppointment() {
               const exp        = doc.years_of_experience ?? doc.experience ?? null
               const rating     = doc.rating || 4.5
               const clinic     = doc.clinic_name || 'Medivora Clinic'
-              const name       = stripDr(doc.full_name || doc.name || 'Doctor')
+              const name       = stripDr([doc.first_name, doc.last_name].filter(Boolean).join(' ') || doc.name || 'Doctor')
 
               return (
                 <div
@@ -393,11 +393,11 @@ export default function BookAppointment() {
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: 13, fontWeight: 700, color: '#fff',
                     }}>
-                      {initials(selectedDoctor.full_name || selectedDoctor.name)}
+                      {initials([selectedDoctor.first_name, selectedDoctor.last_name].filter(Boolean).join(' ') || selectedDoctor.name)}
                     </div>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>
-                        Dr. {stripDr(selectedDoctor.full_name || selectedDoctor.name || 'Doctor')}
+                        Dr. {stripDr([selectedDoctor.first_name, selectedDoctor.last_name].filter(Boolean).join(' ') || selectedDoctor.name || 'Doctor')}
                       </div>
                       <div style={{ fontSize: 11, color: '#1930AA' }}>{specs.slice(0, 2).join(' · ')}</div>
                     </div>
