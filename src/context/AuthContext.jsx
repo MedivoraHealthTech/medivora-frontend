@@ -69,11 +69,18 @@ export function AuthProvider({ children }) {
   // ─── Sign up with email + password + full name ───────────────────────────
 
   async function signup(email, password, fullName) {
+    const nameParts = (fullName || '').trim().split(' ')
+    const firstName = nameParts[0] || ''
+    const lastName  = nameParts.slice(1).join(' ') || ''
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { full_name: fullName },
+        data: {
+          full_name:  fullName,   // kept for Supabase auth metadata compatibility
+          first_name: firstName,
+          last_name:  lastName,
+        },
       },
     })
     if (error) throw new Error(error.message)
@@ -191,8 +198,12 @@ export function AuthProvider({ children }) {
   // ─── Derived helpers ─────────────────────────────────────────────────────
 
   /** The user's display name, falling back to email prefix */
+  const _metaFirstName = user?.user_metadata?.first_name || ''
+  const _metaLastName  = user?.user_metadata?.last_name  || ''
+  const _metaFullName  = (_metaFirstName + ' ' + _metaLastName).trim()
   const displayName =
     doctorUser?.full_name ||
+    _metaFullName ||
     user?.user_metadata?.full_name ||
     user?.user_metadata?.name ||
     user?.email?.split('@')[0] ||

@@ -127,8 +127,8 @@ export default function ProfileSettings() {
       } catch (err) {
         console.error('Failed to load profile:', err)
         /* Graceful fallback — pre-fill what we know from the auth token */
-        const fallbackFull = user?.user_metadata?.full_name || displayName || ''
-        const [fallbackFirst = '', fallbackLast = ''] = fallbackFull.split(' ')
+        const fallbackFirst = user?.user_metadata?.first_name || displayName?.split(' ')[0] || ''
+        const fallbackLast  = user?.user_metadata?.last_name  || displayName?.split(' ')[1] || ''
         setForm(f => ({
           ...f,
           first_name: fallbackFirst,

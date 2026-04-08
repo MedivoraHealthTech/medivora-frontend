@@ -27,5 +27,6 @@ export default function ProtectedRoute({ requiredRole = null, redirectTo = '/log
 
   if (!isAuthenticated) return <Navigate to={redirectTo} replace />
   if (requiredRole && role !== requiredRole) return <Navigate to={redirectTo} replace />
+  if (!requiredRole && role === 'doctor') return <Navigate to="/doctor" replace />
   return <Outlet />
 }

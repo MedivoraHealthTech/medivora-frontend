@@ -5,7 +5,7 @@ import Logo from './Logo'
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
-  const { isAuthenticated, user, logout } = useAuth()
+  const { isAuthenticated, user, logout, displayName } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -49,7 +49,7 @@ export default function Navbar() {
         {isAuthenticated ? (
           <>
             <span style={{ fontSize: 12, color: 'var(--g400)' }}>
-              {user?.full_name?.split(' ')[0]}
+              {user?.user_metadata?.first_name || displayName?.split(' ')[0]}
             </span>
             <button onClick={handleLogout} style={{
               padding: '7px 16px', borderRadius: 50, fontSize: 12, fontWeight: 600,

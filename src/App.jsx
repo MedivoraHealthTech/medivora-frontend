@@ -3,9 +3,10 @@ import { useAuth } from './context/AuthContext'
 import HomePage from './pages/HomePage'
 
 function RootRoute() {
-  const { isAuthenticated, loading, initialized } = useAuth()
+  const { isAuthenticated, loading, initialized, role } = useAuth()
   if (loading || !initialized) return null
-  return isAuthenticated ? <Navigate to="/dashboard" replace /> : <HomePage />
+  if (!isAuthenticated) return <HomePage />
+  return <Navigate to={role === 'doctor' ? '/doctor' : '/dashboard'} replace />
 }
 import ChatPage from './pages/ChatPage'
 import LoginPage from './pages/LoginPage'
