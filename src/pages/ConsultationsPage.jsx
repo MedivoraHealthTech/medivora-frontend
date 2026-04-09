@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { supabase } from './supabase'
 import { useBreakpoint } from '../hooks/useBreakpoint'
+import { formatSpecialty, formatConsultationType, formatConsultationStatus } from '../utils/labels'
 
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
 
@@ -26,7 +27,7 @@ function mapRow(c) {
   return {
     id:              c.id,
     doctorName,
-    specialty:       specialty.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+    specialty:       formatSpecialty(specialty),
     topic:           c.patient_note || 'Consultation request',
     datetime:        c.scheduled_at || c.created_at,
     completedAt:     c.completed_at,
@@ -58,17 +59,7 @@ function statusIcon(status) {
 }
 
 function statusLabel(rawStatus) {
-  const map = {
-    requested:  'Requested',
-    confirmed:  'Confirmed',
-    scheduled:  'Scheduled',
-    ongoing:    'In Progress',
-    active:     'In Progress',
-    completed:  'Completed',
-    cancelled:  'Cancelled',
-    no_show:    'No Show',
-  }
-  return map[rawStatus] || rawStatus || 'Upcoming'
+  return formatConsultationStatus(rawStatus) || 'Upcoming'
 }
 
 /* ── Payment Modal ───────────────────────────────────── */
@@ -230,7 +221,7 @@ function DetailDrawer({ c, onClose }) {
 
           {/* Timing */}
           <Section icon={<CalendarClock size={15} color="var(--cyan)" />} title="Appointment Details">
-            <Row label="Type"       value={c.consultType.replace(/_/g,' ').replace(/\b\w/g,l=>l.toUpperCase())} />
+            <Row label="Type"       value={formatConsultationType(c.consultType)} />
             <Row label="Requested"  value={formatWhen(c.createdAt)} />
             {c.datetime && <Row label="Scheduled"  value={formatWhen(c.datetime)} />}
             {c.startedAt && <Row label="Started"    value={formatWhen(c.startedAt)} />}

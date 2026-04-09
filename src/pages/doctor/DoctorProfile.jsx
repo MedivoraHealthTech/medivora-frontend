@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { doctorAPI, profileAPI } from '../../api/client'
 import { useBreakpoint } from '../../hooks/useBreakpoint'
+import { formatSpecialty } from '../../utils/labels'
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
@@ -274,7 +275,7 @@ export default function DoctorProfile() {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {SPECIALTIES_LIST.map(s => {
               const active = specialties.includes(s)
-              const label = s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+              const label = formatSpecialty(s)
               return (
                 <button key={s} type="button" onClick={() => toggleSpecialty(s)} style={{
                   padding: '6px 14px', borderRadius: 50,

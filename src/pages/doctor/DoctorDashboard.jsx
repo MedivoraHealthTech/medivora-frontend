@@ -8,6 +8,7 @@ import {
 import { useAuth } from '../../context/AuthContext'
 import { doctorAPI } from '../../api/client'
 import { useBreakpoint } from '../../hooks/useBreakpoint'
+import { formatSpecialty, formatConsultationStatus } from '../../utils/labels'
 
 export default function DoctorDashboard() {
   const { displayName, getToken } = useAuth()
@@ -141,11 +142,11 @@ export default function DoctorDashboard() {
                     {c.patient_name || 'Patient'}
                   </p>
                   <p style={{ fontSize: 11, color: 'var(--g500)', margin: 0 }}>
-                    {c.specialty || 'General'} · {c.created_at ? new Date(c.created_at).toLocaleDateString() : '—'}
+                    {formatSpecialty(c.specialty) || 'General'} · {c.created_at ? new Date(c.created_at).toLocaleDateString() : '—'}
                   </p>
                 </div>
                 <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 50, background: `${statusColor(c.status)}18`, color: statusColor(c.status) }}>
-                  {c.status}
+                  {formatConsultationStatus(c.status)}
                 </span>
               </div>
             ))

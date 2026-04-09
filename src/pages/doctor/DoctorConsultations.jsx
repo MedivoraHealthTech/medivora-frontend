@@ -8,6 +8,7 @@ import {
 import { useAuth } from '../../context/AuthContext'
 import { doctorAPI } from '../../api/client'
 import { useBreakpoint } from '../../hooks/useBreakpoint'
+import { formatSpecialty, formatConsultationStatus } from '../../utils/labels'
 
 const STATUS_TABS = ['All', 'Requested', 'Scheduled', 'Completed', 'Cancelled']
 
@@ -285,7 +286,7 @@ export default function DoctorConsultations() {
                       {c.patient_name || 'Patient'}
                     </p>
                     <p style={{ fontSize: 12, color: 'var(--g500)', margin: 0 }}>
-                      {c.specialty || 'General Medicine'}
+                      {formatSpecialty(c.specialty) || 'General Medicine'}
                       {c.scheduled_at && ` · ${new Date(c.scheduled_at).toLocaleString()}`}
                     </p>
                   </div>
@@ -293,7 +294,7 @@ export default function DoctorConsultations() {
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 50, background: `${statusColor(c.status)}18`, color: statusColor(c.status) }}>
-                    {c.status}
+                    {formatConsultationStatus(c.status)}
                   </span>
                   {expanded === c.id ? <ChevronUp size={16} color='var(--g500)' /> : <ChevronDown size={16} color='var(--g500)' />}
                 </div>
@@ -462,7 +463,7 @@ export default function DoctorConsultations() {
                   <span style={{ fontSize: 12, color: 'var(--g500)' }}>Patient: <strong style={{ color: 'var(--g300)' }}>{rxDraft.patient_name}</strong></span>
                   <span style={{ fontSize: 12, color: 'var(--g500)' }}>Age: <strong style={{ color: 'var(--g300)' }}>{rxDraft.patient_age || '—'}</strong></span>
                   <span style={{ fontSize: 12, color: 'var(--g500)' }}>Gender: <strong style={{ color: 'var(--g300)' }}>{rxDraft.patient_gender || '—'}</strong></span>
-                  <span style={{ fontSize: 12, color: 'var(--g500)' }}>Specialty: <strong style={{ color: 'var(--g300)' }}>{rxDraft.specialty}</strong></span>
+                  <span style={{ fontSize: 12, color: 'var(--g500)' }}>Specialty: <strong style={{ color: 'var(--g300)' }}>{formatSpecialty(rxDraft.specialty)}</strong></span>
                 </div>
                 {rxDraft.draft?.diagnosis && (
                   <p style={{ fontSize: 12, color: 'var(--g400)', margin: '8px 0 0' }}>

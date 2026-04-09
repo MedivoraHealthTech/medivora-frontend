@@ -3,6 +3,7 @@ import { Search, Pill, Download, RefreshCw } from 'lucide-react'
 import { supabase } from './supabase'
 import ComingSoonModal from '../components/ComingSoonModal'
 import { useBreakpoint } from '../hooks/useBreakpoint'
+import { formatPrescriptionStatus } from '../utils/labels'
 
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
 const STATUS_TABS = ['All', 'Approved', 'Pending', 'Expired']
@@ -249,7 +250,7 @@ export default function PrescriptionsPage() {
                       {p.status === 'active' ? 'Active' : p.status === 'pending' ? 'Awaiting Approval' : 'Completed'}
                     </span>
                     <span style={{ fontSize: 11, color: 'var(--g600)' }}>
-                      {p.rawStatus && <span style={{ opacity: 0.6 }}>{p.rawStatus}</span>}
+                      {p.rawStatus && <span style={{ opacity: 0.6 }}>{formatPrescriptionStatus(p.rawStatus)}</span>}
                     </span>
                   </div>
 

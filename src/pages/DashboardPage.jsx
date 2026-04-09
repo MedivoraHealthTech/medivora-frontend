@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from './supabase'
+import { formatSpecialty } from '../utils/labels'
 
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
 
@@ -155,7 +156,7 @@ export default function DashboardPage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {consultations.slice(0, 3).map((c, i) => {
-                const topic = c.patient_note || c.specialty || 'Consultation'
+                const topic = c.patient_note || (c.specialty ? formatSpecialty(c.specialty) : '') || 'Consultation'
                 const date  = c.created_at ? fmtShort(c.created_at) : '—'
                 const st    = (c.status || 'requested').toLowerCase()
                 const sc    = statusColor[st] || statusColor.pending

@@ -6,6 +6,7 @@ import {
 import { useAuth } from '../../context/AuthContext'
 import { doctorAPI } from '../../api/client'
 import { useBreakpoint } from '../../hooks/useBreakpoint'
+import { formatSpecialty } from '../../utils/labels'
 
 const RISK_COLOR = r => {
   const l = (r || '').toLowerCase()
@@ -287,7 +288,7 @@ export default function PrescriptionReview() {
                           ['Preliminary Diagnosis', assessment.primary_condition || assessment.diagnosis || '—'],
                           ['Risk Level', risk],
                           ['Confidence', assessment.confidence_score != null ? `${Math.round(assessment.confidence_score * 100)}%` : '—'],
-                          ['Recommended Specialty', assessment.suggested_specialty || assessment.specialty || '—'],
+                          ['Recommended Specialty', formatSpecialty(assessment.suggested_specialty || assessment.specialty) || '—'],
                           ['Follow-up Required', assessment.follow_up_required ? 'Yes' : 'No'],
                         ].map(([label, val], i) => (
                           <div key={i} style={{ borderRadius: 9, padding: '10px 12px', background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.04)' }}>
