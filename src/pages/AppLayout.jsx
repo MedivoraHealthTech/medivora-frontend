@@ -730,7 +730,7 @@ export default function AppLayout() {
         }}>
           {/* Phone + label */}
           <button
-            onClick={() => navigate('/doctors')}
+            onClick={() => { window.location.href = 'tel:+919971615161' }}
             style={{
               display: 'flex', alignItems: 'center', gap: 10,
               padding: '10px 14px 10px 10px',
