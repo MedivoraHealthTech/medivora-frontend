@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { CheckCircle, ArrowLeft, Video, Stethoscope, Calendar, ShieldCheck } from 'lucide-react'
+import { CheckCircle, ArrowLeft, Video, Stethoscope, Calendar, ShieldCheck, ClipboardList } from 'lucide-react'
 import { supabase } from './supabase'
+import MedicalInfoModal from '../components/MedicalInfoModal'
 
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
 const IS_DEV   = import.meta.env.VITE_DEV_PAYMENT === 'true'
@@ -28,9 +29,10 @@ export default function PaymentPage() {
   // Booking state passed from BookAppointment
   const { doctor, slot, videoConsultation, fee, gst, total } = location.state || {}
 
-  const [loading,    setLoading]    = useState(false)
-  const [error,      setError]      = useState(isError ? 'Payment could not be verified. Please try again.' : '')
-  const [formFields, setFormFields] = useState(null)  // set when order is ready to submit
+  const [loading,          setLoading]          = useState(false)
+  const [error,            setError]            = useState(isError ? 'Payment could not be verified. Please try again.' : '')
+  const [formFields,       setFormFields]       = useState(null)  // set when order is ready to submit
+  const [showMedicalForm,  setShowMedicalForm]  = useState(false)
 
   const docName = stripDr([doctor?.first_name, doctor?.last_name].filter(Boolean).join(' ') || doctor?.name || 'Doctor')
   const specs   = doctor?.specialties?.length
@@ -132,15 +134,42 @@ export default function PaymentPage() {
           <h1 style={{ fontSize: 24, fontWeight: 800, color: '#111', margin: '0 0 10px', fontFamily: 'var(--serif, serif)' }}>
             Booking Confirmed!
           </h1>
-          <p style={{ fontSize: 14, color: '#666', lineHeight: 1.7, margin: '0 0 32px' }}>
+          <p style={{ fontSize: 14, color: '#666', lineHeight: 1.7, margin: '0 0 24px' }}>
             Your {videoConsultation ? 'video consultation' : 'appointment'} has been booked successfully.
             The doctor will be in touch shortly.
           </p>
           {sessionId && (
-            <p style={{ fontSize: 11, color: '#aaa', marginBottom: 24 }}>
+            <p style={{ fontSize: 11, color: '#aaa', marginBottom: 20 }}>
               Booking ID: <code style={{ fontSize: 11 }}>{sessionId.slice(0, 8)}…</code>
             </p>
           )}
+
+          {/* Medical info prompt */}
+          <div style={{
+            borderRadius: 14, border: '1.5px solid rgba(25,48,170,0.14)',
+            background: 'rgba(25,48,170,0.03)', padding: '16px 18px',
+            marginBottom: 24, textAlign: 'left',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <ClipboardList size={15} color="#1930AA" />
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#1930AA' }}>Help your doctor prepare</span>
+            </div>
+            <p style={{ fontSize: 12, color: '#666', margin: '0 0 12px', lineHeight: 1.5 }}>
+              Share your health details (blood group, allergies, medications, etc.) so your doctor is fully prepared before the consultation.
+            </p>
+            <button
+              onClick={() => setShowMedicalForm(true)}
+              style={{
+                width: '100%', padding: '9px 0', borderRadius: 9, border: 'none',
+                background: 'linear-gradient(135deg, #1930AA, #00AFEF)', color: '#fff',
+                fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                boxShadow: '0 3px 10px rgba(25,48,170,0.2)',
+              }}
+            >
+              Add Health Details
+            </button>
+          </div>
+
           <button
             onClick={() => navigate('/consultations')}
             style={{
@@ -163,6 +192,13 @@ export default function PaymentPage() {
             Back to AI Chat
           </button>
         </div>
+
+        {showMedicalForm && (
+          <MedicalInfoModal
+            onClose={() => setShowMedicalForm(false)}
+            onSaved={() => { setShowMedicalForm(false); navigate('/consultations') }}
+          />
+        )}
       </div>
     )
   }
