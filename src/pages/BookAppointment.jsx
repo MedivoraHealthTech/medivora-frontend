@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { ArrowLeft, Star, MapPin, Clock, IndianRupee, Stethoscope, Video, CalendarClock, CheckCircle, CreditCard } from 'lucide-react'
+import { ArrowLeft, Star, MapPin, Clock, IndianRupee, Stethoscope, Video, CheckCircle, CreditCard } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from './supabase'
-import TimeSlotPicker from '../components/TimeSlotPicker'
 import { useBreakpoint } from '../hooks/useBreakpoint'
 import { formatSpecialty } from '../utils/labels'
 
@@ -78,8 +77,6 @@ export default function BookAppointment() {
   const [doctors,        setDoctors]        = useState([])
   const [loading,        setLoading]        = useState(true)
   const [selectedDoctor, setSelectedDoctor] = useState(preSelectedDoctor || null)
-  const [selectedSlot,   setSelectedSlot]   = useState(location.state?.selectedSlot || null)
-  const [showSlotPicker, setShowSlotPicker] = useState(false)
   const [paying,          setPaying]          = useState(false)
   const [payError,        setPayError]        = useState(null)
   const [formFields,      setFormFields]      = useState(null)
@@ -167,8 +164,10 @@ export default function BookAppointment() {
   /* ─── Pay: call backend then redirect to Razorpay ─── */
   const handlePay = async () => {
     if (!selectedDoctor) return
-    if (!selectedSlot) { setShowSlotPicker(true); return }
     setPaying(true)
+    // Save doctor to sessionStorage so PaymentPage can show the slot picker after payment
+    sessionStorage.setItem('medivora_booking_doctor', JSON.stringify(selectedDoctor))
+    sessionStorage.setItem('medivora_booking_video', JSON.stringify(videoConsultation))
     setPayError(null)
     try {
       const token   = await getAuthToken()
@@ -182,7 +181,6 @@ export default function BookAppointment() {
             doctor_id:         selectedDoctor.id,
             specialty:         selectedDoctor.specialties?.[0] || selectedDoctor.specialization || 'general_medicine',
             patient_note:      `Dev booking with Dr. ${docName}`,
-            scheduled_at:      selectedSlot?.iso || null,
             consultation_type: videoConsultation ? 'video' : 'in_person',
           }),
         })
@@ -197,7 +195,6 @@ export default function BookAppointment() {
             doctor_id:         selectedDoctor.id,
             doctor_name:       docName,
             specialty:         selectedDoctor.specialties?.[0] || selectedDoctor.specialization || 'general_medicine',
-            scheduled_at:      selectedSlot?.iso || '',
             consultation_type: videoConsultation ? 'video' : 'in_person',
             patient_note:      `Consultation with Dr. ${docName}`,
           }),
@@ -406,29 +403,6 @@ export default function BookAppointment() {
                     </div>
                   </div>
 
-                  {/* Time slot selector */}
-                  <div
-                    onClick={() => setShowSlotPicker(true)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px',
-                      borderRadius: 10, border: selectedSlot ? '1.5px solid rgba(25,48,170,0.2)' : '1.5px dashed rgba(0,0,0,0.15)',
-                      cursor: 'pointer', marginBottom: 14, transition: 'all 0.18s',
-                      background: selectedSlot ? 'rgba(25,48,170,0.04)' : 'rgba(0,0,0,0.02)',
-                    }}
-                  >
-                    <CalendarClock size={14} color={selectedSlot ? '#1930AA' : '#aaa'} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      {selectedSlot ? (
-                        <>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: '#1930AA' }}>Appointment Slot</div>
-                          <div style={{ fontSize: 12, color: '#333', marginTop: 1 }}>{selectedSlot.label}</div>
-                        </>
-                      ) : (
-                        <div style={{ fontSize: 12, color: '#aaa', fontWeight: 600 }}>Select appointment slot →</div>
-                      )}
-                    </div>
-                  </div>
-
                   {/* Fee breakdown */}
                   <div style={{ borderTop: '1px solid rgba(0,0,0,0.07)', paddingTop: 14, marginBottom: 12 }}>
                     {[
@@ -541,7 +515,7 @@ export default function BookAppointment() {
                   transition: 'all 0.2s',
                 }}
               >
-                {paying ? 'Redirecting…' : !selectedDoctor ? 'Select a Doctor' : !selectedSlot ? 'Select a Time Slot' : `Pay ₹${total}`}
+                {paying ? 'Redirecting…' : !selectedDoctor ? 'Select a Doctor' : `Pay ₹${total}`}
               </button>
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 12 }}>
@@ -572,16 +546,6 @@ export default function BookAppointment() {
       </form>
     )}
 
-    {showSlotPicker && selectedDoctor && (
-      <TimeSlotPicker
-        doctor={selectedDoctor}
-        onClose={() => setShowSlotPicker(false)}
-        onConfirm={(slot) => {
-          setSelectedSlot(slot)
-          setShowSlotPicker(false)
-        }}
-      />
-    )}
     </>
   )
 }

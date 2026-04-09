@@ -109,7 +109,7 @@ export default function DashboardPage() {
         <h2 style={{ fontSize: 14, fontWeight: 700, color: '#333', margin: '0 0 14px' }}>Quick Actions</h2>
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 14 }}>
           {[
-            { icon: MessageSquare, color: '#1930AA', bg: 'rgba(25,48,170,0.07)', label: 'Chat with Medi', sub: 'Describe symptoms', path: '/chat' },
+            { icon: MessageSquare, color: '#1930AA', bg: 'rgba(25,48,170,0.07)', label: 'Chat with AI', sub: 'Describe symptoms', path: '/chat' },
             { icon: Users,         color: '#0EA5E9', bg: 'rgba(14,165,233,0.07)', label: 'Find a Doctor',  sub: 'Book consultation', path: '/doctors' },
             { icon: ClipboardList, color: '#7C3AED', bg: 'rgba(124,58,237,0.07)', label: 'Prescriptions',  sub: 'View & download',   path: '/prescriptions' },
             { icon: CalendarDays,  color: '#059669', bg: 'rgba(5,150,105,0.07)',  label: 'Consultations',  sub: 'Past & upcoming',   path: '/consultations' },
@@ -212,23 +212,6 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Bottom CTA banner ── */}
-      <div style={{ ...card, padding: isMobile ? '16px' : '20px 24px', marginTop: 16, display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', gap: isMobile ? 12 : 0, background: 'rgba(25,48,170,0.03)', border: '1px solid rgba(25,48,170,0.1)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'rgba(25,48,170,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Heart size={18} color="#1930AA" />
-          </div>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#111' }}>Stay on top of your health</div>
-            <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>Regular check-ins with Medi help detect issues early. Chat any time — always private.</div>
-          </div>
-        </div>
-        <button
-          onClick={() => navigate('/chat')}
-          style={{ padding: '10px 22px', borderRadius: 10, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #1930AA, #00AFEF)', color: '#fff', fontSize: 13, fontWeight: 700, fontFamily: 'inherit', whiteSpace: 'nowrap', marginLeft: isMobile ? 0 : 20, alignSelf: isMobile ? 'stretch' : 'auto', boxShadow: '0 4px 14px rgba(25,48,170,0.2)' }}
-        >
-          Chat Now →
-        </button>
-      </div>
     </div>
   )
 }

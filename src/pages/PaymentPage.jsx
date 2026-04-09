@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { CheckCircle, ArrowLeft, Video, Stethoscope, Calendar, ShieldCheck, ClipboardList } from 'lucide-react'
 import { supabase } from './supabase'
 import MedicalInfoModal from '../components/MedicalInfoModal'
+import TimeSlotPicker from '../components/TimeSlotPicker'
 
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
 const IS_DEV   = import.meta.env.VITE_DEV_PAYMENT === 'true'
@@ -26,13 +27,23 @@ export default function PaymentPage() {
   const sessionId  = params.get('session_id') || ''
   const isError    = params.get('error') || ''
 
-  // Booking state passed from BookAppointment
-  const { doctor, slot, videoConsultation, fee, gst, total } = location.state || {}
+  // Booking state passed from BookAppointment (may be null for Razorpay callback)
+  const { doctor: stateDoctor, videoConsultation: stateVideo, fee, gst, total } = location.state || {}
+
+  // Recover doctor from sessionStorage (set by BookAppointment before payment redirect)
+  const savedDoctor = (() => { try { return JSON.parse(sessionStorage.getItem('medivora_booking_doctor') || 'null') } catch { return null } })()
+  const savedVideo  = (() => { try { return JSON.parse(sessionStorage.getItem('medivora_booking_video') || 'false') } catch { return false } })()
+  const doctor          = stateDoctor || savedDoctor
+  const videoConsultation = stateVideo ?? savedVideo
 
   const [loading,          setLoading]          = useState(false)
   const [error,            setError]            = useState(isError ? 'Payment could not be verified. Please try again.' : '')
   const [formFields,       setFormFields]       = useState(null)  // set when order is ready to submit
   const [showMedicalForm,  setShowMedicalForm]  = useState(false)
+  const [showSlotPicker,   setShowSlotPicker]   = useState(false)
+  const [slotSaved,        setSlotSaved]        = useState(false)
+  const [slotSaving,       setSlotSaving]       = useState(false)
+  const [slotError,        setSlotError]        = useState(null)
 
   const docName = stripDr([doctor?.first_name, doctor?.last_name].filter(Boolean).join(' ') || doctor?.name || 'Doctor')
   const specs   = doctor?.specialties?.length
@@ -52,6 +63,37 @@ export default function PaymentPage() {
       navigate('/book-appointment', { replace: true })
     }
   }, [])
+
+  const handleSlotConfirm = async (slot) => {
+    setSlotSaving(true)
+    setSlotError(null)
+    try {
+      const token = await getAuthToken()
+      const form = new FormData()
+      const isoString = `${slot.date}T${slot.time}:00`
+      form.append('scheduled_at', isoString)
+      const res = await fetch(`${API_BASE}/consultation/${sessionId}/slot`, {
+        method: 'PATCH',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: form,
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail || 'Could not save slot')
+      }
+      // Clear sessionStorage booking data now that slot is saved
+      sessionStorage.removeItem('medivora_booking_doctor')
+      sessionStorage.removeItem('medivora_booking_video')
+      setShowSlotPicker(false)
+      setSlotSaved(true)
+    } catch (err) {
+      setSlotError(err.message || 'Could not save your slot. You can reschedule from your consultations.')
+      setShowSlotPicker(false)
+      setSlotSaved(true) // still let them proceed
+    } finally {
+      setSlotSaving(false)
+    }
+  }
 
   const handleDevPay = async () => {
     setLoading(true)
@@ -120,6 +162,70 @@ export default function PaymentPage() {
 
   /* ── Success screen ── */
   if (isSuccess) {
+    // Step 1: Pick a slot (shown before the confirmation card)
+    if (!slotSaved) {
+      return (
+        <div style={{
+          minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'linear-gradient(135deg, #f0f4ff 0%, #e8f8ff 100%)',
+          fontFamily: 'var(--font, Inter, sans-serif)', padding: 24,
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: 24, padding: '36px 32px', maxWidth: 460, width: '100%',
+            textAlign: 'center', boxShadow: '0 20px 60px rgba(25,48,170,0.12)',
+          }}>
+            <CheckCircle size={48} color="#00c853" style={{ marginBottom: 16 }} />
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111', margin: '0 0 8px', fontFamily: 'var(--serif, serif)' }}>
+              Payment Successful!
+            </h1>
+            <p style={{ fontSize: 14, color: '#666', lineHeight: 1.6, margin: '0 0 24px' }}>
+              One last step — pick a time slot for your {videoConsultation ? 'video consultation' : 'appointment'}.
+            </p>
+
+            {slotError && (
+              <div style={{ fontSize: 13, color: '#c62828', background: 'rgba(198,40,40,0.07)', padding: '10px 14px', borderRadius: 10, marginBottom: 16, lineHeight: 1.5 }}>
+                {slotError}
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowSlotPicker(true)}
+              disabled={slotSaving || !doctor}
+              style={{
+                display: 'block', width: '100%', padding: '14px 0', borderRadius: 12, border: 'none',
+                background: slotSaving ? 'rgba(0,0,0,0.07)' : 'linear-gradient(135deg, #1930AA, #00AFEF)',
+                color: slotSaving ? '#bbb' : '#fff',
+                fontSize: 14, fontWeight: 700, cursor: slotSaving ? 'default' : 'pointer',
+                fontFamily: 'inherit', boxShadow: slotSaving ? 'none' : '0 6px 20px rgba(25,48,170,0.25)', marginBottom: 12,
+              }}
+            >
+              {slotSaving ? 'Saving…' : 'Choose Appointment Slot →'}
+            </button>
+
+            <button
+              onClick={() => setSlotSaved(true)}
+              style={{
+                display: 'block', width: '100%', padding: '12px 0', borderRadius: 12,
+                border: '1.5px solid rgba(0,0,0,0.1)', background: 'none',
+                color: '#999', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >
+              Skip for now
+            </button>
+          </div>
+
+          {showSlotPicker && doctor && (
+            <TimeSlotPicker
+              doctor={doctor}
+              onClose={() => setShowSlotPicker(false)}
+              onConfirm={handleSlotConfirm}
+            />
+          )}
+        </div>
+      )
+    }
+
+    // Step 2: Full confirmation card (after slot is saved / skipped)
     return (
       <div style={{
         minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',

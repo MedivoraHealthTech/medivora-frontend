@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useBreakpoint } from '../hooks/useBreakpoint'
 import {
-  Bell, Moon, Sun, Activity,
+  Bell, Moon, Sun, Activity, LayoutDashboard,
   MessageSquare, Users, CalendarDays, ClipboardList,
   Thermometer, Brain, Heart, Baby, Bone, Eye, Stethoscope, Pill,
   FileText, Play, MapPin, UserCheck, TestTube, X, CheckCircle, Info, AlertTriangle,
@@ -14,6 +14,7 @@ import Logo from '../components/Logo'
 
 /* ─── Nav Items ─── */
 const navItems = [
+  { id: 'dashboard',     label: 'Dashboard',      icon: LayoutDashboard, path: '/dashboard',   soon: false },
   { id: 'chat',          label: 'AI Chat',        icon: MessageSquare, path: '/chat',          soon: false },
   { id: 'doctors',       label: 'Find Doctors',   icon: Users,         path: '/doctors',       soon: false },
   { id: 'consultations', label: 'Consultations',  icon: CalendarDays,  path: '/consultations', soon: false },
