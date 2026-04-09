@@ -95,7 +95,7 @@ export default function AppLayout() {
   const navigate  = useNavigate()
   const location  = useLocation()
   const { isMobile, isSmallScreen } = useBreakpoint()
-  const [ctbDismissed, setCtbDismissed] = useState(() => sessionStorage.getItem('ctb_dismissed') === 'true')
+  const [ctbDismissed, setCtbDismissed] = useState(() => localStorage.getItem('ctb_dismissed') === 'true')
 
   /* ── Returning user detection ── */
   const [isReturningUser, setIsReturningUser] = useState(() => sessionStorage.getItem(RETURNING_KEY) === 'true')
@@ -758,7 +758,7 @@ export default function AppLayout() {
 
           {/* Dismiss */}
           <button
-            onClick={() => { setCtbDismissed(true); sessionStorage.setItem('ctb_dismissed', 'true') }}
+            onClick={() => { setCtbDismissed(true); localStorage.setItem('ctb_dismissed', 'true') }}
             style={{
               width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
               background: '#222', border: 'none', cursor: 'pointer',
