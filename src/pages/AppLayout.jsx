@@ -721,11 +721,9 @@ export default function AppLayout() {
           right: isSmallScreen ? 16 : 28,
           zIndex: 400,
           display: 'flex', alignItems: 'center',
-          background: '#fff',
+          background: 'linear-gradient(135deg, #1930AA, #00AFEF)',
           borderRadius: 50,
-          boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-          border: '1px solid rgba(0,0,0,0.07)',
-          overflow: 'hidden',
+          boxShadow: '0 4px 20px rgba(25,48,170,0.35)',
           animation: 'ctbSlideUp 0.4s cubic-bezier(0.34,1.56,0.64,1) both',
         }}>
           {/* Phone + label */}
@@ -733,26 +731,25 @@ export default function AppLayout() {
             onClick={() => { window.location.href = 'tel:+919971615161' }}
             style={{
               display: 'flex', alignItems: 'center', gap: 10,
-              padding: '10px 14px 10px 10px',
+              padding: '11px 14px 11px 14px',
               background: 'none', border: 'none', cursor: 'pointer',
               fontFamily: 'var(--font)',
             }}
           >
             {/* Icon circle */}
             <div style={{
-              width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
-              background: 'linear-gradient(135deg, #f97c5a, #e84393)',
+              width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+              background: 'rgba(255,255,255,0.2)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 2px 8px rgba(249,124,90,0.4)',
             }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.82a16 16 0 0 0 6.27 6.27l1.17-1.17a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
               </svg>
             </div>
             {/* Text */}
             <div style={{ textAlign: 'left', lineHeight: 1.25 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>Call to</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>Book</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Call to</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.85)' }}>Book</div>
             </div>
           </button>
 
@@ -760,13 +757,13 @@ export default function AppLayout() {
           <button
             onClick={() => { setCtbDismissed(true); localStorage.setItem('ctb_dismissed', 'true') }}
             style={{
-              width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
-              background: '#222', border: 'none', cursor: 'pointer',
+              width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+              background: 'rgba(255,255,255,0.2)', border: 'none', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              margin: '0 8px 0 0',
+              margin: '0 10px 0 0',
             }}
           >
-            <X size={14} color="#fff" />
+            <X size={13} color="#fff" />
           </button>
         </div>
       )}
