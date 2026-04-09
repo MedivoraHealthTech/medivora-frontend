@@ -91,7 +91,7 @@ const RETURNING_KEY = 'medivora_returning_user'
 
 /* ══════════════════════════════════════════════════════ */
 export default function AppLayout() {
-  const { user, displayName, role, getToken, logout } = useAuth()
+  const { user, displayName, role, getToken, logout, pendingChatRestore } = useAuth()
   const navigate  = useNavigate()
   const location  = useLocation()
   const { isMobile, isSmallScreen } = useBreakpoint()
@@ -122,15 +122,23 @@ export default function AppLayout() {
     })()
   }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  /* ── If a pre-login chat is pending restore, send the user to /chat ── */
+  useEffect(() => {
+    if (pendingChatRestore && location.pathname !== '/chat') {
+      navigate('/chat', { replace: true })
+    }
+  }, [pendingChatRestore]) // eslint-disable-line react-hooks/exhaustive-deps
+
   /* ── Redirect returning users away from /chat to /dashboard (initial load only) ── */
+  /* Skip if there is a pre-login chat waiting to be restored — user must land on /chat */
   const didInitialRedirect = useRef(false)
   useEffect(() => {
     if (didInitialRedirect.current) return
-    if (isReturningUser && location.pathname === '/chat') {
+    if (isReturningUser && location.pathname === '/chat' && !pendingChatRestore) {
       didInitialRedirect.current = true
       navigate('/dashboard', { replace: true })
     }
-  }, [isReturningUser]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isReturningUser, pendingChatRestore]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── Dark mode ── */
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true')
@@ -274,12 +282,6 @@ export default function AppLayout() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* Online status */}
-          <div style={{ display: isMobile ? 'none' : 'flex', alignItems: 'center', gap: 5, marginRight: 8 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)', animation: 'pulse 2s infinite' }} />
-            <span style={{ fontSize: 11, color: 'var(--ok)' }}>Online</span>
-          </div>
-
           {/* Bell — notifications */}
           <div style={{ position: 'relative' }}>
             <button
@@ -296,18 +298,6 @@ export default function AppLayout() {
               )}
             </button>
           </div>
-
-          {/* Moon / Sun — dark mode toggle */}
-          <button
-            onClick={() => setDarkMode(d => !d)}
-            style={{ ...btnIcon, background: darkMode ? 'rgba(0,188,212,0.1)' : 'transparent' }}
-            title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-          >
-            {darkMode
-              ? <Sun size={15} color='var(--cyan)' />
-              : <Moon size={15} color='var(--g500)' />
-            }
-          </button>
 
           {/* Profile avatar */}
           <button

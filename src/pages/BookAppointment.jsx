@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from './supabase'
 import TimeSlotPicker from '../components/TimeSlotPicker'
 import { useBreakpoint } from '../hooks/useBreakpoint'
+import { formatSpecialty } from '../utils/labels'
 
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
 const IS_DEV   = import.meta.env.VITE_DEV_PAYMENT === 'true'
@@ -269,7 +270,7 @@ export default function BookAppointment() {
           </div>
           {recommendedSpecialty && !preSelectedDoctor && (
             <p style={{ fontSize: 11, color: '#1930AA', margin: '2px 0 0', fontWeight: 600 }}>
-              Recommended specialty: {recommendedSpecialty}
+              Recommended specialty: {formatSpecialty(recommendedSpecialty)}
             </p>
           )}
           {preSelectedDoctor && (
@@ -339,7 +340,7 @@ export default function BookAppointment() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 700, color: '#111' }}>Dr. {name}</div>
                       <div style={{ fontSize: 12, color: '#1930AA', fontWeight: 600, marginTop: 2 }}>
-                        {docSpecs.slice(0, 2).join(' · ')}
+                        {docSpecs.map(formatSpecialty).slice(0, 2).join(' · ')}
                       </div>
 
                       <div style={{ display: 'flex', gap: 16, marginTop: 9, flexWrap: 'wrap' }}>
@@ -401,7 +402,7 @@ export default function BookAppointment() {
                       <div style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>
                         Dr. {stripDr([selectedDoctor.first_name, selectedDoctor.last_name].filter(Boolean).join(' ') || selectedDoctor.name || 'Doctor')}
                       </div>
-                      <div style={{ fontSize: 11, color: '#1930AA' }}>{specs.slice(0, 2).join(' · ')}</div>
+                      <div style={{ fontSize: 11, color: '#1930AA' }}>{specs.map(formatSpecialty).slice(0, 2).join(' · ')}</div>
                     </div>
                   </div>
 

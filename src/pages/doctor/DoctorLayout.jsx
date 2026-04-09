@@ -73,11 +73,6 @@ export default function DoctorLayout() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ display: isMobile ? 'none' : 'flex', alignItems: 'center', gap: 5, marginRight: 8 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)' }} />
-            <span style={{ fontSize: 11, color: 'var(--ok)' }}>Online</span>
-          </div>
-
           {/* Notifications */}
           <div style={{ position: 'relative' }}>
             <button onClick={() => setNotifOpen(o => !o)} style={{ ...btnIcon, background: notifOpen ? 'rgba(0,188,212,0.1)' : 'transparent' }}>
@@ -85,10 +80,6 @@ export default function DoctorLayout() {
               {unreadCount > 0 && <span style={{ position: 'absolute', top: 4, right: 4, width: 8, height: 8, borderRadius: '50%', background: 'var(--err)', border: '1.5px solid var(--dark)' }} />}
             </button>
           </div>
-
-          <button onClick={() => setDarkMode(d => !d)} style={{ ...btnIcon }}>
-            {darkMode ? <Sun size={15} color='var(--cyan)' /> : <Moon size={15} color='var(--g500)' />}
-          </button>
 
           <button onClick={() => navigate('/doctor/profile')} style={{
             width: 34, height: 34, borderRadius: '50%', border: '2px solid rgba(25,48,170,0.35)',
