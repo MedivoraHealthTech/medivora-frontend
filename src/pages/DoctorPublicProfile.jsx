@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { supabase } from './supabase'
 import { useBreakpoint } from '../hooks/useBreakpoint'
+import { formatSpecialty } from '../utils/labels'
 
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
 
@@ -155,7 +156,7 @@ export default function DoctorPublicProfile() {
                       fontSize: 12, fontWeight: 600, color: '#1930AA',
                       background: 'rgba(25,48,170,0.08)', padding: '4px 10px', borderRadius: 6,
                     }}>
-                      <Stethoscope size={11} /> {s}
+                      <Stethoscope size={11} /> {formatSpecialty(s)}
                     </span>
                   ))}
                 </div>

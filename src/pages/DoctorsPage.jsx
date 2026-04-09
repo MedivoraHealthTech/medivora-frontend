@@ -5,6 +5,7 @@ import { supabase } from './supabase'
 import ComingSoonModal from '../components/ComingSoonModal'
 import TimeSlotPicker from '../components/TimeSlotPicker'
 import { useBreakpoint } from '../hooks/useBreakpoint'
+import { formatSpecialty } from '../utils/labels'
 
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
 
@@ -158,7 +159,7 @@ export default function DoctorsPage() {
                         </h2>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: 'var(--cyan)', background: 'rgba(0,175,239,0.1)', padding: '3px 8px', borderRadius: 6 }}>
-                            <Stethoscope size={12} /> {d.specialization || 'General Physician'}
+                            <Stethoscope size={12} /> {formatSpecialty(d.specialization) || 'General Physician'}
                           </span>
                           <span style={{ fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 50, background: status.bg, color: status.color }}>
                             ● {status.label}
