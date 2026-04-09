@@ -95,6 +95,7 @@ export default function AppLayout() {
   const navigate  = useNavigate()
   const location  = useLocation()
   const { isMobile, isSmallScreen } = useBreakpoint()
+  const [ctbDismissed, setCtbDismissed] = useState(() => sessionStorage.getItem('ctb_dismissed') === 'true')
 
   /* ── Returning user detection ── */
   const [isReturningUser, setIsReturningUser] = useState(() => sessionStorage.getItem(RETURNING_KEY) === 'true')
@@ -712,8 +713,67 @@ export default function AppLayout() {
         </nav>
       )}
 
+      {/* ── Call to Book floating button ── */}
+      {!ctbDismissed && (
+        <div style={{
+          position: 'fixed',
+          bottom: isSmallScreen ? 80 : 28,
+          right: isSmallScreen ? 16 : 28,
+          zIndex: 400,
+          display: 'flex', alignItems: 'center',
+          background: '#fff',
+          borderRadius: 50,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+          border: '1px solid rgba(0,0,0,0.07)',
+          overflow: 'hidden',
+          animation: 'ctbSlideUp 0.4s cubic-bezier(0.34,1.56,0.64,1) both',
+        }}>
+          {/* Phone + label */}
+          <button
+            onClick={() => navigate('/doctors')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '10px 14px 10px 10px',
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontFamily: 'var(--font)',
+            }}
+          >
+            {/* Icon circle */}
+            <div style={{
+              width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
+              background: 'linear-gradient(135deg, #f97c5a, #e84393)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 2px 8px rgba(249,124,90,0.4)',
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.82a16 16 0 0 0 6.27 6.27l1.17-1.17a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+              </svg>
+            </div>
+            {/* Text */}
+            <div style={{ textAlign: 'left', lineHeight: 1.25 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>Call to</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>Book</div>
+            </div>
+          </button>
+
+          {/* Dismiss */}
+          <button
+            onClick={() => { setCtbDismissed(true); sessionStorage.setItem('ctb_dismissed', 'true') }}
+            style={{
+              width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+              background: '#222', border: 'none', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 8px 0 0',
+            }}
+          >
+            <X size={14} color="#fff" />
+          </button>
+        </div>
+      )}
+
       <style>{`
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        @keyframes ctbSlideUp { from { opacity: 0; transform: translateY(20px) scale(0.92); } to { opacity: 1; transform: translateY(0) scale(1); } }
         @media (max-width: 1023px) { .hide-mobile { display: none !important; } }
       `}</style>
     </div>
