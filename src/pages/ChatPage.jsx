@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Send, Plus, Calendar, Video, ClipboardList } from 'lucide-react'
+import { Send, Plus, Calendar, Video, ClipboardList, History, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { sendMessage as chatSend } from '../api/chat'
+import { sendMessage as chatSend, restorePreLoginChat } from '../api/chat'
 import Logo from '../components/Logo'
 
 /* ─── Triage colors ─── */
@@ -76,7 +76,7 @@ function formatMessage(text) {
 
 /* ══════════════════════════════ MAIN PAGE ══════════════════════════════ */
 export default function ChatPage() {
-  const { user, displayName } = useAuth()
+  const { user, displayName, pendingChatRestore, clearPendingRestore } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const lastAutoMsg = useRef(null)
@@ -102,6 +102,8 @@ export default function ChatPage() {
   const [lastTriage,     setLastTriage]     = useState(null)
 
   const [error, setError] = useState(null)
+  const [isRestoring, setIsRestoring] = useState(false)
+  const [restoreError, setRestoreError] = useState(null)
   const endRef  = useRef(null)
   const inputRef = useRef(null)
 
@@ -188,6 +190,37 @@ export default function ChatPage() {
     inputRef.current?.focus()
   }
 
+  /* ─── Restore pre-login chat ─── */
+  const handleRestore = async () => {
+    if (!pendingChatRestore || isRestoring) return
+    setIsRestoring(true)
+    setRestoreError(null)
+    try {
+      const data = await restorePreLoginChat(pendingChatRestore.messages)
+      // Map pre-login messages to ChatPage format
+      const restored = pendingChatRestore.messages.map((m, i) => ({
+        id: `restored_${i}`,
+        sender: m.role === 'user' ? 'user' : 'ai',
+        content: m.text,
+        is_medical_report: m.isReport || false,
+        is_book_appointment: m.isBooking || false,
+      }))
+      setMessages(restored)
+      setConversationId(data.session_id)
+      clearPendingRestore()
+      setTimeout(() => inputRef.current?.focus(), 100)
+    } catch (err) {
+      setRestoreError(err.message || 'Could not restore. Please try again.')
+    } finally {
+      setIsRestoring(false)
+    }
+  }
+
+  const handleDismissRestore = () => {
+    clearPendingRestore()
+    setRestoreError(null)
+  }
+
   /* ─── Auto-send from navigation state (quick symptoms or any external trigger) ─── */
   useEffect(() => {
     const msg = location.state?.autoMessage
@@ -218,6 +251,52 @@ export default function ChatPage() {
             {' · '}Recommended: <strong style={{ color: 'var(--g300)' }}>{lastTriage.recommended_speciality}</strong>
             {lastTriage.risk_score && <span> · Risk: {lastTriage.risk_score}%</span>}
           </span>
+        </div>
+      )}
+
+      {/* ── Pre-login chat restore banner ── */}
+      {pendingChatRestore && (
+        <div style={{
+          margin: '8px 16px 0', padding: '12px 16px', borderRadius: 12, flexShrink: 0,
+          background: 'rgba(25,48,170,0.05)', border: '1.5px solid rgba(25,48,170,0.18)',
+          display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+        }}>
+          <History size={16} color="#1930AA" style={{ flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#1930AA' }}>
+              You had a conversation before logging in.
+            </span>
+            <span style={{ fontSize: 12, color: 'var(--g500)', marginLeft: 6 }}>
+              Restore it so I can continue helping you.
+            </span>
+            {restoreError && (
+              <div style={{ fontSize: 11, color: 'var(--err)', marginTop: 4 }}>{restoreError}</div>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+            <button
+              onClick={handleRestore}
+              disabled={isRestoring}
+              style={{
+                padding: '7px 16px', borderRadius: 8, border: 'none', cursor: isRestoring ? 'default' : 'pointer',
+                background: isRestoring ? 'rgba(0,0,0,0.07)' : 'linear-gradient(135deg,#1930AA,#00AFEF)',
+                color: isRestoring ? '#aaa' : '#fff', fontSize: 12, fontWeight: 700,
+                fontFamily: 'var(--font)', transition: 'all 0.2s',
+              }}
+            >
+              {isRestoring ? 'Restoring…' : 'Restore Chat'}
+            </button>
+            <button
+              onClick={handleDismissRestore}
+              style={{
+                width: 28, height: 28, borderRadius: '50%', border: 'none',
+                background: 'rgba(0,0,0,0.06)', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <X size={13} color="var(--g500)" />
+            </button>
+          </div>
         </div>
       )}
 

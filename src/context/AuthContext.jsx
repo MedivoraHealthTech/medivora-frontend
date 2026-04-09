@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { supabase } from '../pages/supabase'
+import { loadPreLoginChat, clearPreLoginChat } from '../utils/preLoginChat'
 
 const AuthContext = createContext(null)
 
@@ -29,6 +30,8 @@ export function AuthProvider({ children }) {
     try { return JSON.parse(localStorage.getItem(DOCTOR_USER_KEY) || 'null') } catch { return null }
   })
 
+  const [pendingChatRestore, setPendingChatRestore] = useState(null)
+
   const isAuthenticated = !!session || !!doctorToken
   const role = doctorToken
     ? 'doctor'
@@ -48,11 +51,16 @@ export function AuthProvider({ children }) {
     })
 
     // Listen for sign-in / sign-out events
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s)
       setUser(s?.user ?? null)
       setLoading(false)
       setInitialized(true)
+      // On login, check if there's a pre-login chat to restore
+      if (event === 'SIGNED_IN') {
+        const pending = loadPreLoginChat()
+        if (pending) setPendingChatRestore(pending)
+      }
     })
 
     return () => subscription.unsubscribe()
@@ -106,6 +114,8 @@ export function AuthProvider({ children }) {
     if (data.session) {
       setSession(data.session)
       setUser(data.user)
+      const pending = loadPreLoginChat()
+      if (pending) setPendingChatRestore(pending)
     }
     return data
   }
@@ -180,12 +190,19 @@ export function AuthProvider({ children }) {
   async function logout() {
     // Clear persisted chat history so the next user starts fresh
     sessionStorage.removeItem('medivora_chat_session')
+    clearPreLoginChat()
+    setPendingChatRestore(null)
     // Clear doctor JWT if present
     localStorage.removeItem(DOCTOR_TOKEN_KEY)
     localStorage.removeItem(DOCTOR_USER_KEY)
     setDoctorToken(null)
     setDoctorUser(null)
     await supabase.auth.signOut()
+  }
+
+  function clearPendingRestore() {
+    setPendingChatRestore(null)
+    clearPreLoginChat()
   }
 
   // ─── Get auth token (works for both Supabase + doctor JWT) ───────────────
@@ -235,6 +252,8 @@ export function AuthProvider({ children }) {
       doctorLogin,
       logout,
       getToken,
+      pendingChatRestore,
+      clearPendingRestore,
     }}>
       {children}
     </AuthContext.Provider>

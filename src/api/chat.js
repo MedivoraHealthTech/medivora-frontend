@@ -146,3 +146,31 @@ export function subscribeToSession(sessionId, onNewMessage) {
 export function unsubscribeFromSession(channel) {
   // no-op
 }
+
+/**
+ * Restore a pre-login anonymous chat into an authenticated session.
+ * Sends the message history to the backend which replays it into the ADK session
+ * so the agent can continue with full context.
+ *
+ * @param {Array} messages - array of { role: 'user'|'ai', text, timestamp, isReport, isBooking }
+ * @returns {Promise<{ session_id: string, message_count: number }>}
+ */
+export async function restorePreLoginChat(messages) {
+  const token = await getToken()
+  if (!token) throw new Error('Not authenticated')
+
+  const res = await fetch(`${CHAT_API_BASE}/chat/restore`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({ messages }),
+  })
+
+  const data = await res.json().catch(() => null)
+  if (!res.ok) {
+    throw new Error(data?.detail || `Restore failed (${res.status})`)
+  }
+  return data
+}

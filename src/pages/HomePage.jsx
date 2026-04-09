@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { sendMessage as chatSend } from '../api/chat'
+import { savePreLoginMessages } from '../utils/preLoginChat'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   ArrowRight, MessageSquare, Activity, Users, Calendar, FileText,
@@ -81,6 +82,8 @@ function EmbeddedChat() {
   const [convId, setConvId] = useState(null)
   const endRef = useRef(null)
   const inputRef = useRef(null)
+  // Stable anonymous session ID — generated on first user message, persists for the session
+  const anonSessionId = useRef(null)
 
   // Animated preview messages cycling in the hero card
   const previewMsgs = [
@@ -122,7 +125,14 @@ function EmbeddedChat() {
   async function send() {
     const text = input.trim()
     if (!text || isTyping) return
-    setMessages(prev => [...prev, { id: Date.now(), side: 'user', text }])
+
+    // Generate a stable anonymous session ID on the first real message
+    if (!anonSessionId.current) {
+      anonSessionId.current = crypto.randomUUID()
+    }
+
+    const userMsg = { id: Date.now(), side: 'user', text }
+    setMessages(prev => [...prev, userMsg])
     setInput('')
     setIsTyping(true)
     try {
@@ -131,13 +141,19 @@ function EmbeddedChat() {
       const responseText = data.response || 'Ek second...'
       const isReport = !!(data.additional_data?.is_medical_report) ||
         (responseText.includes('📋') && responseText.toLowerCase().includes('medical assessment'))
-      setMessages(prev => [...prev, {
+      const aiMsg = {
         id: Date.now() + 1,
         side: 'ai',
         text: responseText,
         isReport,
         isBooking: !isReport && isBookingSuggestion(responseText),
-      }])
+      }
+      setMessages(prev => {
+        const updated = [...prev, aiMsg]
+        // Persist after every AI reply so the user can restore after login
+        savePreLoginMessages(anonSessionId.current, updated)
+        return updated
+      })
     } catch {
       setMessages(prev => [...prev, { id: Date.now() + 1, side: 'ai', text: 'Connection issue. Please try again.' }])
     } finally {
