@@ -148,6 +148,22 @@ export default function DoctorConsultations() {
     navigate(`/doctor/consultation/${session.id}/call`)
   }
 
+  async function handleComplete(session) {
+    setActionLoading(`complete-${session.id}`)
+    try {
+      const token = getToken()
+      await fetch(`${import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'}/consultation/${session.id}/complete`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      await fetchConsultations()
+    } catch (err) {
+      setError('Failed to complete consultation.')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
   // ── Prescription handlers ─────────────────────────────────────
 
   async function handleOpenRxModal(consultation) {
@@ -341,6 +357,9 @@ export default function DoctorConsultations() {
                             <Video size={13} /> {actionLoading === c.id ? 'Joining…' : 'Join Video Call'}
                           </button>
                         )}
+                        <button onClick={() => handleComplete(c)} disabled={actionLoading === `complete-${c.id}`} style={{ ...actionBtn, color: '#fff', borderColor: '#059669', background: '#059669' }}>
+                          <CheckCircle size={13} /> {actionLoading === `complete-${c.id}` ? 'Completing…' : 'Complete Consultation'}
+                        </button>
                         <button onClick={() => setScheduleFor(c)} style={{ ...actionBtn, color: 'var(--cyan)', borderColor: 'var(--cyan)', background: 'rgba(0,188,212,0.06)' }}>
                           <Calendar size={13} /> Reschedule
                         </button>

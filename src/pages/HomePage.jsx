@@ -5,7 +5,7 @@ import { savePreLoginMessages } from '../utils/preLoginChat'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   ArrowRight, MessageSquare, Activity, Users, Calendar, FileText,
-  Stethoscope, Shield, CheckCircle, Clock, Video, ChevronRight,
+  Stethoscope, Shield, CheckCircle, Clock, Video, ChevronRight, ChevronDown,
   Star, Zap, Lock, Heart, Brain, Thermometer, Bone, Eye, Baby, Pill,
   Mail, Phone, MapPin, UserCheck, ClipboardList, LayoutDashboard,
 } from 'lucide-react'
@@ -67,6 +67,65 @@ const TESTIMONIALS = [
   { name: 'Rahul V.', city: 'Delhi',     text: 'Midnight mein chest pain tha — Medivora ne 90 seconds mein triage kiya aur ek doctor se connect kiya. Lifesaver!', stars: 5 },
   { name: 'Priya S.', city: 'Mumbai',    text: 'Pregnancy ke time doctor milna mushkil tha. Yahan instant appointment mila — bahut comfortable experience tha.', stars: 5 },
   { name: 'Dr. Amit K.', city: 'Bangalore', text: 'Doctor side se bhi bahut useful hai — AI already patient summary deta hai, toh consultation quality much better hoti hai.', stars: 5 },
+]
+const FAQS = [
+  {
+    q: 'Is Medivora a replacement for visiting a doctor in person?',
+    points: [
+      'No — Medivora connects you with real, verified doctors via video consultation.',
+      'It is not a substitute for emergency care. If you have a life-threatening emergency, call 102/108 immediately.',
+      'Our AI triage helps assess severity and routes you to the right specialist, but all final medical decisions are made by licensed doctors.',
+    ],
+  },
+  {
+    q: 'How does the AI triage work? Is it safe?',
+    points: [
+      'You describe your symptoms in Hindi or English and the AI analyses them to estimate severity (mild, moderate, or urgent).',
+      'The triage result is a recommendation — it does not diagnose or prescribe anything on its own.',
+      'A verified doctor reviews your case and provides the actual consultation, diagnosis, and prescription.',
+      'All conversations are encrypted and stored securely.',
+    ],
+  },
+  {
+    q: 'Are the doctors on Medivora verified and licensed?',
+    points: [
+      'Yes. Every doctor undergoes NMC (National Medical Commission) license verification before being listed.',
+      'Doctor profiles display their specialty, experience, and ratings from past consultations.',
+      'You can view a doctor\'s credentials before booking an appointment.',
+    ],
+  },
+  {
+    q: 'How do I get a prescription? Is it valid?',
+    points: [
+      'After your consultation, the doctor reviews the AI-suggested prescription, modifies it if needed, and signs it digitally.',
+      'Digital prescriptions issued by Medivora doctors are legally valid in India.',
+      'You can download the signed prescription directly from your account.',
+    ],
+  },
+  {
+    q: 'What happens to my health data and chat history?',
+    points: [
+      'Your symptom data and chat history are private and only visible to you and the doctor you consult.',
+      'Medivora does not sell personal health data to third parties.',
+      'Data is stored with industry-standard encryption and complies with applicable Indian data protection regulations.',
+    ],
+  },
+  {
+    q: 'Can I use Medivora if I don\'t have an account yet?',
+    points: [
+      'Yes — you can start a symptom chat without logging in. Your conversation is saved temporarily.',
+      'To book a consultation, receive a prescription, or view your history, you will need to create a free account.',
+      'Sign-up takes under a minute and only requires basic details.',
+    ],
+  },
+  {
+    q: 'What languages does Medivora support?',
+    points: [
+      'The AI agent understands both Hindi and English, and can switch between them mid-conversation.',
+      'Doctor consultations are conducted in the language both you and the doctor are comfortable with.',
+      'More regional language support is planned in future updates.',
+    ],
+  },
 ]
 
 function EmbeddedChat() {
@@ -410,7 +469,16 @@ function FlowCard({ steps, cta, ctaTo, onCtaClick, side }) {
 export default function HomePage() {
   const navigate = useNavigate()
   const [comingSoon, setComingSoon] = useState(null) // feature label or null
+  const [openFaq, setOpenFaq] = useState(null)
+  const [faqs, setFaqs] = useState(FAQS)
   const { isMobile, isTablet } = useBreakpoint()
+
+  useEffect(() => {
+    fetch('/api/faqs')
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(data => { if (data.length) setFaqs(data) })
+      .catch(() => { /* keep hardcoded fallback */ })
+  }, [])
 
   function startChat(symptom) {
     sessionStorage.setItem('quick_symptom', symptom)
@@ -594,6 +662,42 @@ export default function HomePage() {
                 </div>
               </Rv>
             ))}
+          </div>
+        </section>
+
+        {/* FAQ */}
+        <section style={{ padding: isMobile ? '0 20px 48px' : '0 40px 80px', maxWidth: 1140, margin: '0 auto' }}>
+          <Rv>
+            <div style={{ textAlign: 'center', marginBottom: 36 }}>
+              <Tag color="var(--purple)">FAQ</Tag>
+              <h2 style={{ fontSize: 30, fontWeight: 800, color: 'var(--g300)', margin: '14px 0 8px', fontFamily: 'var(--serif)' }}>Frequently Asked Questions</h2>
+              <p style={{ fontSize: 14, color: 'var(--g500)', maxWidth: 480, margin: '0 auto' }}>Everything you need to know before your first consultation.</p>
+            </div>
+          </Rv>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 780, margin: '0 auto' }}>
+            {FAQS.map((faq, i) => {
+              const isOpen = openFaq === i
+              return (
+                <Rv key={i} delay={i * 0.05}>
+                  <div style={{ borderRadius: 14, border: `1px solid ${isOpen ? 'rgba(124,77,255,0.25)' : 'var(--g800)'}`, background: isOpen ? 'rgba(124,77,255,0.03)' : '#ffffff', overflow: 'hidden', transition: 'border-color 0.2s, background 0.2s' }}>
+                    <button
+                      onClick={() => setOpenFaq(isOpen ? null : i)}
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '18px 22px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font)' }}
+                    >
+                      <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--g300)', lineHeight: 1.4 }}>{faq.question ?? faq.q}</span>
+                      <ChevronDown size={17} color="var(--purple)" style={{ flexShrink: 0, transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.25s cubic-bezier(0.16,1,0.3,1)' }} />
+                    </button>
+                    {isOpen && (
+                      <ul style={{ margin: 0, padding: '0 22px 18px 38px', listStyle: 'disc' }}>
+                        {faq.points.map((pt, j) => (
+                          <li key={j} style={{ fontSize: 13, color: 'var(--g400)', lineHeight: 1.75, marginBottom: j < faq.points.length - 1 ? 6 : 0 }}>{pt}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </Rv>
+              )
+            })}
           </div>
         </section>
 

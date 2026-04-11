@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { JitsiMeeting } from '@jitsi/react-sdk'
-import { ArrowLeft, Video, AlertCircle, Loader } from 'lucide-react'
+import { ArrowLeft, Video, AlertCircle, Loader, CheckCircle, FileText, RefreshCw } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
@@ -9,12 +9,24 @@ const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_U
 export default function VideoCallPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { getToken, initialized } = useAuth()
 
-  const [callDetails, setCallDetails] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [ended, setEnded] = useState(false)
+  // Derive role from the URL — doctor always comes via /doctor/consultation/:id/call
+  const isDoctor = location.pathname.startsWith('/doctor/')
+
+  const [callDetails, setCallDetails]       = useState(null)
+  const [loading, setLoading]               = useState(true)
+  const [error, setError]                   = useState('')
+  const [ended, setEnded]                   = useState(false)
+
+  // Doctor-side states
+  const [completing, setCompleting]         = useState(false)
+  const [doctorCompleted, setDoctorCompleted] = useState(false)
+
+  // Patient-side states
+  const [consultStatus, setConsultStatus]   = useState(null)
+  const pollRef                             = useRef(null)
 
   useEffect(() => {
     if (!initialized) return
@@ -29,7 +41,9 @@ export default function VideoCallPage() {
           const err = await res.json().catch(() => ({}))
           throw new Error(err.detail || `Error ${res.status}`)
         }
-        setCallDetails(await res.json())
+        const data = await res.json()
+        setCallDetails(data)
+        setConsultStatus(data.status)
       } catch (e) {
         setError(e.message || 'Could not load call details.')
       } finally {
@@ -38,39 +52,58 @@ export default function VideoCallPage() {
     })()
   }, [id, initialized])
 
-  const handleReadyToClose = useCallback(async () => {
-    setEnded(true)
-    // Mark consultation as ended (best-effort)
-    try {
-      const token = getToken()
-      if (token) {
-        await fetch(`${API_BASE}/consultation/${id}/end`, {
-          method: 'POST',
+  // Poll consultation status on patient's ended screen until doctor completes
+  useEffect(() => {
+    if (!ended || isDoctor) return
+
+    const poll = async () => {
+      try {
+        const token = getToken()
+        if (!token) return
+        const res = await fetch(`${API_BASE}/consultation/${id}/call-details`, {
           headers: { Authorization: `Bearer ${token}` },
         })
-      }
-    } catch { /* ignore */ }
+        if (!res.ok) return
+        const data = await res.json()
+        setConsultStatus(data.status)
+        if (data.status === 'completed') clearInterval(pollRef.current)
+      } catch { /* ignore */ }
+    }
+
+    pollRef.current = setInterval(poll, 4000)
+    return () => clearInterval(pollRef.current)
+  }, [ended, callDetails?.role, id, getToken])
+
+  // When call ends — do NOT update status, just show the post-call screen
+  const handleReadyToClose = useCallback(() => {
+    setEnded(true)
+  }, [])
+
+  const exitCall = useCallback(() => {
+    setEnded(true)
+  }, [])
+
+  // Doctor: mark consultation as completed
+  const handleComplete = useCallback(async () => {
+    setCompleting(true)
+    try {
+      const token = getToken()
+      await fetch(`${API_BASE}/consultation/${id}/complete`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      setDoctorCompleted(true)
+    } catch {
+      // Best-effort; still proceed
+      setDoctorCompleted(true)
+    } finally {
+      setCompleting(false)
+    }
   }, [id, getToken])
 
-  const endAndGoBack = useCallback(async () => {
-    // Mark consultation as completed (best-effort) before navigating away
-    try {
-      const token = getToken()
-      if (token) {
-        await fetch(`${API_BASE}/consultation/${id}/end`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-        })
-      }
-    } catch { /* ignore */ }
-    const isDoctor = callDetails?.role === 'doctor'
+  const goToConsultations = useCallback(() => {
     navigate(isDoctor ? '/doctor/consultations' : '/consultations')
-  }, [id, getToken, callDetails, navigate])
-
-  const goBack = () => {
-    const isDoctor = callDetails?.role === 'doctor'
-    navigate(isDoctor ? '/doctor/consultations' : '/consultations')
-  }
+  }, [navigate, isDoctor])
 
   /* ── Loading ── */
   if (loading) return (
@@ -90,18 +123,96 @@ export default function VideoCallPage() {
     </div>
   )
 
-  /* ── Ended ── */
-  if (ended) return (
+  /* ── Ended: Doctor screen ── */
+  if (ended && isDoctor) return (
     <div style={overlay}>
-      <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(0,200,83,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-        <Video size={24} color="#00C853" />
+      <div style={{ width: 60, height: 60, borderRadius: '50%', background: doctorCompleted ? 'rgba(0,200,83,0.1)' : 'rgba(25,48,170,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18 }}>
+        {doctorCompleted
+          ? <CheckCircle size={28} color="#00C853" />
+          : <Video size={26} color="#1930AA" />
+        }
       </div>
-      <h2 style={{ fontSize: 18, fontWeight: 700, color: '#111', margin: '0 0 8px' }}>Call ended</h2>
-      <p style={{ fontSize: 13, color: '#888', margin: '0 0 24px' }}>Thank you for using Medivora.</p>
-      <button onClick={goBack} style={backBtnStyle}>← Back to Consultations</button>
+
+      <h2 style={{ fontSize: 18, fontWeight: 700, color: '#111', margin: '0 0 8px' }}>
+        {doctorCompleted ? 'Consultation Completed' : 'Call Ended'}
+      </h2>
+      <p style={{ fontSize: 13, color: '#888', margin: '0 0 28px', maxWidth: 300, textAlign: 'center' }}>
+        {doctorCompleted
+          ? 'You can now generate a prescription for this patient.'
+          : 'Click below to mark the consultation as complete and proceed to the prescription.'}
+      </p>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', maxWidth: 280 }}>
+        {!doctorCompleted ? (
+          <button
+            onClick={handleComplete}
+            disabled={completing}
+            style={{ ...primaryBtn, background: 'linear-gradient(135deg,#1930AA,#00AFEF)', opacity: completing ? 0.75 : 1 }}
+          >
+            {completing
+              ? <><Loader size={14} style={{ animation: 'spin 0.8s linear infinite' }} /> Completing…</>
+              : <><CheckCircle size={14} /> Complete Consultation</>
+            }
+          </button>
+        ) : (
+          <button
+            onClick={goToConsultations}
+            style={{ ...primaryBtn, background: 'linear-gradient(135deg,#059669,#10b981)' }}
+          >
+            <FileText size={14} /> Generate Prescription
+          </button>
+        )}
+        <button onClick={goToConsultations} style={ghostBtn}>
+          Back to Consultations
+        </button>
+      </div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 
+  /* ── Ended: Patient screen ── */
+  if (ended) {
+    const isCompleted = consultStatus === 'completed'
+    return (
+      <div style={overlay}>
+        <div style={{ width: 60, height: 60, borderRadius: '50%', background: isCompleted ? 'rgba(0,200,83,0.1)' : 'rgba(0,175,239,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18 }}>
+          {isCompleted
+            ? <CheckCircle size={28} color="#00C853" />
+            : <Video size={26} color="#00AFEF" />
+          }
+        </div>
+
+        <h2 style={{ fontSize: 18, fontWeight: 700, color: '#111', margin: '0 0 8px' }}>
+          {isCompleted ? 'Consultation Completed' : 'Call Left'}
+        </h2>
+        <p style={{ fontSize: 13, color: '#888', margin: '0 0 28px', maxWidth: 300, textAlign: 'center' }}>
+          {isCompleted
+            ? 'Your doctor has completed the consultation. Your prescription will appear in the Prescriptions tab shortly.'
+            : 'The call has ended. You can rejoin if the session is still active, or wait for the doctor to complete.'}
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', maxWidth: 280 }}>
+          {!isCompleted && (
+            <button
+              onClick={() => navigate(`/consultation/${id}/call`)}
+              style={{ ...primaryBtn, background: 'linear-gradient(135deg,#1930AA,#00AFEF)' }}
+            >
+              <RefreshCw size={14} /> Rejoin Call
+            </button>
+          )}
+          <button onClick={goToConsultations} style={ghostBtn}>
+            Back to Consultations
+          </button>
+        </div>
+
+        {!isCompleted && (
+          <p style={{ fontSize: 11, color: '#bbb', marginTop: 20 }}>
+            Waiting for doctor to complete the consultation…
+          </p>
+        )}
+      </div>
+    )
+  }
 
   /* ── Active call ── */
   return (
@@ -109,7 +220,7 @@ export default function VideoCallPage() {
       {/* Top bar */}
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10, display: 'flex', alignItems: 'center', padding: '10px 16px', background: 'linear-gradient(to bottom, rgba(0,0,0,0.7), transparent)', pointerEvents: 'none' }}>
         <button
-          onClick={endAndGoBack}
+          onClick={exitCall}
           style={{ pointerEvents: 'all', display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 10, border: 'none', background: 'rgba(255,255,255,0.12)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', backdropFilter: 'blur(6px)' }}
         >
           <ArrowLeft size={14} /> Exit
@@ -174,8 +285,23 @@ const overlay = {
   background: '#f0f4fa', fontFamily: 'var(--font)',
 }
 
+const primaryBtn = {
+  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+  padding: '12px 24px', borderRadius: 12, border: 'none',
+  color: '#fff', fontSize: 14, fontWeight: 700,
+  cursor: 'pointer', fontFamily: 'inherit', width: '100%',
+}
+
+const ghostBtn = {
+  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+  padding: '11px 24px', borderRadius: 12,
+  border: '1.5px solid rgba(0,0,0,0.12)', background: 'transparent',
+  color: '#555', fontSize: 13, fontWeight: 600,
+  cursor: 'pointer', fontFamily: 'inherit', width: '100%',
+}
+
 const backBtnStyle = {
-  padding: '10px 22px', borderRadius: 10, border: 'none',
+  marginTop: 20, padding: '10px 22px', borderRadius: 10, border: 'none',
   background: 'linear-gradient(135deg, #1930AA, #00AFEF)',
   color: '#fff', fontSize: 13, fontWeight: 700,
   cursor: 'pointer', fontFamily: 'inherit',

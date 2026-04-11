@@ -76,12 +76,16 @@ const notifIcon = (type) => {
 
 /* ─── Right pane (context / recommendations) ─── */
 const articles = [
-  { title: 'Understanding Chronic Headaches', source: 'MedLine Plus', tag: 'Article' },
-  { title: 'When to See a Doctor for Pain', source: 'WHO Guidelines', tag: 'Guide' },
+  { title: 'Understanding Chronic Headaches', source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/headache.html' },
+  { title: 'When to See a Doctor for Pain', source: 'WHO', tag: 'Guide', url: 'https://www.who.int/news-room/fact-sheets/detail/musculoskeletal-conditions' },
+  { title: 'Heart Disease Prevention Tips', source: 'Mayo Clinic', tag: 'Article', url: 'https://www.mayoclinic.org/diseases-conditions/heart-disease/in-depth/heart-disease-prevention/art-20046502' },
+  { title: 'Mental Health: Anxiety & Stress', source: 'NHS UK', tag: 'Guide', url: 'https://www.nhs.uk/mental-health/feelings-symptoms-behaviours/feelings-and-symptoms/anxiety-fear-panic/' },
 ]
 const videos = [
-  { title: 'Migraine Relief Exercises', channel: 'HEALTH+', duration: '8:24' },
-  { title: 'Stress Management 101', channel: 'MEDTALK', duration: '12:05' },
+  { title: 'Migraine Relief Exercises', channel: 'Bob & Brad', duration: '8:24', url: 'https://www.youtube.com/watch?v=mGLv_nFpNQo' },
+  { title: 'Stress Management 101', channel: 'Psych2Go', duration: '12:05', url: 'https://www.youtube.com/watch?v=hnpQrMqDoqE' },
+  { title: 'How to Lower Blood Pressure', channel: 'Cleveland Clinic', duration: '5:47', url: 'https://www.youtube.com/watch?v=RFvVWKC9vSY' },
+  { title: 'Yoga for Beginners – Full Body', channel: 'Yoga With Adriene', duration: '31:00', url: 'https://www.youtube.com/watch?v=v7AYKMP6rOE' },
 ]
 const tests = [
   { name: 'Complete Blood Count', urgency: 'routine' },
@@ -260,13 +264,21 @@ export default function AppLayout() {
     ? 'rgba(13,17,23,0.97)'
     : 'rgba(245,248,252,0.97)'
   const sidebarBg = darkMode ? '#161b22' : '#ffffff'
-  const rightPaneBg = darkMode ? 'rgba(22,27,34,0.9)' : 'rgba(240,246,255,0.7)'
+  const rightPaneBg = darkMode ? '#151c27' : '#eef3fb'
   const borderCol = darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'
   const cardBg = darkMode ? '#21262d' : '#f8fafc'
   const cardBorder = darkMode ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)'
 
   const dynRecentCard = { ...recentCard, background: cardBg, border: `1px solid ${cardBorder}` }
   const dynSymBtn = { ...symBtn, background: darkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)', border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}` }
+  const rightPaneCard = darkMode
+    ? { borderRadius: 10, padding: '10px', border: '1px solid rgba(255,255,255,0.09)', background: '#1e2530' }
+    : { borderRadius: 10, padding: '10px', border: '1px solid rgba(0,0,0,0.07)', background: '#ffffff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }
+  const sectionLabel = (color) => ({
+    fontSize: 10, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase',
+    color, display: 'flex', alignItems: 'center', gap: 5, margin: '0 0 8px',
+    paddingBottom: 6, borderBottom: `1px solid ${darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+  })
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--dark)', fontFamily: 'var(--font)' }}>
@@ -466,92 +478,125 @@ export default function AppLayout() {
 
         {/* ── RIGHT PANE — hidden for returning users and dashboard ── */}
         {!isReturningUser && <aside style={{
-          width: 240, flexShrink: 0, borderLeft: `1px solid ${borderCol}`,
-          background: rightPaneBg, overflowY: 'auto', padding: '16px 12px',
+          width: 240, flexShrink: 0, borderLeft: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(25,48,170,0.12)'}`,
+          background: rightPaneBg, overflowY: 'auto', padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: 16,
         }} className="hide-mobile">
 
-          <p style={{ ...panelLabel, color: 'var(--warn)' }}>AI Analysis</p>
-          <div style={{ ...dynRecentCard, marginBottom: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-              <span style={{ fontSize: 11, color: 'var(--cyan)', fontWeight: 600 }}>Condition Match</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--cyan)' }}>87.2%</span>
+          {/* AI Analysis */}
+          <div>
+            <p style={sectionLabel('#E08000')}><Activity size={11} />AI Analysis</p>
+            <div style={{ ...rightPaneCard, background: darkMode ? '#1e2530' : '#fffbf0', border: `1px solid ${darkMode ? 'rgba(255,179,0,0.15)' : 'rgba(224,128,0,0.18)'}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontSize: 11, color: '#E08000', fontWeight: 700 }}>Condition Match</span>
+                <span style={{ fontSize: 13, fontWeight: 800, color: '#E08000' }}>87.2%</span>
+              </div>
+              <div style={{ height: 4, borderRadius: 99, background: darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)', marginBottom: 8 }}>
+                <div style={{ width: '87.2%', height: '100%', borderRadius: 99, background: 'linear-gradient(90deg,#E08000,#FFB300)' }} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ fontSize: 10, color: 'var(--g500)' }}>Category</span>
+                <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--g300)' }}>Neurology</span>
+              </div>
+              <div style={{ display: 'flex', gap: 5 }}>
+                <span style={{ fontSize: 9, padding: '3px 8px', borderRadius: 50, background: 'rgba(0,188,212,0.14)', color: 'var(--cyan)', fontWeight: 600 }}>Headache</span>
+                <span style={{ fontSize: 9, padding: '3px 8px', borderRadius: 50, background: 'rgba(124,77,255,0.14)', color: 'var(--purple)', fontWeight: 600 }}>Tension</span>
+              </div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span style={{ fontSize: 11, color: 'var(--g700)' }}>Category</span>
-              <span style={{ fontSize: 11, color: 'var(--g400)' }}>Neurology</span>
+          </div>
+
+          {/* Recommended Doctors */}
+          <div>
+            <p style={sectionLabel('var(--cyan)')}><UserCheck size={11} />Recommended Doctors</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {recommendedDoctors.length === 0 ? (
+                <p style={{ fontSize: 11, color: 'var(--g500)', margin: 0 }}>No doctors available</p>
+              ) : recommendedDoctors.map((d, i) => (
+                <div key={d.id || i} style={{ ...rightPaneCard, cursor: 'pointer' }} onClick={() => navigate('/doctors')}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(0,188,212,0.35)'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = darkMode ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.07)'}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                    <p style={{ fontSize: 11, color: 'var(--g300)', fontWeight: 700, margin: 0 }}>{[d.first_name, d.last_name].filter(Boolean).join(' ')}</p>
+                    {d.rating > 0 && <span style={{ fontSize: 10, color: '#E08000', fontWeight: 700 }}>★ {Number(d.rating).toFixed(1)}</span>}
+                  </div>
+                  <p style={{ fontSize: 10, color: 'var(--cyan)', margin: 0, fontWeight: 600 }}>{d.specialization}</p>
+                  {d.experience_years > 0 && (
+                    <p style={{ fontSize: 9, color: 'var(--g500)', margin: '3px 0 0' }}>{d.experience_years} yrs exp</p>
+                  )}
+                </div>
+              ))}
             </div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <span style={{ fontSize: 9, padding: '3px 8px', borderRadius: 50, background: 'rgba(0,188,212,0.12)', color: 'var(--cyan)' }}>Headache</span>
-              <span style={{ fontSize: 9, padding: '3px 8px', borderRadius: 50, background: 'rgba(124,77,255,0.12)', color: 'var(--purple)' }}>Tension</span>
+          </div>
+
+          {/* Suggested Tests */}
+          <div>
+            <p style={sectionLabel('var(--purple)')}><TestTube size={11} />Suggested Tests</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {tests.map((t, i) => (
+                <div key={i} style={{ ...rightPaneCard, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 11, color: 'var(--g300)', fontWeight: 500 }}>{t.name}</span>
+                  <span style={{
+                    fontSize: 9, padding: '3px 8px', borderRadius: 50, fontWeight: 700,
+                    background: t.urgency === 'recommended' ? 'rgba(255,179,0,0.15)' : 'rgba(0,188,212,0.12)',
+                    color: t.urgency === 'recommended' ? '#E08000' : 'var(--cyan)',
+                  }}>{t.urgency}</span>
+                </div>
+              ))}
             </div>
           </div>
 
-          <p style={panelLabel}><UserCheck size={11} style={{ marginRight: 4 }} />Recommended Doctors</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
-            {recommendedDoctors.length === 0 ? (
-              <p style={{ fontSize: 11, color: 'var(--g700)', margin: 0, padding: '4px 0' }}>No doctors available</p>
-            ) : recommendedDoctors.map((d, i) => (
-              <div key={d.id || i} style={{ ...dynRecentCard, cursor: 'pointer' }} onClick={() => navigate('/doctors')}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                  <p style={{ fontSize: 11, color: 'var(--g300)', fontWeight: 600, margin: 0 }}>{[d.first_name, d.last_name].filter(Boolean).join(' ')}</p>
-                  {d.rating > 0 && <span style={{ fontSize: 10, color: 'var(--warn)' }}>★ {Number(d.rating).toFixed(1)}</span>}
-                </div>
-                <p style={{ fontSize: 10, color: 'var(--cyan)', margin: 0 }}>{d.specialization}</p>
-                {d.experience_years > 0 && (
-                  <p style={{ fontSize: 9, color: 'var(--g700)', margin: '2px 0 0' }}>{d.experience_years} yrs exp</p>
-                )}
-              </div>
-            ))}
+          {/* Nearby Clinic */}
+          <div>
+            <p style={sectionLabel('var(--ok)')}><MapPin size={11} />Nearby Clinic</p>
+            <div style={{ ...rightPaneCard, background: darkMode ? '#1a2a1e' : '#f0faf3', border: `1px solid ${darkMode ? 'rgba(0,200,83,0.15)' : 'rgba(0,200,83,0.18)'}`, height: 80, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+              <MapPin size={18} color='var(--ok)' />
+              <p style={{ fontSize: 10, color: 'var(--g500)', textAlign: 'center', margin: 0 }}>Map integration available</p>
+              <span style={{ fontSize: 10, color: 'var(--ok)', cursor: 'pointer', fontWeight: 600 }}>Enable location →</span>
+            </div>
           </div>
 
-          <p style={panelLabel}><TestTube size={11} style={{ marginRight: 4 }} />Suggested Tests</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
-            {tests.map((t, i) => (
-              <div key={i} style={{ ...dynRecentCard, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 11, color: 'var(--g400)' }}>{t.name}</span>
-                <span style={{
-                  fontSize: 9, padding: '2px 6px', borderRadius: 50, fontWeight: 600,
-                  background: t.urgency === 'recommended' ? 'rgba(255,179,0,0.12)' : 'rgba(0,188,212,0.1)',
-                  color: t.urgency === 'recommended' ? 'var(--warn)' : 'var(--cyan)',
-                }}>{t.urgency}</span>
-              </div>
-            ))}
+          {/* Health Articles */}
+          <div>
+            <p style={sectionLabel('var(--cyan)')}><FileText size={11} />Health Articles</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {articles.map((a, i) => (
+                <div key={i} style={{ ...rightPaneCard, cursor: 'pointer' }}
+                  onClick={() => window.open(a.url, '_blank', 'noopener,noreferrer')}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(0,188,212,0.35)'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = darkMode ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.07)'}
+                >
+                  <p style={{ fontSize: 11, color: 'var(--g300)', fontWeight: 600, marginBottom: 5, lineHeight: 1.4 }}>{a.title}</p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 9, color: 'var(--g500)' }}>{a.source}</span>
+                    <span style={{ fontSize: 9, padding: '2px 7px', borderRadius: 4, fontWeight: 700, background: 'rgba(0,188,212,0.12)', color: 'var(--cyan)' }}>{a.tag}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <p style={panelLabel}><MapPin size={11} style={{ marginRight: 4 }} />Nearby Clinic & Hospital</p>
-          <div style={{ ...dynRecentCard, height: 90, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, marginBottom: 16 }}>
-            <MapPin size={20} color='rgba(0,188,212,0.3)' />
-            <p style={{ fontSize: 10, color: 'var(--g700)', textAlign: 'center' }}>Map integration available</p>
-            <span style={{ fontSize: 10, color: 'var(--cyan)', cursor: 'pointer' }}>Enable location →</span>
+          {/* Medical Videos */}
+          <div>
+            <p style={sectionLabel('#7C3AED')}><Play size={11} />Medical Videos</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {videos.map((v, i) => (
+                <div key={i} style={{ ...rightPaneCard, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
+                  onClick={() => window.open(v.url, '_blank', 'noopener,noreferrer')}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(124,58,237,0.35)'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = darkMode ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.07)'}
+                >
+                  <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg, rgba(124,58,237,0.15), rgba(124,58,237,0.25))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Play size={12} color='#7C3AED' fill='#7C3AED' />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 11, color: 'var(--g300)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: 0 }}>{v.title}</p>
+                    <p style={{ fontSize: 9, color: 'var(--g500)', margin: '2px 0 0' }}>{v.channel} · {v.duration}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <p style={panelLabel}><FileText size={11} style={{ marginRight: 4 }} />Health Articles</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
-            {articles.map((a, i) => (
-              <div key={i} style={dynRecentCard}>
-                <p style={{ fontSize: 11, color: 'var(--g300)', fontWeight: 500, marginBottom: 4, lineHeight: 1.35 }}>{a.title}</p>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 9, color: 'var(--g700)' }}>{a.source}</span>
-                  <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 4, background: 'rgba(0,188,212,0.1)', color: 'var(--cyan)' }}>{a.tag}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <p style={panelLabel}><Play size={11} style={{ marginRight: 4 }} />Medical Videos</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
-            {videos.map((v, i) => (
-              <div key={i} style={{ ...dynRecentCard, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 30, height: 30, borderRadius: 6, background: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Play size={12} color='var(--cyan)' />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 11, color: 'var(--g300)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.title}</p>
-                  <p style={{ fontSize: 9, color: 'var(--g700)' }}>{v.channel} · {v.duration}</p>
-                </div>
-              </div>
-            ))}
-          </div>
         </aside>}
 
         {/* ── NOTIFICATIONS SIDEBAR ── */}
