@@ -44,6 +44,14 @@ export default function VideoCallPage() {
         const data = await res.json()
         setCallDetails(data)
         setConsultStatus(data.status)
+
+        // Record first patient join
+        if (data.role !== 'doctor') {
+          fetch(`${API_BASE}/consultation/${id}/patient-join`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+          }).catch(() => {})
+        }
       } catch (e) {
         setError(e.message || 'Could not load call details.')
       } finally {

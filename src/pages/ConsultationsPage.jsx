@@ -32,6 +32,7 @@ function mapRow(c) {
     datetime:        c.scheduled_at || c.created_at,
     completedAt:     c.completed_at,
     startedAt:       c.started_at,
+    patientJoinedAt: c.patient_joined_at || null,
     durationMin:     c.duration_minutes,
     status:          normaliseStatus(c.status),
     rawStatus:       c.status,
@@ -269,12 +270,14 @@ function DetailDrawer({ c, onClose }) {
                   style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#1930AA,#00AFEF)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                   <Video size={16} /> Join Video Call
                 </button>
-                <button
-                  type="button"
-                  onClick={() => navigate(`/consultation/${c.id}/call`)}
-                  style={{ width: '100%', padding: '14px', borderRadius: 12, border: '1.5px solid #059669', background: 'transparent', color: '#059669', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                  <RefreshCw size={16} /> Rejoin Call
-                </button>
+                {c.patientJoinedAt && (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/consultation/${c.id}/call`)}
+                    style={{ width: '100%', padding: '14px', borderRadius: 12, border: '1.5px solid #059669', background: 'transparent', color: '#059669', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                    <RefreshCw size={16} /> Rejoin Call
+                  </button>
+                )}
               </>
             )}
             {(c.rawStatus === 'scheduled' || c.rawStatus === 'ongoing') && c.consultType !== 'video' && (
@@ -499,12 +502,14 @@ export default function ConsultationsPage() {
                           style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#1930AA,#00AFEF)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
                           <Video size={14} /> Join Video Call
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/consultation/${c.id}/call`)}
-                          style={{ padding: '10px 18px', borderRadius: 10, border: '1.5px solid #059669', background: 'transparent', color: '#059669', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-                          <RefreshCw size={14} /> Rejoin Call
-                        </button>
+                        {c.patientJoinedAt && (
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/consultation/${c.id}/call`)}
+                            style={{ padding: '10px 18px', borderRadius: 10, border: '1.5px solid #059669', background: 'transparent', color: '#059669', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                            <RefreshCw size={14} /> Rejoin Call
+                          </button>
+                        )}
                       </>
                     )}
                     {(c.rawStatus === 'scheduled' || c.rawStatus === 'ongoing') && c.consultType !== 'video' && (

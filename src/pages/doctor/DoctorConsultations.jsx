@@ -357,9 +357,11 @@ export default function DoctorConsultations() {
                             <Video size={13} /> {actionLoading === c.id ? 'Joining…' : 'Join Video Call'}
                           </button>
                         )}
-                        <button onClick={() => handleComplete(c)} disabled={actionLoading === `complete-${c.id}`} style={{ ...actionBtn, color: '#fff', borderColor: '#059669', background: '#059669' }}>
-                          <CheckCircle size={13} /> {actionLoading === `complete-${c.id}` ? 'Completing…' : 'Complete Consultation'}
-                        </button>
+                        {c.status === 'ongoing' && (
+                          <button onClick={() => handleComplete(c)} disabled={actionLoading === `complete-${c.id}`} style={{ ...actionBtn, color: '#fff', borderColor: '#059669', background: '#059669' }}>
+                            <CheckCircle size={13} /> {actionLoading === `complete-${c.id}` ? 'Completing…' : 'Complete Consultation'}
+                          </button>
+                        )}
                         <button onClick={() => setScheduleFor(c)} style={{ ...actionBtn, color: 'var(--cyan)', borderColor: 'var(--cyan)', background: 'rgba(0,188,212,0.06)' }}>
                           <Calendar size={13} /> Reschedule
                         </button>

@@ -3,7 +3,6 @@ import { Search, MapPin, Star, Stethoscope, Video, RefreshCw } from 'lucide-reac
 import { useNavigate } from 'react-router-dom'
 import { supabase } from './supabase'
 import ComingSoonModal from '../components/ComingSoonModal'
-import TimeSlotPicker from '../components/TimeSlotPicker'
 import { useBreakpoint } from '../hooks/useBreakpoint'
 import { formatSpecialty } from '../utils/labels'
 
@@ -48,7 +47,6 @@ export default function DoctorsPage() {
   const [query, setQuery]               = useState('')
   const [specialization, setSpecialization] = useState('All')
   const [comingSoon,      setComingSoon]      = useState(null)
-  const [slotPickerDoc,   setSlotPickerDoc]   = useState(null) // doctor for slot picker popup
 
   const loadDoctors = async () => {
     setLoading(true)
@@ -193,7 +191,7 @@ export default function DoctorsPage() {
 
                     <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
                       <button
-                        onClick={() => d.available_status === 'available' ? setSlotPickerDoc(d) : null}
+                        onClick={() => d.available_status === 'available' ? navigate('/book-appointment', { state: { preSelectedDoctor: d, videoConsultation: true } }) : null}
                         style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: 'none', background: d.available_status === 'available' ? 'linear-gradient(135deg, #1930AA, #00AFEF)' : 'rgba(0,0,0,0.06)', color: d.available_status === 'available' ? '#fff' : '#9E9E9E', fontSize: 13, fontWeight: 600, cursor: d.available_status === 'available' ? 'pointer' : 'not-allowed', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                         <Video size={15} /> {d.available_status === 'available' ? 'Book Video' : 'Unavailable'}
                       </button>
@@ -219,18 +217,6 @@ export default function DoctorsPage() {
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       {comingSoon && <ComingSoonModal feature={comingSoon} onClose={() => setComingSoon(null)} />}
-      {slotPickerDoc && (
-        <TimeSlotPicker
-          doctor={slotPickerDoc}
-          onClose={() => setSlotPickerDoc(null)}
-          onConfirm={(slot) => {
-            setSlotPickerDoc(null)
-            navigate('/book-appointment', {
-              state: { preSelectedDoctor: slotPickerDoc, videoConsultation: true, selectedSlot: slot },
-            })
-          }}
-        />
-      )}
     </div>
   )
 }
