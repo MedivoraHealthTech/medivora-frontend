@@ -13,6 +13,8 @@ import Logo from '../components/Logo'
 import ComingSoonModal from '../components/ComingSoonModal'
 import { useBreakpoint } from '../hooks/useBreakpoint'
 
+const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
+
 function useReveal() {
   const ref = useRef(null)
   const [v, setV] = useState(false)
@@ -474,7 +476,7 @@ export default function HomePage() {
   const { isMobile, isTablet } = useBreakpoint()
 
   useEffect(() => {
-    fetch('/api/faqs')
+    fetch(`${API_BASE}/faqs`)
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then(data => { if (data.length) setFaqs(data) })
       .catch(() => { /* keep hardcoded fallback */ })
