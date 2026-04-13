@@ -129,7 +129,8 @@ export default function AppLayout() {
 
   /* ── If a pre-login chat is pending restore, send the user to /chat ── */
   useEffect(() => {
-    if (pendingChatRestore && location.pathname !== '/chat') {
+    const hasPaymentError = new URLSearchParams(location.search).has('payment_error')
+    if (pendingChatRestore && location.pathname !== '/chat' && !hasPaymentError) {
       navigate('/chat', { replace: true })
     }
   }, [pendingChatRestore]) // eslint-disable-line react-hooks/exhaustive-deps

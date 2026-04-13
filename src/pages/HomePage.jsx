@@ -13,8 +13,6 @@ import Logo from '../components/Logo'
 import ComingSoonModal from '../components/ComingSoonModal'
 import { useBreakpoint } from '../hooks/useBreakpoint'
 
-const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
-
 function useReveal() {
   const ref = useRef(null)
   const [v, setV] = useState(false)
@@ -444,7 +442,7 @@ function FlowCard({ steps, cta, ctaTo, onCtaClick, side }) {
       {steps.map((s, i) => (
         <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 0', borderBottom: i < steps.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, paddingTop: 2 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: `${s.color}14`, border: `1px solid ${s.color}28`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <s.icon size={17} color={s.color} />
             </div>
             {i < steps.length - 1 && <div style={{ width: 1, height: 22, background: 'var(--g800)', marginTop: 6 }} />}
@@ -476,7 +474,7 @@ export default function HomePage() {
   const { isMobile, isTablet } = useBreakpoint()
 
   useEffect(() => {
-    fetch(`${API_BASE}/faqs`)
+    fetch('/api/faqs')
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then(data => { if (data.length) setFaqs(data) })
       .catch(() => { /* keep hardcoded fallback */ })
@@ -594,8 +592,8 @@ export default function HomePage() {
             {/* Patient card */}
             <Rv delay={0.05}>
               <div style={{ borderRadius: 20, overflow: 'hidden', background: '#fafbff', border: '1px solid rgba(0,188,212,0.2)' }}>
-                <div style={{ padding: '24px 24px 18px', borderBottom: '1px solid rgba(0,0,0,0.06)', background: 'linear-gradient(135deg,rgba(21,101,192,0.1),rgba(0,188,212,0.06))' }}>
-                  <Tag color="var(--cyan)">Patient Flow</Tag>
+                <div style={{ padding: '24px 24px 18px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--cyan)' }}>Patient Flow</span>
                   <h3 style={{ fontSize: 22, fontWeight: 800, color: 'var(--g300)', margin: '12px 0 6px', fontFamily: 'var(--serif)' }}>Symptom to Cure</h3>
                   <p style={{ fontSize: 13, color: 'var(--g500)', margin: 0 }}>Login once — AI handles the rest. Symptom intake to prescription in minutes.</p>
                 </div>
@@ -605,8 +603,8 @@ export default function HomePage() {
             {/* Doctor card */}
             <Rv delay={0.12}>
               <div style={{ borderRadius: 20, overflow: 'hidden', background: '#fafbff', border: '1px solid rgba(124,77,255,0.2)' }}>
-                <div style={{ padding: '24px 24px 18px', borderBottom: '1px solid rgba(0,0,0,0.06)', background: 'linear-gradient(135deg,rgba(124,77,255,0.1),rgba(92,53,204,0.06))' }}>
-                  <Tag color="#7C4DFF">Doctor Flow</Tag>
+                <div style={{ padding: '24px 24px 18px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7C4DFF' }}>Doctor Flow</span>
                   <h3 style={{ fontSize: 22, fontWeight: 800, color: 'var(--g300)', margin: '12px 0 6px', fontFamily: 'var(--serif)' }}>Practice Smarter</h3>
                   <p style={{ fontSize: 13, color: 'var(--g500)', margin: 0 }}>Join India's verified doctor network. AI pre-triages — you focus on care.</p>
                 </div>
