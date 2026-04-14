@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { CheckCircle, ArrowLeft, Video, Stethoscope, Calendar, ShieldCheck, ClipboardList } from 'lucide-react'
 import { supabase } from './supabase'
@@ -20,7 +20,6 @@ function stripDr(name = '') { return name.replace(/^Dr\.?\s*/i, '').trim() }
 export default function PaymentPage() {
   const navigate  = useNavigate()
   const location  = useLocation()
-  const formRef   = useRef(null)
 
   const params = new URLSearchParams(location.search)
   const isSuccess  = params.get('success') === 'true'
@@ -28,7 +27,7 @@ export default function PaymentPage() {
   const isError    = params.get('error') || ''
 
   // Booking state passed from BookAppointment (may be null for Razorpay callback)
-  const { doctor: stateDoctor, videoConsultation: stateVideo, fee, gst, total } = location.state || {}
+  const { doctor: stateDoctor, videoConsultation: stateVideo, fee, total } = location.state || {}
 
   // Recover doctor from sessionStorage (set by BookAppointment before payment redirect)
   const savedDoctor = (() => { try { return JSON.parse(sessionStorage.getItem('medivora_booking_doctor') || 'null') } catch { return null } })()
@@ -38,7 +37,6 @@ export default function PaymentPage() {
 
   const [loading,          setLoading]          = useState(false)
   const [error,            setError]            = useState(isError ? 'Payment could not be verified. Please try again.' : '')
-  const [formFields,       setFormFields]       = useState(null)  // set when order is ready to submit
   const [showMedicalForm,  setShowMedicalForm]  = useState(false)
   const [showSlotPicker,   setShowSlotPicker]   = useState(false)
   const [slotSaved,        setSlotSaved]        = useState(false)
@@ -49,13 +47,6 @@ export default function PaymentPage() {
   const specs   = doctor?.specialties?.length
     ? doctor.specialties
     : [doctor?.specialization || 'General Physician']
-
-  // Auto-submit form when fields are ready
-  useEffect(() => {
-    if (formFields && formRef.current) {
-      formRef.current.submit()
-    }
-  }, [formFields])
 
   // Redirect back if no booking state and not a success/error callback
   useEffect(() => {
@@ -131,6 +122,17 @@ export default function PaymentPage() {
     setLoading(true)
     setError('')
     try {
+      // Load Razorpay checkout.js if not already loaded
+      if (!window.Razorpay) {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+          script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+          script.onload = resolve
+          script.onerror = () => reject(new Error('Failed to load payment gateway'))
+          document.body.appendChild(script)
+        })
+      }
+
       const token = await getAuthToken()
       const res = await fetch(`${API_BASE}/payments/create-hosted-order`, {
         method: 'POST',
@@ -139,7 +141,7 @@ export default function PaymentPage() {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
-          amount:            total * 100,   // paise
+          amount:            total * 100,
           doctor_id:         doctor.id,
           doctor_name:       docName,
           specialty:         (doctor.specialties?.[0] || doctor.specialization || 'general_medicine'),
@@ -153,7 +155,58 @@ export default function PaymentPage() {
         throw new Error(err.detail || 'Could not create payment order')
       }
       const fields = await res.json()
-      setFormFields(fields)   // triggers useEffect → form.submit()
+
+      const rzp = new window.Razorpay({
+        key:         fields.key_id,
+        amount:      fields.amount,
+        currency:    fields.currency,
+        name:        fields.name,
+        description: fields.description,
+        order_id:    fields.order_id,
+        prefill: {
+          name:    fields['prefill[name]']    || '',
+          contact: fields['prefill[contact]'] || '',
+          email:   fields['prefill[email]']   || 'user@medivora.in',
+        },
+        theme: { color: '#1930AA' },
+        modal: {
+          ondismiss: () => setLoading(false),
+        },
+        handler: async (response) => {
+          try {
+            const verifyRes = await fetch(`${API_BASE}/payments/verify`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+              },
+              body: JSON.stringify({
+                razorpay_order_id:   response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature:  response.razorpay_signature,
+                doctor_id:           doctor.id,
+                specialty:           (doctor.specialties?.[0] || doctor.specialization || 'general_medicine'),
+                scheduled_at:        slot?.iso || '',
+                consultation_type:   videoConsultation ? 'video' : 'in_person',
+                patient_note:        `Consultation with Dr. ${docName}`,
+              }),
+            })
+            if (!verifyRes.ok) {
+              const err = await verifyRes.json().catch(() => ({}))
+              setError(err.detail || 'Payment verification failed. Please contact support.')
+              setLoading(false)
+              return
+            }
+            const { session_id } = await verifyRes.json()
+            navigate(`/payment?success=true&session_id=${session_id}`, { replace: true })
+          } catch {
+            setError('Payment verification failed. Please contact support.')
+            setLoading(false)
+          }
+        },
+      })
+      rzp.open()
+      setLoading(false)
     } catch (err) {
       setError(err.message || 'Payment could not be initiated. Please try again.')
       setLoading(false)
@@ -410,7 +463,6 @@ export default function PaymentPage() {
                 {[
                   { label: videoConsultation ? 'Video Consultation Fee' : 'Consultation Fee', value: `₹${fee}` },
                   { label: 'Platform Fee',  value: '₹0' },
-                  { label: 'GST (18%)',     value: `₹${gst}` },
                 ].map(({ label, value }) => (
                   <div key={label} style={{
                     display: 'flex', justifyContent: 'space-between',
@@ -477,7 +529,7 @@ export default function PaymentPage() {
               }}
             >
               {loading
-                ? 'Redirecting…'
+                ? 'Loading…'
                 : IS_DEV
                   ? `Confirm Booking (Dev)`
                   : `Pay ₹${total} via Razorpay`
@@ -500,26 +552,12 @@ export default function PaymentPage() {
             {!IS_DEV && (
               <p style={{ fontSize: 11, color: '#bbb', textAlign: 'center', marginTop: 16, lineHeight: 1.5 }}>
                 By proceeding you agree to Razorpay's Terms of Service.
-                You will be redirected to Razorpay's secure payment page.
               </p>
             )}
           </div>
         </div>
       </div>
 
-      {/* Hidden form submitted to Razorpay hosted checkout */}
-      {formFields && (
-        <form
-          ref={formRef}
-          action="https://api.razorpay.com/v1/checkout/embedded"
-          method="POST"
-          style={{ display: 'none' }}
-        >
-          {Object.entries(formFields).map(([key, val]) => (
-            <input key={key} type="hidden" name={key} value={val ?? ''} />
-          ))}
-        </form>
-      )}
     </div>
   )
 }

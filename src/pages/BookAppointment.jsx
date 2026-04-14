@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, Star, MapPin, Clock, IndianRupee, Stethoscope, Video, CheckCircle, CreditCard } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -67,7 +67,6 @@ export default function BookAppointment() {
   const { isMobile } = useBreakpoint()
   const navigate  = useNavigate()
   const location  = useLocation()
-  const formRef   = useRef(null)
   useAuth()
 
   const recommendedSpecialty = resolveSpecialty(location.state)
@@ -79,17 +78,14 @@ export default function BookAppointment() {
   const [selectedDoctor, setSelectedDoctor] = useState(preSelectedDoctor || null)
   const [paying,          setPaying]          = useState(false)
   const [payError,        setPayError]        = useState(null)
-  const [formFields,      setFormFields]      = useState(null)
   const [promoCode,       setPromoCode]       = useState('')
   const [promoApplied,    setPromoApplied]    = useState(null)  // { discount_percent, discount_amount, description }
   const [promoError,      setPromoError]      = useState(null)
   const [promoLoading,    setPromoLoading]    = useState(false)
 
   const fee            = selectedDoctor?.consultation_fee || 500
-  const gst            = Math.round(fee * 0.18)
-  const baseTotal      = fee + gst
-  const discountAmount = promoApplied ? Math.round(baseTotal * promoApplied.discount_percent / 100) : 0
-  const total          = baseTotal - discountAmount
+  const discountAmount = promoApplied ? Math.round(fee * promoApplied.discount_percent / 100) : 0
+  const total          = fee - discountAmount
 
   // Show error from Razorpay cancel redirect, then clean up the URL
   useEffect(() => {
@@ -100,38 +96,7 @@ export default function BookAppointment() {
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Clear Razorpay URL from browser history when user returns via Back button.
-  // Two cases:
-  //   1. Normal reload  — bfcache disabled, useEffect runs fresh
-  //   2. bfcache restore — page thaws without re-running JS; we need pageshow
-  useEffect(() => {
-    function clearRazorpayHistory() {
-      if (sessionStorage.getItem('razorpay_pending')) {
-        sessionStorage.removeItem('razorpay_pending')
-        // pushState clears all forward entries (Razorpay URL gone from history)
-        window.history.pushState(null, '', window.location.href)
-      }
-      // Also reset frozen UI state so the Pay button isn't stuck on "Redirecting…"
-      setPaying(false)
-      setFormFields(null)
-    }
 
-    // Case 1: normal mount after full reload
-    clearRazorpayHistory()
-
-    // Case 2: bfcache thaw (e.persisted === true)
-    const onPageShow = (e) => { if (e.persisted) clearRazorpayHistory() }
-    window.addEventListener('pageshow', onPageShow)
-    return () => window.removeEventListener('pageshow', onPageShow)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Auto-submit Razorpay hosted checkout form once fields are ready
-  useEffect(() => {
-    if (formFields && formRef.current) {
-      sessionStorage.setItem('razorpay_pending', '1')
-      formRef.current.submit()
-    }
-  }, [formFields])
 
   /* ─── Fetch doctors with auth token ─── */
   useEffect(() => {
@@ -188,6 +153,15 @@ export default function BookAppointment() {
         const { session_id } = await res.json()
         navigate(`/payment?success=true&session_id=${session_id || ''}`, { replace: true })
       } else {
+        if (!window.Razorpay) {
+          await new Promise((resolve, reject) => {
+            const script = document.createElement('script')
+            script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+            script.onload = resolve
+            script.onerror = () => reject(new Error('Failed to load payment gateway'))
+            document.body.appendChild(script)
+          })
+        }
         const res = await fetch(`${API_BASE}/payments/create-hosted-order`, {
           method: 'POST', headers,
           body: JSON.stringify({
@@ -200,7 +174,48 @@ export default function BookAppointment() {
           }),
         })
         if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Could not initiate payment') }
-        setFormFields(await res.json())   // triggers useEffect → form.submit()
+        const fields = await res.json()
+        const rzp = new window.Razorpay({
+          key:         fields.key_id,
+          amount:      fields.amount,
+          currency:    fields.currency,
+          name:        fields.name,
+          description: fields.description,
+          order_id:    fields.order_id,
+          prefill: {
+            name:    fields['prefill[name]']    || '',
+            contact: fields['prefill[contact]'] || '',
+            email:   fields['prefill[email]']   || 'user@medivora.in',
+          },
+          theme: { color: '#1930AA' },
+          modal: {
+            ondismiss: () => setPaying(false),
+          },
+          handler: async (response) => {
+            try {
+              const verifyRes = await fetch(`${API_BASE}/payments/verify`, {
+                method: 'POST', headers,
+                body: JSON.stringify({
+                  razorpay_order_id:   response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature:  response.razorpay_signature,
+                  doctor_id:           selectedDoctor.id,
+                  specialty:           selectedDoctor.specialties?.[0] || selectedDoctor.specialization || 'general_medicine',
+                  consultation_type:   videoConsultation ? 'video' : 'in_person',
+                  patient_note:        `Consultation with Dr. ${docName}`,
+                }),
+              })
+              if (!verifyRes.ok) { const e = await verifyRes.json().catch(() => ({})); throw new Error(e.detail || 'Payment verification failed') }
+              const { session_id } = await verifyRes.json()
+              navigate(`/payment?success=true&session_id=${session_id}`, { replace: true })
+            } catch (err) {
+              setPayError(err.message || 'Payment verification failed. Please contact support.')
+              setPaying(false)
+            }
+          },
+        })
+        rzp.open()
+        setPaying(false)
       }
     } catch (err) {
       setPayError(err.message || 'Payment could not be initiated. Please try again.')
@@ -408,7 +423,6 @@ export default function BookAppointment() {
                     {[
                       { label: videoConsultation ? 'Video Consultation Fee' : 'Consultation Fee', value: `₹${fee}` },
                       { label: 'Platform Fee', value: '₹0' },
-                      { label: 'GST (18%)',    value: `₹${gst}` },
                     ].map(({ label, value }) => (
                       <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#666', marginBottom: 8 }}>
                         <span>{label}</span>
@@ -428,7 +442,7 @@ export default function BookAppointment() {
                       <span>Total</span>
                       <div style={{ textAlign: 'right' }}>
                         {promoApplied && (
-                          <div style={{ fontSize: 11, color: '#aaa', textDecoration: 'line-through', fontWeight: 400 }}>₹{baseTotal}</div>
+                          <div style={{ fontSize: 11, color: '#aaa', textDecoration: 'line-through', fontWeight: 400 }}>₹{fee}</div>
                         )}
                         <span style={{ color: '#1930AA' }}>₹{total}</span>
                       </div>
@@ -515,7 +529,7 @@ export default function BookAppointment() {
                   transition: 'all 0.2s',
                 }}
               >
-                {paying ? 'Redirecting…' : !selectedDoctor ? 'Select a Doctor' : `Pay ₹${total}`}
+                {paying ? 'Loading…' : !selectedDoctor ? 'Select a Doctor' : `Pay ₹${total}`}
               </button>
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 12 }}>
@@ -532,20 +546,7 @@ export default function BookAppointment() {
       </div>
     </div>
 
-    {/* Hidden form auto-submitted to Razorpay hosted checkout */}
-    {formFields && (
-      <form
-        ref={formRef}
-        action="https://api.razorpay.com/v1/checkout/embedded"
-        method="POST"
-        style={{ display: 'none' }}
-      >
-        {Object.entries(formFields).map(([key, val]) => (
-          <input key={key} type="hidden" name={key} value={val ?? ''} />
-        ))}
-      </form>
-    )}
 
-    </>
+</>
   )
 }
