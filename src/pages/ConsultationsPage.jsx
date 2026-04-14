@@ -174,6 +174,7 @@ function PaymentModal({ consultation, token, onSuccess, onClose }) {
 /* ── Detail Drawer ───────────────────────────────────── */
 function DetailDrawer({ c, onClose }) {
   const { isMobile } = useBreakpoint()
+  const navigate = useNavigate()
   if (!c) return null
   return (
     <>

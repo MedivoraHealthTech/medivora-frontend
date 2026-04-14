@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { ArrowLeft, Video, AlertCircle, Loader, CheckCircle, FileText, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Video, AlertCircle, Loader, CheckCircle, FileText, RefreshCw, ClipboardList } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import MedicalInfoModal from '../components/MedicalInfoModal'
 
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
 
@@ -27,6 +28,7 @@ export default function VideoCallPage() {
   // Patient-side states
   const [consultStatus, setConsultStatus]     = useState(null)
   const pollRef                               = useRef(null)
+  const [showMedicalModal, setShowMedicalModal] = useState(false)
 
   // ── Fetch call details ─────────────────────────────────────────
   useEffect(() => {
@@ -199,10 +201,21 @@ export default function VideoCallPage() {
               <RefreshCw size={14} /> Rejoin Call
             </button>
           )}
+          <button
+            onClick={() => setShowMedicalModal(true)}
+            style={{ ...primaryBtn, background: 'linear-gradient(135deg,#059669,#10b981)' }}>
+            <ClipboardList size={14} /> Fill Medical Information
+          </button>
           <button onClick={goToConsultations} style={ghostBtn}>Back to Consultations</button>
         </div>
         {!isCompleted && (
           <p style={{ fontSize: 11, color: '#bbb', marginTop: 20 }}>Waiting for doctor to complete the consultation…</p>
+        )}
+        {showMedicalModal && (
+          <MedicalInfoModal
+            onClose={() => setShowMedicalModal(false)}
+            onSaved={() => setShowMedicalModal(false)}
+          />
         )}
       </div>
     )

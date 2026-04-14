@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, Heart, User, Phone, Stethoscope, Leaf } from 'lucide-react'
 import { supabase } from '../pages/supabase'
 
@@ -70,9 +70,17 @@ function Toggle({ label, checked, onChange }) {
   )
 }
 
+// Arrays stored in DB come back as arrays; join them for the textarea
+function arrToStr(val) {
+  if (!val) return ''
+  if (Array.isArray(val)) return val.filter(Boolean).join(', ')
+  return String(val)
+}
+
 export default function MedicalInfoModal({ onClose, onSaved }) {
-  const [saving, setSaving] = useState(false)
-  const [error,  setError]  = useState(null)
+  const [saving,       setSaving]       = useState(false)
+  const [loadingData,  setLoadingData]  = useState(true)
+  const [error,        setError]        = useState(null)
 
   const [form, setForm] = useState({
     blood_group: '',
@@ -92,6 +100,40 @@ export default function MedicalInfoModal({ onClose, onSaved }) {
   })
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }))
+
+  // Fetch existing medical info and pre-fill the form
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const auth = await getAuthUser()
+        if (!auth) return
+        const res = await fetch(`${API_BASE}/auth/user/${auth.userId}`, {
+          headers: { Authorization: `Bearer ${auth.token}` },
+        })
+        if (!res.ok) return
+        const { user } = await res.json()
+        if (!user) return
+        setForm(f => ({
+          ...f,
+          blood_group:                user.blood_group                || '',
+          height:                     user.height_cm != null           ? String(user.height_cm) : '',
+          weight:                     user.weight_kg != null           ? String(user.weight_kg) : '',
+          emergency_contact_name:     user.emergency_contact_name     || '',
+          emergency_contact_number:   user.emergency_contact_phone    || '',
+          emergency_contact_relation: user.emergency_contact_relation || '',
+          medical_history:            arrToStr(user.medical_history),
+          allergies:                  arrToStr(user.allergies),
+          current_medications:        arrToStr(user.current_medications),
+          chronic_conditions:         arrToStr(user.chronic_conditions),
+          is_smoker:       Boolean(user.is_smoker),
+          is_alcohol_user: Boolean(user.is_alcohol_user),
+          is_pregnant:     Boolean(user.is_pregnant),
+          is_nursing:      Boolean(user.is_nursing),
+        }))
+      } catch { /* non-critical — form stays empty */ }
+      finally { setLoadingData(false) }
+    })()
+  }, [])
 
   const handleSave = async () => {
     setSaving(true)
@@ -182,6 +224,12 @@ export default function MedicalInfoModal({ onClose, onSaved }) {
 
         {/* Body — scrollable */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+          {loadingData && (
+            <div style={{ textAlign: 'center', padding: '32px 0', color: '#aaa', fontSize: 13 }}>
+              Loading your health profile…
+            </div>
+          )}
+          {!loadingData && <>
 
           {/* Vitals */}
           <SectionHeader icon={Stethoscope} label="Vitals" />
@@ -292,6 +340,7 @@ export default function MedicalInfoModal({ onClose, onSaved }) {
               {error}
             </div>
           )}
+          </>}
         </div>
 
         {/* Footer */}
@@ -311,7 +360,7 @@ export default function MedicalInfoModal({ onClose, onSaved }) {
           </button>
           <button
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || loadingData}
             style={{
               flex: 2, padding: '11px 0', borderRadius: 10, fontSize: 13, fontWeight: 700,
               border: 'none', cursor: saving ? 'default' : 'pointer', fontFamily: 'inherit',
