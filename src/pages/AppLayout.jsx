@@ -81,12 +81,14 @@ const articles = [
   { title: 'Heart Disease Prevention Tips', source: 'Mayo Clinic', tag: 'Article', url: 'https://www.mayoclinic.org/diseases-conditions/heart-disease/in-depth/heart-disease-prevention/art-20046502' },
   { title: 'Mental Health: Anxiety & Stress', source: 'NHS UK', tag: 'Guide', url: 'https://www.nhs.uk/mental-health/feelings-symptoms-behaviours/feelings-and-symptoms/anxiety-fear-panic/' },
 ]
+
 const videos = [
   { title: 'Migraine Relief Exercises', channel: 'Bob & Brad', duration: '10:36', url: 'https://www.youtube.com/watch?v=mortZm5BeUs' },
   { title: 'Stress Management 101', channel: 'Psych2Go', duration: '12:05', url: 'https://www.youtube.com/watch?v=hnpQrMqDoqE' },
   { title: 'How to Lower Blood Pressure', channel: 'Cleveland Clinic', duration: '3:18', url: 'https://www.youtube.com/watch?v=7i29Dx77JD8' },
   { title: 'Yoga for Beginners – Full Body', channel: 'Yoga With Adriene', duration: '31:00', url: 'https://www.youtube.com/watch?v=v7AYKMP6rOE' },
 ]
+
 const tests = [
   { name: 'Complete Blood Count', urgency: 'routine' },
   { name: 'MRI Brain Scan', urgency: 'recommended' },
