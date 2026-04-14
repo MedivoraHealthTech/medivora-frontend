@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { JitsiMeeting } from '@jitsi/react-sdk'
 import { ArrowLeft, Video, AlertCircle, Loader, CheckCircle, FileText, RefreshCw } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
@@ -12,28 +11,31 @@ export default function VideoCallPage() {
   const location = useLocation()
   const { getToken, initialized } = useAuth()
 
-  // Derive role from the URL — doctor always comes via /doctor/consultation/:id/call
   const isDoctor = location.pathname.startsWith('/doctor/')
 
-  const [callDetails, setCallDetails]       = useState(null)
-  const [loading, setLoading]               = useState(true)
-  const [error, setError]                   = useState('')
-  const [ended, setEnded]                   = useState(false)
+  const iframeRef = useRef(null)
+
+  const [callDetails, setCallDetails]         = useState(null)
+  const [loading, setLoading]                 = useState(true)
+  const [error, setError]                     = useState('')
+  const [ended, setEnded]                     = useState(false)
 
   // Doctor-side states
-  const [completing, setCompleting]         = useState(false)
+  const [completing, setCompleting]           = useState(false)
   const [doctorCompleted, setDoctorCompleted] = useState(false)
 
   // Patient-side states
-  const [consultStatus, setConsultStatus]   = useState(null)
-  const pollRef                             = useRef(null)
+  const [consultStatus, setConsultStatus]     = useState(null)
+  const pollRef                               = useRef(null)
 
+  // ── Fetch call details ─────────────────────────────────────────
   useEffect(() => {
     if (!initialized) return
     ;(async () => {
       try {
         const token = getToken()
         if (!token) { setError('Please log in to join the call.'); setLoading(false); return }
+
         const res = await fetch(`${API_BASE}/consultation/${id}/call-details`, {
           headers: { Authorization: `Bearer ${token}` },
         })
@@ -45,7 +47,6 @@ export default function VideoCallPage() {
         setCallDetails(data)
         setConsultStatus(data.status)
 
-        // Record first patient join
         if (data.role !== 'doctor') {
           fetch(`${API_BASE}/consultation/${id}/patient-join`, {
             method: 'POST',
@@ -60,7 +61,22 @@ export default function VideoCallPage() {
     })()
   }, [id, initialized])
 
-  // Poll consultation status on patient's ended screen until doctor completes
+  // ── Detect leave via Daily's postMessage ───────────────────────
+  // Daily's prebuilt UI sends window.postMessage({action:'left-meeting'})
+  // when the participant clicks the Leave button inside the iframe.
+  useEffect(() => {
+    if (!callDetails) return
+    const handler = (e) => {
+      try {
+        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data
+        if (data?.action === 'left-meeting') setEnded(true)
+      } catch { /* malformed message — ignore */ }
+    }
+    window.addEventListener('message', handler)
+    return () => window.removeEventListener('message', handler)
+  }, [callDetails])
+
+  // ── Poll consultation status on patient's ended screen ─────────
   useEffect(() => {
     if (!ended || isDoctor) return
 
@@ -80,18 +96,15 @@ export default function VideoCallPage() {
 
     pollRef.current = setInterval(poll, 4000)
     return () => clearInterval(pollRef.current)
-  }, [ended, callDetails?.role, id, getToken])
+  }, [ended, id, getToken])
 
-  // When call ends — do NOT update status, just show the post-call screen
-  const handleReadyToClose = useCallback(() => {
-    setEnded(true)
-  }, [])
-
+  // Clicking our "Exit" button: blank the iframe (disconnects from Daily)
+  // and show the ended screen.
   const exitCall = useCallback(() => {
+    if (iframeRef.current) iframeRef.current.src = 'about:blank'
     setEnded(true)
   }, [])
 
-  // Doctor: mark consultation as completed
   const handleComplete = useCallback(async () => {
     setCompleting(true)
     try {
@@ -102,7 +115,6 @@ export default function VideoCallPage() {
       })
       setDoctorCompleted(true)
     } catch {
-      // Best-effort; still proceed
       setDoctorCompleted(true)
     } finally {
       setCompleting(false)
@@ -135,12 +147,8 @@ export default function VideoCallPage() {
   if (ended && isDoctor) return (
     <div style={overlay}>
       <div style={{ width: 60, height: 60, borderRadius: '50%', background: doctorCompleted ? 'rgba(0,200,83,0.1)' : 'rgba(25,48,170,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18 }}>
-        {doctorCompleted
-          ? <CheckCircle size={28} color="#00C853" />
-          : <Video size={26} color="#1930AA" />
-        }
+        {doctorCompleted ? <CheckCircle size={28} color="#00C853" /> : <Video size={26} color="#1930AA" />}
       </div>
-
       <h2 style={{ fontSize: 18, fontWeight: 700, color: '#111', margin: '0 0 8px' }}>
         {doctorCompleted ? 'Consultation Completed' : 'Call Ended'}
       </h2>
@@ -149,30 +157,20 @@ export default function VideoCallPage() {
           ? 'You can now generate a prescription for this patient.'
           : 'Click below to mark the consultation as complete and proceed to the prescription.'}
       </p>
-
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', maxWidth: 280 }}>
         {!doctorCompleted ? (
-          <button
-            onClick={handleComplete}
-            disabled={completing}
-            style={{ ...primaryBtn, background: 'linear-gradient(135deg,#1930AA,#00AFEF)', opacity: completing ? 0.75 : 1 }}
-          >
+          <button onClick={handleComplete} disabled={completing}
+            style={{ ...primaryBtn, background: 'linear-gradient(135deg,#1930AA,#00AFEF)', opacity: completing ? 0.75 : 1 }}>
             {completing
               ? <><Loader size={14} style={{ animation: 'spin 0.8s linear infinite' }} /> Completing…</>
-              : <><CheckCircle size={14} /> Complete Consultation</>
-            }
+              : <><CheckCircle size={14} /> Complete Consultation</>}
           </button>
         ) : (
-          <button
-            onClick={goToConsultations}
-            style={{ ...primaryBtn, background: 'linear-gradient(135deg,#059669,#10b981)' }}
-          >
+          <button onClick={goToConsultations} style={{ ...primaryBtn, background: 'linear-gradient(135deg,#059669,#10b981)' }}>
             <FileText size={14} /> Generate Prescription
           </button>
         )}
-        <button onClick={goToConsultations} style={ghostBtn}>
-          Back to Consultations
-        </button>
+        <button onClick={goToConsultations} style={ghostBtn}>Back to Consultations</button>
       </div>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
@@ -184,12 +182,8 @@ export default function VideoCallPage() {
     return (
       <div style={overlay}>
         <div style={{ width: 60, height: 60, borderRadius: '50%', background: isCompleted ? 'rgba(0,200,83,0.1)' : 'rgba(0,175,239,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18 }}>
-          {isCompleted
-            ? <CheckCircle size={28} color="#00C853" />
-            : <Video size={26} color="#00AFEF" />
-          }
+          {isCompleted ? <CheckCircle size={28} color="#00C853" /> : <Video size={26} color="#00AFEF" />}
         </div>
-
         <h2 style={{ fontSize: 18, fontWeight: 700, color: '#111', margin: '0 0 8px' }}>
           {isCompleted ? 'Consultation Completed' : 'Call Left'}
         </h2>
@@ -198,33 +192,30 @@ export default function VideoCallPage() {
             ? 'Your doctor has completed the consultation. Your prescription will appear in the Prescriptions tab shortly.'
             : 'The call has ended. You can rejoin if the session is still active, or wait for the doctor to complete.'}
         </p>
-
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', maxWidth: 280 }}>
           {!isCompleted && (
-            <button
-              onClick={() => navigate(`/consultation/${id}/call`)}
-              style={{ ...primaryBtn, background: 'linear-gradient(135deg,#1930AA,#00AFEF)' }}
-            >
+            <button onClick={() => setEnded(false)}
+              style={{ ...primaryBtn, background: 'linear-gradient(135deg,#1930AA,#00AFEF)' }}>
               <RefreshCw size={14} /> Rejoin Call
             </button>
           )}
-          <button onClick={goToConsultations} style={ghostBtn}>
-            Back to Consultations
-          </button>
+          <button onClick={goToConsultations} style={ghostBtn}>Back to Consultations</button>
         </div>
-
         {!isCompleted && (
-          <p style={{ fontSize: 11, color: '#bbb', marginTop: 20 }}>
-            Waiting for doctor to complete the consultation…
-          </p>
+          <p style={{ fontSize: 11, color: '#bbb', marginTop: 20 }}>Waiting for doctor to complete the consultation…</p>
         )}
       </div>
     )
   }
 
   /* ── Active call ── */
+  // Pure iframe approach — no Daily JS SDK on the host page.
+  // The token is passed as the `t` URL parameter (Daily's documented method).
+  // The `allow` attribute grants camera/mic to Daily's cross-origin iframe.
+  // StrictMode-safe: React manages the iframe as a normal DOM element and does
+  // NOT unmount/remount it during the double-invoke of effects.
   return (
-    <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 1000, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1000 }}>
       {/* Top bar */}
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10, display: 'flex', alignItems: 'center', padding: '10px 16px', background: 'linear-gradient(to bottom, rgba(0,0,0,0.7), transparent)', pointerEvents: 'none' }}>
         <button
@@ -235,53 +226,22 @@ export default function VideoCallPage() {
         </button>
         <div style={{ marginLeft: 14 }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>
-            {callDetails.specialty
+            {callDetails?.specialty
               ? callDetails.specialty.replace(/_/g,' ').replace(/\b\w/g, l => l.toUpperCase())
               : 'Video Consultation'}
           </span>
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginLeft: 10 }}>
-            Powered by Jitsi Meet
+            Powered by Daily
           </span>
         </div>
       </div>
 
-      {/* Jitsi iframe */}
-      <JitsiMeeting
-        domain={callDetails.domain}
-        roomName={callDetails.room_name}
-        configOverwrite={{
-          startWithAudioMuted: false,
-          startWithVideoMuted: false,
-          enableWelcomePage: false,
-          prejoinPageEnabled: false,
-          disableDeepLinking: true,
-        }}
-        interfaceConfigOverwrite={{
-          SHOW_JITSI_WATERMARK: false,
-          SHOW_WATERMARK_FOR_GUESTS: false,
-          SHOW_BRAND_WATERMARK: false,
-          BRAND_WATERMARK_LINK: '',
-          SHOW_POWERED_BY: false,
-          DISPLAY_WELCOME_FOOTER: false,
-          APP_NAME: 'Medivora',
-          NATIVE_APP_NAME: 'Medivora',
-          PROVIDER_NAME: 'Medivora',
-          DEFAULT_BACKGROUND: '#1a1a2e',
-          TOOLBAR_BUTTONS: [
-            'microphone', 'camera', 'closedcaptions', 'desktop',
-            'fullscreen', 'fodeviceselection', 'hangup', 'chat',
-            'settings', 'raisehand', 'videoquality', 'filmstrip', 'tileview',
-          ],
-        }}
-        userInfo={{ displayName: callDetails.display_name }}
-        onReadyToClose={handleReadyToClose}
-        getIFrameRef={node => {
-          if (node) {
-            node.style.height = '100%'
-            node.style.width = '100%'
-            node.style.border = 'none'
-          }
-        }}
+      <iframe
+        ref={iframeRef}
+        src={`${callDetails.room_url}?t=${callDetails.auth_token}`}
+        allow="camera *; microphone *; autoplay *; display-capture *; picture-in-picture *; clipboard-write *"
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
+        title="Video Consultation"
       />
     </div>
   )

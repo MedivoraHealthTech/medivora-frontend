@@ -44,6 +44,7 @@ function mapRow(c) {
     createdAt:       c.created_at,
     consultationFee: c.consultation_fee ?? null,
     clinicAddress:   c.clinic_address || '',
+    prescriptionId:  c.prescription_id || null,
   }
 }
 
@@ -263,28 +264,35 @@ function DetailDrawer({ c, onClose }) {
               </div>
             )}
             {(c.rawStatus === 'scheduled' || c.rawStatus === 'ongoing') && c.consultType === 'video' && (
-              <>
+              c.patientJoinedAt ? (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/consultation/${c.id}/call`)}
+                  style={{ width: '100%', padding: '14px', borderRadius: 12, border: '1.5px solid #059669', background: 'transparent', color: '#059669', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <RefreshCw size={16} /> Rejoin Call
+                </button>
+              ) : (
                 <button
                   type="button"
                   onClick={() => navigate(`/consultation/${c.id}/call`)}
                   style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#1930AA,#00AFEF)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                   <Video size={16} /> Join Video Call
                 </button>
-                {c.patientJoinedAt && (
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/consultation/${c.id}/call`)}
-                    style={{ width: '100%', padding: '14px', borderRadius: 12, border: '1.5px solid #059669', background: 'transparent', color: '#059669', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                    <RefreshCw size={16} /> Rejoin Call
-                  </button>
-                )}
-              </>
+              )
             )}
             {(c.rawStatus === 'scheduled' || c.rawStatus === 'ongoing') && c.consultType !== 'video' && (
               <div style={{ padding: '12px 16px', borderRadius: 12, background: 'rgba(0,180,100,0.07)', border: '1px solid rgba(0,180,100,0.25)', fontSize: 13, color: '#00a855', textAlign: 'center', fontWeight: 600 }}>
                 Booking confirmed — visit {c.doctorName} at their clinic
                 {c.clinicAddress && <div style={{ fontSize: 12, fontWeight: 400, marginTop: 4, color: '#00a855' }}>{c.clinicAddress}</div>}
               </div>
+            )}
+            {c.rawStatus === 'completed' && c.prescriptionId && (
+              <button
+                type="button"
+                onClick={() => navigate('/prescriptions')}
+                style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#1930AA,#00AFEF)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <FileText size={16} /> View Prescription
+              </button>
             )}
           </div>
 
@@ -336,7 +344,7 @@ export default function ConsultationsPage() {
     })
   }, [])
 
-  async function fetchConsultations(isRetry = false) {
+  async function fetchConsultations() {
     setLoadingData(true); setError('')
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -349,14 +357,6 @@ export default function ConsultationsPage() {
       if (!res.ok) throw new Error(`Server error ${res.status}`)
       const data = await res.json()
       const rows = data?.sessions || []
-
-      if (rows.length === 0 && !isRetry) {
-        await fetch(`${API_BASE}/demo/seed`, {
-          method: 'POST', headers: { Authorization: `Bearer ${token}` },
-        })
-        return fetchConsultations(true)
-      }
-
       setConsultations(rows.map(mapRow))
     } catch (err) {
       console.error('Failed to load consultations:', err)
@@ -495,22 +495,21 @@ export default function ConsultationsPage() {
                   {/* Quick actions inline — stop propagation so card click doesn't also trigger */}
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 4 }} onClick={e => e.stopPropagation()}>
                     {(c.rawStatus === 'scheduled' || c.rawStatus === 'ongoing') && c.consultType === 'video' && (
-                      <>
+                      c.patientJoinedAt ? (
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/consultation/${c.id}/call`)}
+                          style={{ padding: '10px 18px', borderRadius: 10, border: '1.5px solid #059669', background: 'transparent', color: '#059669', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                          <RefreshCw size={14} /> Rejoin Call
+                        </button>
+                      ) : (
                         <button
                           type="button"
                           onClick={() => navigate(`/consultation/${c.id}/call`)}
                           style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#1930AA,#00AFEF)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
                           <Video size={14} /> Join Video Call
                         </button>
-                        {c.patientJoinedAt && (
-                          <button
-                            type="button"
-                            onClick={() => navigate(`/consultation/${c.id}/call`)}
-                            style={{ padding: '10px 18px', borderRadius: 10, border: '1.5px solid #059669', background: 'transparent', color: '#059669', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-                            <RefreshCw size={14} /> Rejoin Call
-                          </button>
-                        )}
-                      </>
+                      )
                     )}
                     {(c.rawStatus === 'scheduled' || c.rawStatus === 'ongoing') && c.consultType !== 'video' && (
                       <span style={{ fontSize: 12, color: '#00a855', fontWeight: 600, alignSelf: 'center', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
@@ -537,12 +536,22 @@ export default function ConsultationsPage() {
                       )
                     )}
                     {c.status === 'completed' && (
-                      <button
-                        type="button"
-                        onClick={() => setSelected(c)}
-                        style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid rgba(0,0,0,0.12)', background: '#fff', color: 'var(--g400)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                        <FileText size={14} /> View summary
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setSelected(c)}
+                          style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid rgba(0,0,0,0.12)', background: '#fff', color: 'var(--g400)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <FileText size={14} /> View summary
+                        </button>
+                        {c.prescriptionId && (
+                          <button
+                            type="button"
+                            onClick={() => navigate('/prescriptions')}
+                            style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#1930AA,#00AFEF)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                            <FileText size={14} /> View Prescription
+                          </button>
+                        )}
+                      </>
                     )}
                     {c.status === 'cancelled' && (
                       <span style={{ fontSize: 12, color: 'var(--g700)', alignSelf: 'center' }}>This visit was cancelled.</span>

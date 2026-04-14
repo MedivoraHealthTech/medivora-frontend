@@ -26,14 +26,6 @@ async function apiFetchPrescriptions() {
   return json.prescriptions || []
 }
 
-async function apiSeedDemoData() {
-  const token = await getToken()
-  if (!token) return
-  await fetch(`${API_BASE}/demo/seed`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-  })
-}
 
 function mapRow(rx) {
   // Build a flat shape from the prescriptions table row + prescription_items
@@ -102,19 +94,12 @@ export default function PrescriptionsPage() {
   const [statusTab, setStatusTab]         = useState('All')
   const [comingSoon, setComingSoon]       = useState(false)
 
-  const load = async (seed = false) => {
+  const load = async () => {
     setLoading(true)
     setError(null)
     try {
       const data = await apiFetchPrescriptions()
-      if (data.length === 0 && seed) {
-        // Auto-seed demo data on first load if empty
-        await apiSeedDemoData()
-        const seeded = await apiFetchPrescriptions()
-        setPrescriptions(seeded.map(mapRow))
-      } else {
-        setPrescriptions(data.map(mapRow))
-      }
+      setPrescriptions(data.map(mapRow))
     } catch (err) {
       setError('Could not load prescriptions. Please try again.')
     } finally {
@@ -122,7 +107,7 @@ export default function PrescriptionsPage() {
     }
   }
 
-  useEffect(() => { load(true) }, [])
+  useEffect(() => { load() }, [])
 
   const filtered = useMemo(() => {
     let list = prescriptions
@@ -149,7 +134,7 @@ export default function PrescriptionsPage() {
           <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--g300)', margin: 0, fontFamily: 'var(--serif)' }}>
             Prescriptions
           </h1>
-          <button onClick={() => load(false)} disabled={loading} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--g500)', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, padding: 4 }}>
+          <button onClick={() => load()} disabled={loading} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--g500)', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, padding: 4 }}>
             <RefreshCw size={14} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
             {loading ? 'Loading…' : 'Refresh'}
           </button>
@@ -194,7 +179,7 @@ export default function PrescriptionsPage() {
         {!loading && error && (
           <div style={{ textAlign: 'center', padding: '24px', color: 'var(--err)', fontSize: 13 }}>
             {error}{' '}
-            <button onClick={() => load(false)} style={{ background: 'none', border: 'none', color: 'var(--cyan)', cursor: 'pointer', fontSize: 13, textDecoration: 'underline' }}>Retry</button>
+            <button onClick={() => load()} style={{ background: 'none', border: 'none', color: 'var(--cyan)', cursor: 'pointer', fontSize: 13, textDecoration: 'underline' }}>Retry</button>
           </div>
         )}
 
