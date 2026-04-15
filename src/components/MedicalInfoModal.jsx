@@ -82,6 +82,8 @@ export default function MedicalInfoModal({ onClose, onSaved }) {
   const [loadingData,  setLoadingData]  = useState(true)
   const [error,        setError]        = useState(null)
 
+  const [gender, setGender] = useState(null)
+
   const [form, setForm] = useState({
     blood_group: '',
     height: '',
@@ -113,6 +115,7 @@ export default function MedicalInfoModal({ onClose, onSaved }) {
         if (!res.ok) return
         const { user } = await res.json()
         if (!user) return
+        if (user.gender) setGender(user.gender.toLowerCase())
         setForm(f => ({
           ...f,
           blood_group:                user.blood_group                || '',
@@ -157,7 +160,7 @@ export default function MedicalInfoModal({ onClose, onSaved }) {
       if (form.chronic_conditions.trim()) body.append('chronic_conditions', csvOrEmpty(form.chronic_conditions))
       body.append('is_smoker',       String(form.is_smoker))
       body.append('is_alcohol_user', String(form.is_alcohol_user))
-      body.append('is_pregnant',     String(form.is_pregnant))
+      body.append('is_pregnant',     String(gender === 'male' ? false : form.is_pregnant))
       body.append('is_nursing',      String(form.is_nursing))
 
       const res = await fetch(`${API_BASE}/auth/user/${auth.userId}`, {
@@ -327,7 +330,9 @@ export default function MedicalInfoModal({ onClose, onSaved }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <Toggle label="Smoker"       checked={form.is_smoker}       onChange={v => set('is_smoker', v)} />
               <Toggle label="Alcohol use"  checked={form.is_alcohol_user} onChange={v => set('is_alcohol_user', v)} />
-              <Toggle label="Pregnant"     checked={form.is_pregnant}     onChange={v => set('is_pregnant', v)} />
+              {gender !== 'male' && (
+                <Toggle label="Pregnant" checked={form.is_pregnant} onChange={v => set('is_pregnant', v)} />
+              )}
               <Toggle label="Nursing"      checked={form.is_nursing}      onChange={v => set('is_nursing', v)} />
             </div>
           </div>
