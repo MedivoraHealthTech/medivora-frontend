@@ -52,12 +52,12 @@ export default function DoctorDashboard() {
     load()
   }, [])
 
-  const statCards = stats ? [
-    { label: 'Total Consultations', value: stats.total,     icon: Stethoscope, color: 'var(--blue)', bg: 'rgba(25,48,170,0.08)' },
-    { label: 'Pending Requests',    value: stats.pending,   icon: Clock,       color: 'var(--warn)', bg: 'rgba(255,179,0,0.1)'   },
-    { label: 'Scheduled',           value: stats.scheduled, icon: CalendarDays, color: 'var(--cyan)', bg: 'rgba(0,188,212,0.1)'   },
+  const incomeCard  = stats ? { label: 'Total Income', value: `₹${stats.totalIncome.toLocaleString('en-IN')}`, icon: IndianRupee, color: '#fff', bg: 'rgba(255,255,255,0.18)' } : null
+  const statCards   = stats ? [
+    { label: 'Total Consultations', value: stats.total,     icon: Stethoscope,   color: 'var(--blue)', bg: 'rgba(25,48,170,0.08)'  },
+    { label: 'Pending Requests',    value: stats.pending,   icon: Clock,         color: 'var(--warn)', bg: 'rgba(255,179,0,0.1)'   },
+    { label: 'Scheduled',           value: stats.scheduled, icon: CalendarDays,  color: 'var(--cyan)', bg: 'rgba(0,188,212,0.1)'   },
     { label: 'Pending Rx Review',   value: stats.pendingRx, icon: ClipboardList, color: 'var(--err)',  bg: 'rgba(255,61,0,0.08)'  },
-    { label: 'Total Income',        value: `₹${stats.totalIncome.toLocaleString('en-IN')}`, icon: IndianRupee, color: '#00897b', bg: 'rgba(0,137,123,0.08)', raw: true },
   ] : []
 
   const recentConsults = consultations.slice(0, 5)
@@ -100,19 +100,40 @@ export default function DoctorDashboard() {
       </div>
 
       {/* Stat cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16, marginBottom: 28 }}>
-        {statCards.map((s, i) => (
-          <div key={i} style={{ borderRadius: 14, padding: '18px 20px', background: 'var(--pw)', border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--g500)' }}>{s.label}</span>
-              <div style={{ width: 34, height: 34, borderRadius: 9, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <s.icon size={16} color={s.color} />
+      {stats && (
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 2fr', gap: 16, marginBottom: 28, alignItems: 'stretch' }}>
+
+          {/* Total Income — hero card */}
+          <div style={{ borderRadius: 16, padding: '32px 28px', background: 'linear-gradient(135deg,#00897b 0%,#00acc1 100%)', boxShadow: '0 4px 20px rgba(0,137,123,0.25)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.85)', letterSpacing: '0.03em', textTransform: 'uppercase' }}>Total Income</span>
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <IndianRupee size={20} color="#fff" />
               </div>
             </div>
-            <p style={{ fontSize: s.raw ? 22 : 28, fontWeight: 800, color: s.color, margin: 0 }}>{s.value}</p>
+            <p style={{ fontSize: 40, fontWeight: 900, color: '#fff', margin: 0, lineHeight: 1 }}>
+              ₹{stats.totalIncome.toLocaleString('en-IN')}
+            </p>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', margin: '12px 0 0', fontWeight: 500 }}>Lifetime earnings</p>
           </div>
-        ))}
-      </div>
+
+          {/* 2×2 grid of metric cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            {statCards.map((s, i) => (
+              <div key={i} style={{ borderRadius: 14, padding: '18px 20px', background: 'var(--pw)', border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--g500)' }}>{s.label}</span>
+                  <div style={{ width: 34, height: 34, borderRadius: 9, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <s.icon size={16} color={s.color} />
+                  </div>
+                </div>
+                <p style={{ fontSize: 28, fontWeight: 800, color: s.color, margin: 0 }}>{s.value}</p>
+              </div>
+            ))}
+          </div>
+
+        </div>
+      )}
 
       {/* Two-column below */}
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 20 }}>

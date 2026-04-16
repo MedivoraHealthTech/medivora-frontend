@@ -109,7 +109,7 @@ export default function DoctorConsultations() {
     if (!scheduleTime) return
     setActionLoading('schedule')
     try {
-      await doctorAPI.scheduleConsultation(scheduleFor.id, { scheduled_at: scheduleTime, note: scheduleNote }, getToken())
+      await doctorAPI.scheduleConsultation(scheduleFor.id, { scheduled_at: new Date(scheduleTime).toISOString(), note: scheduleNote }, getToken())
       setScheduleFor(null)
       setScheduleTime('')
       setScheduleNote('')

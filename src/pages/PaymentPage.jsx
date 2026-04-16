@@ -61,7 +61,7 @@ export default function PaymentPage() {
     try {
       const token = await getAuthToken()
       const form = new FormData()
-      const isoString = `${slot.date}T${slot.time}:00`
+      const isoString = new Date(`${slot.date}T${slot.time}:00`).toISOString()
       form.append('scheduled_at', isoString)
       const res = await fetch(`/api/consultation/${sessionId}/slot`, {
         method: 'PATCH',

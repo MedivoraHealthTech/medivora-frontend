@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Search, Video, CalendarClock, CheckCircle, XCircle, Clock,
@@ -52,6 +52,63 @@ function formatWhen(iso) {
   if (!iso) return '—'
   try { return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) }
   catch { return iso }
+}
+
+function canJoin(datetime, rawStatus, now) {
+  if (rawStatus === 'ongoing') return true
+  if (!datetime) return false
+  return now >= new Date(datetime).getTime() - 5 * 60 * 1000
+}
+
+function JoinCallButton({ datetime, rawStatus, now, onClick, size = 'lg', rejoining = false }) {
+  const enabled = rejoining || canJoin(datetime, rawStatus, now)
+  const [showTip, setShowTip] = useState(false)
+  const tipRef = useRef(null)
+
+  const btnStyle = size === 'lg'
+    ? { width: '100%', padding: '14px', borderRadius: 12, fontSize: 14, fontWeight: 700, fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, border: 'none' }
+    : { padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700, fontFamily: 'var(--font)', display: 'inline-flex', alignItems: 'center', gap: 7, border: 'none' }
+
+  const icon  = rejoining ? <RefreshCw size={size === 'lg' ? 16 : 14} /> : <Video size={size === 'lg' ? 16 : 14} />
+  const label = rejoining ? 'Rejoin Call' : 'Join Video Call'
+
+  const enabledStyle  = rejoining
+    ? { ...btnStyle, border: `1.5px solid #059669`, background: 'transparent', color: '#059669', cursor: 'pointer' }
+    : { ...btnStyle, background: 'linear-gradient(135deg,#1930AA,#00AFEF)', color: '#fff', cursor: 'pointer' }
+  const disabledStyle = { ...btnStyle, background: 'rgba(0,0,0,0.07)', color: 'rgba(0,0,0,0.3)', cursor: 'not-allowed' }
+
+  const scheduledAt = datetime ? new Date(datetime) : null
+  const openAt = scheduledAt ? new Date(scheduledAt.getTime() - 5 * 60 * 1000) : null
+  const tipText = openAt
+    ? `Available at ${openAt.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`
+    : 'Not yet available'
+
+  return (
+    <div style={{ position: 'relative', width: size === 'lg' ? '100%' : undefined }}
+      onMouseEnter={() => !enabled && setShowTip(true)}
+      onMouseLeave={() => setShowTip(false)}
+    >
+      <button
+        type="button"
+        onClick={enabled ? onClick : undefined}
+        disabled={!enabled}
+        style={enabled ? enabledStyle : disabledStyle}
+      >
+        {icon} {label}
+      </button>
+      {!enabled && showTip && (
+        <div ref={tipRef} style={{
+          position: 'absolute', bottom: 'calc(100% + 8px)', left: 0,
+          background: '#1a1a2e', color: '#fff', fontSize: 12, fontWeight: 500, padding: '7px 12px',
+          borderRadius: 8, whiteSpace: 'nowrap', zIndex: 100, pointerEvents: 'none',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
+        }}>
+          {tipText}
+          <div style={{ position: 'absolute', top: '100%', left: 20, width: 0, height: 0, borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderTop: '6px solid #1a1a2e' }} />
+        </div>
+      )}
+    </div>
+  )
 }
 
 function statusIcon(status) {
@@ -172,7 +229,7 @@ function PaymentModal({ consultation, token, onSuccess, onClose }) {
 }
 
 /* ── Detail Drawer ───────────────────────────────────── */
-function DetailDrawer({ c, onClose }) {
+function DetailDrawer({ c, onClose, now }) {
   const { isMobile } = useBreakpoint()
   const navigate = useNavigate()
   if (!c) return null
@@ -265,21 +322,14 @@ function DetailDrawer({ c, onClose }) {
               </div>
             )}
             {(c.rawStatus === 'scheduled' || c.rawStatus === 'ongoing') && c.consultType === 'video' && (
-              c.patientJoinedAt ? (
-                <button
-                  type="button"
-                  onClick={() => navigate(`/consultation/${c.id}/call`)}
-                  style={{ width: '100%', padding: '14px', borderRadius: 12, border: '1.5px solid #059669', background: 'transparent', color: '#059669', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                  <RefreshCw size={16} /> Rejoin Call
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => navigate(`/consultation/${c.id}/call`)}
-                  style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#1930AA,#00AFEF)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                  <Video size={16} /> Join Video Call
-                </button>
-              )
+              <JoinCallButton
+                datetime={c.datetime}
+                rawStatus={c.rawStatus}
+                now={now}
+                rejoining={!!c.patientJoinedAt}
+                onClick={() => navigate(`/consultation/${c.id}/call`)}
+                size="lg"
+              />
             )}
             {(c.rawStatus === 'scheduled' || c.rawStatus === 'ongoing') && c.consultType !== 'video' && (
               <div style={{ padding: '12px 16px', borderRadius: 12, background: 'rgba(0,180,100,0.07)', border: '1px solid rgba(0,180,100,0.25)', fontSize: 13, color: '#00a855', textAlign: 'center', fontWeight: 600 }}>
@@ -338,6 +388,7 @@ export default function ConsultationsPage() {
   const [selected, setSelected]         = useState(null)
   const [payTarget, setPayTarget]       = useState(null)  // consultation to pay for
   const [authToken, setAuthToken]       = useState('')
+  const [now, setNow]                   = useState(Date.now())
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -366,6 +417,11 @@ export default function ConsultationsPage() {
   }
 
   useEffect(() => { fetchConsultations() }, [])
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(id)
+  }, [])
 
   const filtered = useMemo(() => {
     let list = consultations
@@ -496,21 +552,14 @@ export default function ConsultationsPage() {
                   {/* Quick actions inline — stop propagation so card click doesn't also trigger */}
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 4 }} onClick={e => e.stopPropagation()}>
                     {(c.rawStatus === 'scheduled' || c.rawStatus === 'ongoing') && c.consultType === 'video' && (
-                      c.patientJoinedAt ? (
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/consultation/${c.id}/call`)}
-                          style={{ padding: '10px 18px', borderRadius: 10, border: '1.5px solid #059669', background: 'transparent', color: '#059669', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-                          <RefreshCw size={14} /> Rejoin Call
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/consultation/${c.id}/call`)}
-                          style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#1930AA,#00AFEF)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-                          <Video size={14} /> Join Video Call
-                        </button>
-                      )
+                      <JoinCallButton
+                        datetime={c.datetime}
+                        rawStatus={c.rawStatus}
+                        now={now}
+                        rejoining={!!c.patientJoinedAt}
+                        onClick={() => navigate(`/consultation/${c.id}/call`)}
+                        size="sm"
+                      />
                     )}
                     {(c.rawStatus === 'scheduled' || c.rawStatus === 'ongoing') && c.consultType !== 'video' && (
                       <span style={{ fontSize: 12, color: '#00a855', fontWeight: 600, alignSelf: 'center', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
@@ -574,7 +623,7 @@ export default function ConsultationsPage() {
       </div>
 
       {/* ── Detail Drawer ── */}
-      {selected && <DetailDrawer c={selected} onClose={() => setSelected(null)} />}
+      {selected && <DetailDrawer c={selected} onClose={() => setSelected(null)} now={now} />}
 
       {/* ── Payment Modal ── */}
       {payTarget && (
