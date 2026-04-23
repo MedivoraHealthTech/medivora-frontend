@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Stethoscope, MapPin, Star, Clock, Briefcase,
-  BadgeCheck, Activity, IndianRupee, RefreshCw,
+  BadgeCheck, Activity, IndianRupee, RefreshCw, Video,
 } from 'lucide-react'
 import { supabase } from './supabase'
 import { useBreakpoint } from '../hooks/useBreakpoint'
@@ -71,7 +71,7 @@ export default function DoctorPublicProfile() {
   }, [id])
 
   const status = STATUS_META[doctor?.available_status] || STATUS_META.offline
-  const name = ([doctor?.first_name, doctor?.last_name].filter(Boolean).join(' ') || 'Doctor').replace(/^Dr\.\s*/i, '')
+  const name = ([doctor?.first_name, doctor?.last_name].filter(Boolean).join(' ') || doctor?.full_name || 'Doctor').replace(/^Dr\.\s*/i, '')
   const specialties = doctor?.specialties || (doctor?.specialization ? [doctor.specialization] : [])
 
   return (
@@ -137,7 +137,7 @@ export default function DoctorPublicProfile() {
                 color: '#fff', fontSize: 26, fontWeight: 800,
                 boxShadow: '0 4px 16px rgba(25,48,170,0.2)',
               }}>
-                {initials(`${doctor.first_name || ''} ${doctor.last_name || ''}`)}
+                {initials(`${doctor.first_name || ''} ${doctor.last_name || ''}`.trim() || doctor.full_name || '')}
               </div>
 
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -209,8 +209,7 @@ export default function DoctorPublicProfile() {
           }}>
             {[
               doctor.nmc_number && { icon: BadgeCheck, label: 'NMC / License No.', value: doctor.nmc_number },
-              doctor.experience_years != null && { icon: Briefcase, label: 'Years of experience', value: `${doctor.experience_years} years` },
-              doctor.consultation_fee != null && { icon: IndianRupee, label: 'Consultation fee', value: `₹${doctor.consultation_fee}` },
+              doctor.clinic_name && { icon: MapPin, label: 'Clinic', value: doctor.clinic_name },
               doctor.available_from && { icon: Clock, label: 'Available from', value: doctor.available_from },
             ].filter(Boolean).map((row, i, arr) => (
               <div key={i} style={{
@@ -231,6 +230,30 @@ export default function DoctorPublicProfile() {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* ── Book Appointment CTA ── */}
+          <div style={{ marginTop: 20 }}>
+            <button
+              onClick={() => doctor.available_status === 'available'
+                ? navigate('/book-appointment', { state: { preSelectedDoctor: doctor, videoConsultation: true } })
+                : null}
+              disabled={doctor.available_status !== 'available'}
+              style={{
+                width: '100%', padding: '16px', borderRadius: 14, border: 'none',
+                background: doctor.available_status === 'available'
+                  ? 'linear-gradient(135deg, #1930AA, #00AFEF)'
+                  : 'rgba(0,0,0,0.06)',
+                color: doctor.available_status === 'available' ? '#fff' : '#9E9E9E',
+                fontSize: 15, fontWeight: 700, cursor: doctor.available_status === 'available' ? 'pointer' : 'not-allowed',
+                fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                boxShadow: doctor.available_status === 'available' ? '0 4px 16px rgba(25,48,170,0.25)' : 'none',
+                transition: 'opacity 0.2s',
+              }}
+            >
+              <Video size={17} />
+              {doctor.available_status === 'available' ? 'Book Appointment' : 'Currently Unavailable'}
+            </button>
           </div>
 
           {/* ── About / bio ── */}

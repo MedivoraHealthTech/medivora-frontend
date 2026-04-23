@@ -92,6 +92,11 @@ export function AuthProvider({ children }) {
       },
     })
     if (error) throw new Error(error.message)
+    // Supabase returns a fake success for duplicate emails (enumeration prevention).
+    // Identities array is empty when the email is already registered.
+    if (data?.user && data.user.identities?.length === 0) {
+      throw new Error('This email is already registered. Please log in instead.')
+    }
     return data
   }
 

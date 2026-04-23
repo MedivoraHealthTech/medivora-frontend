@@ -255,16 +255,6 @@ export default function PaymentPage() {
               {slotSaving ? 'Saving…' : 'Choose Appointment Slot →'}
             </button>
 
-            <button
-              onClick={() => setSlotSaved(true)}
-              style={{
-                display: 'block', width: '100%', padding: '12px 0', borderRadius: 12,
-                border: '1.5px solid rgba(0,0,0,0.1)', background: 'none',
-                color: '#999', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-              }}
-            >
-              Skip for now
-            </button>
           </div>
 
           {showSlotPicker && doctor && (

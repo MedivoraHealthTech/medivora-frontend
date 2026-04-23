@@ -705,7 +705,7 @@ export default function ProfileSettings() {
                     {consultations.map((c, i) => {
                       const topic    = c.patient_note || c.specialty || 'Consultation'
                       const specialty = (c.specialty || '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-                      const dateStr  = c.created_at ? new Date(c.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
+                      const dateStr  = (c.scheduled_at || c.created_at) ? new Date(c.scheduled_at || c.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''
                       const statusColor = c.status === 'completed' ? '#00a040'
                         : c.status === 'scheduled' ? '#1930AA'
                         : (c.status === 'cancelled' || c.status === 'no_show') ? '#d93a00'

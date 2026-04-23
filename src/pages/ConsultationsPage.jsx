@@ -1,23 +1,26 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Search, Video, CalendarClock, CheckCircle, XCircle, Clock,
+  Search, Video, CalendarClock, CheckCircle, Clock,
   AlertCircle, RefreshCw, X, FileText, Stethoscope, User,
-  ChevronRight, ClipboardList, CreditCard, IndianRupee,
+  ChevronRight, ClipboardList, CreditCard, IndianRupee, Calendar,
 } from 'lucide-react'
 import { supabase } from './supabase'
 import { useBreakpoint } from '../hooks/useBreakpoint'
 import { formatSpecialty, formatConsultationType, formatConsultationStatus } from '../utils/labels'
+import TimeSlotPicker from '../components/TimeSlotPicker'
 
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
 
-const STATUS_TABS = ['All', 'Upcoming', 'Past', 'Cancelled']
+const STATUS_TABS = ['All', 'Upcoming', 'Past']
 
-function normaliseStatus(s) {
+function normaliseStatus(s, scheduledAt) {
   if (!s) return 'upcoming'
-  if (s === 'requested' || s === 'confirmed' || s === 'scheduled' || s === 'ongoing') return 'upcoming'
   if (s === 'completed') return 'completed'
   if (s === 'cancelled' || s === 'no_show') return 'cancelled'
+  // If scheduled time has passed, treat as past
+  if ((s === 'scheduled' || s === 'confirmed') && scheduledAt && new Date(scheduledAt) < new Date()) return 'completed'
+  if (s === 'requested' || s === 'confirmed' || s === 'scheduled' || s === 'ongoing') return 'upcoming'
   return 'upcoming'
 }
 
@@ -26,6 +29,7 @@ function mapRow(c) {
   const specialty  = c.doctor_specialty || c.specialty || 'General Medicine'
   return {
     id:              c.id,
+    doctorId:        c.doctor_id || null,
     doctorName,
     specialty:       formatSpecialty(specialty),
     topic:           c.patient_note || 'Consultation request',
@@ -34,7 +38,7 @@ function mapRow(c) {
     startedAt:       c.started_at,
     patientJoinedAt: c.patient_joined_at || null,
     durationMin:     c.duration_minutes,
-    status:          normaliseStatus(c.status),
+    status:          normaliseStatus(c.status, c.scheduled_at),
     rawStatus:       c.status,
     roomUrl:         c.room_url,
     patientToken:    c.patient_token,
@@ -113,8 +117,7 @@ function JoinCallButton({ datetime, rawStatus, now, onClick, size = 'lg', rejoin
 
 function statusIcon(status) {
   if (status === 'upcoming')  return <Clock size={14} color="var(--cyan)" />
-  if (status === 'completed') return <CheckCircle size={14} color="var(--ok)" />
-  return <XCircle size={14} color="var(--err)" />
+  return <CheckCircle size={14} color="var(--ok)" />
 }
 
 function statusLabel(rawStatus) {
@@ -229,7 +232,7 @@ function PaymentModal({ consultation, token, onSuccess, onClose }) {
 }
 
 /* ── Detail Drawer ───────────────────────────────────── */
-function DetailDrawer({ c, onClose, now }) {
+function DetailDrawer({ c, onClose, now, onReschedule }) {
   const { isMobile } = useBreakpoint()
   const navigate = useNavigate()
   if (!c) return null
@@ -321,7 +324,7 @@ function DetailDrawer({ c, onClose, now }) {
                 💳 Please pay to confirm your consultation
               </div>
             )}
-            {(c.rawStatus === 'scheduled' || c.rawStatus === 'ongoing') && c.consultType === 'video' && (
+            {(c.rawStatus === 'scheduled' || c.rawStatus === 'ongoing') && c.consultType === 'video' && c.status !== 'completed' && (
               <JoinCallButton
                 datetime={c.datetime}
                 rawStatus={c.rawStatus}
@@ -331,11 +334,24 @@ function DetailDrawer({ c, onClose, now }) {
                 size="lg"
               />
             )}
-            {(c.rawStatus === 'scheduled' || c.rawStatus === 'ongoing') && c.consultType !== 'video' && (
+            {(c.rawStatus === 'scheduled' || c.rawStatus === 'ongoing') && c.consultType !== 'video' && c.status !== 'completed' && (
               <div style={{ padding: '12px 16px', borderRadius: 12, background: 'rgba(0,180,100,0.07)', border: '1px solid rgba(0,180,100,0.25)', fontSize: 13, color: '#00a855', textAlign: 'center', fontWeight: 600 }}>
                 Booking confirmed — visit {c.doctorName} at their clinic
                 {c.clinicAddress && <div style={{ fontSize: 12, fontWeight: 400, marginTop: 4, color: '#00a855' }}>{c.clinicAddress}</div>}
               </div>
+            )}
+            {c.rawStatus === 'scheduled' && c.status === 'completed' && (
+              <div style={{ padding: '12px 16px', borderRadius: 12, background: 'rgba(255,160,0,0.07)', border: '1px solid rgba(255,160,0,0.25)', fontSize: 13, color: '#E65100', textAlign: 'center', fontWeight: 600 }}>
+                Appointment time has passed
+              </div>
+            )}
+            {c.rawStatus === 'scheduled' && c.doctorId && c.status !== 'completed' && (
+              <button
+                type="button"
+                onClick={() => onReschedule(c)}
+                style={{ width: '100%', padding: '14px', borderRadius: 12, border: '1.5px solid rgba(0,175,239,0.4)', background: 'rgba(0,175,239,0.06)', color: '#0088cc', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <Calendar size={16} /> Reschedule Appointment
+              </button>
             )}
             {c.rawStatus === 'completed' && c.prescriptionId && (
               <button
@@ -387,6 +403,7 @@ export default function ConsultationsPage() {
   const [error, setError]               = useState('')
   const [selected, setSelected]         = useState(null)
   const [payTarget, setPayTarget]       = useState(null)  // consultation to pay for
+  const [rescheduleTarget, setRescheduleTarget] = useState(null) // consultation to reschedule
   const [authToken, setAuthToken]       = useState('')
   const [now, setNow]                   = useState(Date.now())
 
@@ -418,6 +435,27 @@ export default function ConsultationsPage() {
 
   useEffect(() => { fetchConsultations() }, [])
 
+  async function handlePatientReschedule(slot) {
+    if (!rescheduleTarget) return
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      const form = new FormData()
+      form.append('scheduled_at', slot.date + 'T' + slot.time + ':00')
+      const res = await fetch(`/api/consultation/${rescheduleTarget.id}/slot`, {
+        method: 'PATCH',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: form,
+      })
+      if (!res.ok) throw new Error('Failed to reschedule')
+      setRescheduleTarget(null)
+      setSelected(null)
+      fetchConsultations()
+    } catch (e) {
+      console.error('Reschedule failed:', e)
+    }
+  }
+
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 30_000)
     return () => clearInterval(id)
@@ -429,8 +467,7 @@ export default function ConsultationsPage() {
       const key = statusTab.toLowerCase()
       list = list.filter(c =>
         key === 'upcoming' ? c.status === 'upcoming'
-        : key === 'past'   ? c.status === 'completed'
-        : c.status === 'cancelled'
+        : c.status === 'completed'
       )
     }
     const q = query.trim().toLowerCase()
@@ -551,7 +588,7 @@ export default function ConsultationsPage() {
 
                   {/* Quick actions inline — stop propagation so card click doesn't also trigger */}
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 4 }} onClick={e => e.stopPropagation()}>
-                    {(c.rawStatus === 'scheduled' || c.rawStatus === 'ongoing') && c.consultType === 'video' && (
+                    {(c.rawStatus === 'scheduled' || c.rawStatus === 'ongoing') && c.consultType === 'video' && c.status !== 'completed' && (
                       <JoinCallButton
                         datetime={c.datetime}
                         rawStatus={c.rawStatus}
@@ -561,7 +598,15 @@ export default function ConsultationsPage() {
                         size="sm"
                       />
                     )}
-                    {(c.rawStatus === 'scheduled' || c.rawStatus === 'ongoing') && c.consultType !== 'video' && (
+                    {c.rawStatus === 'scheduled' && c.doctorId && c.status !== 'completed' && (
+                      <button
+                        type="button"
+                        onClick={() => setRescheduleTarget(c)}
+                        style={{ padding: '10px 18px', borderRadius: 10, border: '1.5px solid rgba(0,175,239,0.4)', background: 'rgba(0,175,239,0.06)', color: '#0088cc', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                        <Calendar size={14} /> Reschedule
+                      </button>
+                    )}
+                    {(c.rawStatus === 'scheduled' || c.rawStatus === 'ongoing') && c.consultType !== 'video' && c.status !== 'completed' && (
                       <span style={{ fontSize: 12, color: '#00a855', fontWeight: 600, alignSelf: 'center', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                         <CheckCircle size={13} /> Visit {c.doctorName} at their clinic
                       </span>
@@ -603,9 +648,6 @@ export default function ConsultationsPage() {
                         )}
                       </>
                     )}
-                    {c.status === 'cancelled' && (
-                      <span style={{ fontSize: 12, color: 'var(--g700)', alignSelf: 'center' }}>This visit was cancelled.</span>
-                    )}
                   </div>
                 </article>
               ))}
@@ -623,7 +665,7 @@ export default function ConsultationsPage() {
       </div>
 
       {/* ── Detail Drawer ── */}
-      {selected && <DetailDrawer c={selected} onClose={() => setSelected(null)} now={now} />}
+      {selected && <DetailDrawer c={selected} onClose={() => setSelected(null)} now={now} onReschedule={setRescheduleTarget} />}
 
       {/* ── Payment Modal ── */}
       {payTarget && (
@@ -632,6 +674,15 @@ export default function ConsultationsPage() {
           token={authToken}
           onClose={() => setPayTarget(null)}
           onSuccess={() => { setPayTarget(null); fetchConsultations() }}
+        />
+      )}
+
+      {/* ── Reschedule Slot Picker ── */}
+      {rescheduleTarget && rescheduleTarget.doctorId && (
+        <TimeSlotPicker
+          doctor={{ id: rescheduleTarget.doctorId, name: rescheduleTarget.doctorName }}
+          onConfirm={handlePatientReschedule}
+          onClose={() => setRescheduleTarget(null)}
         />
       )}
 

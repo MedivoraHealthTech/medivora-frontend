@@ -13,6 +13,12 @@ const SPECIALIZATION_FILTERS = [
   'Pediatrics', 'Orthopedics', 'Gynecology', 'Psychiatry', 'ENT', 'Pulmonology',
 ]
 
+// Filter label → additional formatted specialties it should match
+const FILTER_ALIASES = {
+  'General Physician': ['General Medicine', 'General Physician'],
+  'Gynecology':        ['Gynecology', "Women's Health"],
+}
+
 const STATUS_COLOR = {
   available: { bg: 'rgba(0,200,83,0.12)',  color: '#00C853', label: 'Available' },
   busy:      { bg: 'rgba(255,160,0,0.12)', color: '#FFA000', label: 'Busy' },
@@ -67,7 +73,8 @@ export default function DoctorsPage() {
   const filtered = useMemo(() => {
     let list = doctors
     if (specialization !== 'All') {
-      list = list.filter((d) => d.specialization === specialization)
+      const matches = FILTER_ALIASES[specialization] || [specialization]
+      list = list.filter((d) => matches.includes(formatSpecialty(d.specialization)))
     }
     const q = query.trim().toLowerCase()
     if (q) {
@@ -189,7 +196,7 @@ export default function DoctorsPage() {
                       </p>
                     )}
 
-                    <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                    <div style={{ display: 'flex', gap: 10, marginTop: 'auto', paddingTop: 4 }}>
                       <button
                         onClick={() => d.available_status === 'available' ? navigate('/book-appointment', { state: { preSelectedDoctor: d, videoConsultation: true } }) : null}
                         style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: 'none', background: d.available_status === 'available' ? 'linear-gradient(135deg, #1930AA, #00AFEF)' : 'rgba(0,0,0,0.06)', color: d.available_status === 'available' ? '#fff' : '#9E9E9E', fontSize: 13, fontWeight: 600, cursor: d.available_status === 'available' ? 'pointer' : 'not-allowed', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
@@ -197,7 +204,7 @@ export default function DoctorsPage() {
                       </button>
                       <button
                         onClick={() => navigate(`/doctors/${d.id}`)}
-                        style={{ padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(0,0,0,0.12)', background: '#fff', color: 'var(--g400)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' }}>
+                        style={{ padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(0,0,0,0.12)', background: '#fff', color: 'var(--g400)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         Profile
                       </button>
                     </div>

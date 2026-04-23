@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate, Navigate } from 'react-router-dom'
 import { Phone, ArrowLeft, Shield } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -20,7 +20,16 @@ export default function LoginPage() {
   const [phoneStep, setPhoneStep]     = useState('input') // 'input' | 'otp'
   const [phoneError, setPhoneError]   = useState('')
   const [phoneLoading, setPhoneLoading] = useState(false)
+  const [countdown, setCountdown] = useState(60)
+  const [resendKey, setResendKey] = useState(0)
   const otpRefs = useRef([])
+
+  useEffect(() => {
+    if (phoneStep !== 'otp') return
+    setCountdown(60)
+    const id = setInterval(() => setCountdown(s => s > 0 ? s - 1 : 0), 1000)
+    return () => clearInterval(id)
+  }, [phoneStep, resendKey])
 
   const { sendPhoneOtp, verifyPhoneOtp, isAuthenticated, loading: authLoading } = useAuth()
   const navigate = useNavigate()
@@ -158,8 +167,9 @@ export default function LoginPage() {
               <p style={{ fontSize: 13, color: '#444444', marginBottom: 4, textAlign: 'center' }}>
                 OTP sent to <strong style={{ color: '#111111' }}>{countryCode} {phone}</strong>
               </p>
-              <p style={{ textAlign: 'center', fontSize: 12, color: '#00AFEF', marginBottom: 20 }}>
-                <Shield size={11} style={{ marginRight: 4, verticalAlign: 'middle' }} />Expires in 10 minutes
+              <p style={{ textAlign: 'center', fontSize: 12, color: countdown === 0 ? '#d93a00' : '#00AFEF', marginBottom: 20 }}>
+                <Shield size={11} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                {countdown > 0 ? `Expires in 0:${String(countdown).padStart(2, '0')}` : 'OTP expired — please resend'}
               </p>
 
               <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
@@ -187,9 +197,9 @@ export default function LoginPage() {
               </div>
 
               <div style={{ textAlign: 'right', marginBottom: 20 }}>
-                <button type="button" disabled={phoneLoading}
-                  onClick={() => { setOtp(['','','','','','']); handleSendOtp({ preventDefault: () => {} }) }}
-                  style={{ background: 'none', border: 'none', color: '#1930AA', cursor: 'pointer', fontWeight: 600, fontSize: 12, fontFamily: 'var(--font)', opacity: phoneLoading ? 0.5 : 1 }}>
+                <button type="button" disabled={phoneLoading || countdown > 0}
+                  onClick={() => { setOtp(['','','','','','']); setResendKey(k => k + 1); handleSendOtp({ preventDefault: () => {} }) }}
+                  style={{ background: 'none', border: 'none', color: '#1930AA', cursor: (phoneLoading || countdown > 0) ? 'default' : 'pointer', fontWeight: 600, fontSize: 12, fontFamily: 'var(--font)', opacity: (phoneLoading || countdown > 0) ? 0.35 : 1 }}>
                   Resend OTP
                 </button>
               </div>
@@ -206,10 +216,10 @@ export default function LoginPage() {
             </form>
           )}
 
-          <p style={{ textAlign: 'center', fontSize: 13, color: '#666666', marginTop: 24 }}>
+          {/* <p style={{ textAlign: 'center', fontSize: 13, color: '#666666', marginTop: 24 }}>
             Don&apos;t have an account?{' '}
             <Link to="/signup" style={{ color: '#00AFEF', fontWeight: 600 }}>Sign up free</Link>
-          </p>
+          </p> */}
           <p style={{ textAlign: 'center', fontSize: 13, color: '#666666', marginTop: 10 }}>
             Are you a doctor?{' '}
             <Link to="/doctor/login" style={{ color: '#1930AA', fontWeight: 600 }}>Doctor login →</Link>

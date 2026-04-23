@@ -333,7 +333,7 @@ export default function MedicalInfoModal({ onClose, onSaved }) {
               {gender !== 'male' && (
                 <Toggle label="Pregnant" checked={form.is_pregnant} onChange={v => set('is_pregnant', v)} />
               )}
-              <Toggle label="Nursing"      checked={form.is_nursing}      onChange={v => set('is_nursing', v)} />
+              <Toggle label="Teetotaler"      checked={form.is_nursing}      onChange={v => set('is_nursing', v)} />
             </div>
           </div>
 

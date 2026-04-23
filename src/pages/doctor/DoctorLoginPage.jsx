@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate, Navigate } from 'react-router-dom'
 import { Phone, ArrowLeft, Shield, Stethoscope } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
@@ -19,7 +19,16 @@ export default function DoctorLoginPage() {
   const [error,       setError]       = useState('')
   const [loading,     setLoading]     = useState(false)
   const [devOtp,      setDevOtp]      = useState('')   // shown in mock mode
+  const [countdown,   setCountdown]   = useState(60)
+  const [resendKey,   setResendKey]   = useState(0)
   const otpRefs = useRef([])
+
+  useEffect(() => {
+    if (step !== 'otp') return
+    setCountdown(60)
+    const id = setInterval(() => setCountdown(s => s > 0 ? s - 1 : 0), 1000)
+    return () => clearInterval(id)
+  }, [step, resendKey])
 
   const { sendDoctorOtp, verifyDoctorOtp, isAuthenticated, isDoctor, loading: authLoading } = useAuth()
   const navigate = useNavigate()
@@ -167,8 +176,9 @@ export default function DoctorLoginPage() {
               <p style={{ fontSize: 13, color: '#444444', marginBottom: 4, textAlign: 'center' }}>
                 OTP sent to <strong style={{ color: '#111111' }}>{countryCode} {phone}</strong>
               </p>
-              <p style={{ textAlign: 'center', fontSize: 12, color: '#00AFEF', marginBottom: 20 }}>
-                <Shield size={11} style={{ marginRight: 4, verticalAlign: 'middle' }} />Expires in 10 minutes
+              <p style={{ textAlign: 'center', fontSize: 12, color: countdown === 0 ? '#d93a00' : '#00AFEF', marginBottom: 20 }}>
+                <Shield size={11} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                {countdown > 0 ? `Expires in 0:${String(countdown).padStart(2, '0')}` : 'OTP expired — please resend'}
               </p>
 
               <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
@@ -196,9 +206,9 @@ export default function DoctorLoginPage() {
               </div>
 
               <div style={{ textAlign: 'right', marginBottom: 20 }}>
-                <button type="button" disabled={loading}
-                  onClick={() => { setOtp(['','','','','','']); handleSendOtp({ preventDefault: () => {} }) }}
-                  style={{ background: 'none', border: 'none', color: '#1930AA', cursor: 'pointer', fontWeight: 600, fontSize: 12, fontFamily: 'var(--font)', opacity: loading ? 0.5 : 1 }}>
+                <button type="button" disabled={loading || countdown > 0}
+                  onClick={() => { setOtp(['','','','','','']); setResendKey(k => k + 1); handleSendOtp({ preventDefault: () => {} }) }}
+                  style={{ background: 'none', border: 'none', color: '#1930AA', cursor: (loading || countdown > 0) ? 'default' : 'pointer', fontWeight: 600, fontSize: 12, fontFamily: 'var(--font)', opacity: (loading || countdown > 0) ? 0.35 : 1 }}>
                   Resend OTP
                 </button>
               </div>
