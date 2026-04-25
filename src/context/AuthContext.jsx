@@ -147,7 +147,7 @@ export function AuthProvider({ children }) {
     const res = await fetch(`${API_BASE}/doctors/verify-otp`, { method: 'POST', body: form })
     const data = await res.json().catch(() => null)
     if (!res.ok) throw new Error(data?.detail || 'OTP verification failed')
-    if (data.new_doctor) throw new Error('No doctor account found with this phone number.')
+    if (data.new_doctor) throw new Error('No doctor account found with this number. Please contact admin to register.')
     const token = data.token
     const payload = parseDoctorToken(token)
     const doctorInfo = {
