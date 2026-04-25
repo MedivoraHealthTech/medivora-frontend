@@ -397,6 +397,20 @@ function EmbeddedChat() {
 
             {/* Input + quick actions */}
             <div style={{ padding: '12px 20px 16px', borderTop: '1px solid rgba(0,0,0,0.07)', flexShrink: 0, background: '#fff' }}>
+              {/* Quick symptom chips */}
+              <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+                {SYMPTOMS.slice(0, 4).map(({ icon: Icon, label, q }) => (
+                  <button
+                    key={label}
+                    onClick={() => { setInput(q); setTimeout(() => inputRef.current?.focus(), 0) }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 20, background: 'rgba(25,48,170,0.05)', border: '1px solid rgba(25,48,170,0.15)', fontSize: 12, fontWeight: 600, color: '#1930AA', cursor: 'pointer', fontFamily: 'var(--font)', transition: 'all 0.15s' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(25,48,170,0.1)'; e.currentTarget.style.borderColor = 'rgba(25,48,170,0.35)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(25,48,170,0.05)'; e.currentTarget.style.borderColor = 'rgba(25,48,170,0.15)' }}
+                  >
+                    <Icon size={11} /> {label}
+                  </button>
+                ))}
+              </div>
               <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
                 <input
                   ref={inputRef}

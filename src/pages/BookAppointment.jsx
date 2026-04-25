@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { ArrowLeft, Star, MapPin, Clock, IndianRupee, Stethoscope, Video, CheckCircle, CreditCard } from 'lucide-react'
+import { ArrowLeft, Star, MapPin, Clock, IndianRupee, Stethoscope, Video, CreditCard, Building2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from './supabase'
 import { useBreakpoint } from '../hooks/useBreakpoint'
@@ -61,6 +61,19 @@ function resolveSpecialty(locationState) {
   } catch (_) {}
 
   return null
+}
+
+/* ─── Derive consultation mode from available_slots ─── */
+function getConsultationMode(doctor) {
+  const slots = doctor?.available_slots
+  // No slots configured → default to both (no restriction set)
+  if (!Array.isArray(slots) || slots.length === 0) return 'both'
+  const types = slots.map(s => s.type || 'both')
+  const allOnline  = types.every(t => t === 'online')
+  const allOffline = types.every(t => t === 'offline')
+  if (allOnline)  return 'online'
+  if (allOffline) return 'offline'
+  return 'both'
 }
 
 export default function BookAppointment() {
@@ -332,11 +345,6 @@ export default function BookAppointment() {
                     position: 'relative',
                   }}
                 >
-                  {isSelected && (
-                    <div style={{ position: 'absolute', top: 14, right: 14 }}>
-                      <CheckCircle size={16} color="#1930AA" />
-                    </div>
-                  )}
 
                   <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
                     {/* Avatar */}
@@ -376,6 +384,26 @@ export default function BookAppointment() {
                         <div style={{ marginTop: 6, fontSize: 10, color: '#aaa' }}>NMC Reg: {doc.nmc_number}</div>
                       )}
                     </div>
+
+                    {/* Consultation mode badge — top right */}
+                    {(() => {
+                      const mode = getConsultationMode(doc)
+                      if (mode === 'online') return (
+                        <div style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: '#1930AA', background: 'rgba(25,48,170,0.08)', padding: '4px 9px', borderRadius: 6, height: 'fit-content' }}>
+                          <Video size={11} /> Online Only
+                        </div>
+                      )
+                      if (mode === 'offline') return (
+                        <div style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: '#00875A', background: 'rgba(0,135,90,0.08)', padding: '4px 9px', borderRadius: 6, height: 'fit-content' }}>
+                          <Building2 size={11} /> In-Clinic Only
+                        </div>
+                      )
+                      return (
+                        <div style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: '#7B5EA7', background: 'rgba(123,94,167,0.08)', padding: '4px 9px', borderRadius: 6, height: 'fit-content' }}>
+                          <Video size={11} /><Building2 size={11} /> Online & In-Clinic
+                        </div>
+                      )
+                    })()}
                   </div>
                 </div>
               )

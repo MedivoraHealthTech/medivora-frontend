@@ -385,7 +385,7 @@ export default function AppLayout() {
             })}
           </nav>
 
-          {!isReturningUser && <>
+          <>
             {/* Divider */}
             <div style={{ height: 1, background: borderCol, margin: '0 4px 16px' }} />
 
@@ -441,7 +441,7 @@ export default function AppLayout() {
               })}
             </div>
 
-            {/* ── Health Signals ── */}
+            {/* ── Health Signals ── (commented out — not yet functional)
             <p style={panelLabel}>Health Signals</p>
             <div style={{ ...dynRecentCard, display: 'flex', alignItems: 'center', gap: 10 }}>
               <Activity size={16} color='var(--cyan)' />
@@ -450,27 +450,26 @@ export default function AppLayout() {
                 <p style={{ fontSize: 9, color: 'var(--g700)', margin: 0 }}>Last updated 2h ago</p>
               </div>
             </div>
-          </>}
+            ── */}
+          </>
 
-          {/* ── Logout (returning users) ── */}
-          {isReturningUser && (
-            <div style={{ marginTop: 'auto', paddingTop: 16 }}>
-              <button
-                onClick={() => { sessionStorage.removeItem(RETURNING_KEY); logout() }}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-                  padding: '10px 14px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                  background: 'transparent', color: 'var(--g500)', fontFamily: 'var(--font)',
-                  fontSize: 13, fontWeight: 500, textAlign: 'left', transition: 'all 0.18s',
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,61,0,0.05)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                Logout
-              </button>
-            </div>
-          )}
+          {/* ── Logout ── */}
+          <div style={{ marginTop: 'auto', paddingTop: 16 }}>
+            <button
+              onClick={() => { sessionStorage.removeItem(RETURNING_KEY); logout() }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                padding: '10px 14px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                background: 'transparent', color: 'var(--g500)', fontFamily: 'var(--font)',
+                fontSize: 13, fontWeight: 500, textAlign: 'left', transition: 'all 0.18s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,61,0,0.05)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              Logout
+            </button>
+          </div>
         </aside>
 
         {/* ── Center: nested route content ── */}
@@ -479,13 +478,13 @@ export default function AppLayout() {
           <Outlet />
         </div>
 
-        {/* ── RIGHT PANE — hidden for returning users and dashboard ── */}
-        {!isReturningUser && <aside style={{
+        {/* ── RIGHT PANE ── */}
+        <aside style={{
           width: 240, flexShrink: 0, borderLeft: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(25,48,170,0.12)'}`,
           background: rightPaneBg, overflowY: 'auto', padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: 16,
         }} className="hide-mobile">
 
-          {/* AI Analysis */}
+          {/* AI Analysis — commented out — not yet functional
           <div>
             <p style={sectionLabel('#E08000')}><Activity size={11} />AI Analysis</p>
             <div style={{ ...rightPaneCard, background: darkMode ? '#1e2530' : '#fffbf0', border: `1px solid ${darkMode ? 'rgba(255,179,0,0.15)' : 'rgba(224,128,0,0.18)'}` }}>
@@ -506,6 +505,7 @@ export default function AppLayout() {
               </div>
             </div>
           </div>
+          */}
 
           {/* Recommended Doctors */}
           <div>
@@ -531,7 +531,7 @@ export default function AppLayout() {
             </div>
           </div>
 
-          {/* Suggested Tests */}
+          {/* Suggested Tests — commented out — not yet functional
           <div>
             <p style={sectionLabel('var(--purple)')}><TestTube size={11} />Suggested Tests</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -548,7 +548,7 @@ export default function AppLayout() {
             </div>
           </div>
 
-          {/* Nearby Clinic */}
+          Nearby Clinic — commented out — not yet functional
           <div>
             <p style={sectionLabel('var(--ok)')}><MapPin size={11} />Nearby Clinic</p>
             <div style={{ ...rightPaneCard, background: darkMode ? '#1a2a1e' : '#f0faf3', border: `1px solid ${darkMode ? 'rgba(0,200,83,0.15)' : 'rgba(0,200,83,0.18)'}`, height: 80, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
@@ -557,6 +557,7 @@ export default function AppLayout() {
               <span style={{ fontSize: 10, color: 'var(--ok)', cursor: 'pointer', fontWeight: 600 }}>Enable location →</span>
             </div>
           </div>
+          */}
 
           {/* Health Articles */}
           <div>
@@ -600,7 +601,7 @@ export default function AppLayout() {
             </div>
           </div>
 
-        </aside>}
+        </aside>
 
         {/* ── NOTIFICATIONS SIDEBAR ── */}
         {notifOpen && (
@@ -753,7 +754,7 @@ export default function AppLayout() {
       )}
 
       {/* ── Call to Book floating button ── */}
-      {!ctbDismissed && (
+      {!ctbDismissed && location.pathname === '/chat' && (
         <div style={{
           position: 'fixed',
           bottom: isSmallScreen ? 80 : 28,

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   Search, Video, CalendarClock, CheckCircle, Clock,
   AlertCircle, RefreshCw, X, FileText, Stethoscope, User,
-  ChevronRight, ClipboardList, CreditCard, IndianRupee, Calendar,
+  ChevronRight, ClipboardList, CreditCard, IndianRupee, Calendar, CalendarPlus,
 } from 'lucide-react'
 import { supabase } from './supabase'
 import { useBreakpoint } from '../hooks/useBreakpoint'
@@ -34,6 +34,7 @@ function mapRow(c) {
     specialty:       formatSpecialty(specialty),
     topic:           c.patient_note || 'Consultation request',
     datetime:        c.scheduled_at || c.created_at,
+    slotSelected:    !!c.scheduled_at,
     completedAt:     c.completed_at,
     startedAt:       c.started_at,
     patientJoinedAt: c.patient_joined_at || null,
@@ -232,7 +233,7 @@ function PaymentModal({ consultation, token, onSuccess, onClose }) {
 }
 
 /* ── Detail Drawer ───────────────────────────────────── */
-function DetailDrawer({ c, onClose, now, onReschedule }) {
+function DetailDrawer({ c, onClose, now, onReschedule, onSelectSlot }) {
   const { isMobile } = useBreakpoint()
   const navigate = useNavigate()
   if (!c) return null
@@ -324,7 +325,21 @@ function DetailDrawer({ c, onClose, now, onReschedule }) {
                 💳 Please pay to confirm your consultation
               </div>
             )}
-            {(c.rawStatus === 'scheduled' || c.rawStatus === 'ongoing') && c.consultType === 'video' && c.status !== 'completed' && (
+            {/* No slot selected yet — prompt to pick one */}
+            {(c.rawStatus === 'scheduled' || c.rawStatus === 'confirmed') && c.doctorId && !c.slotSelected && c.status !== 'completed' && (
+              <>
+                <div style={{ padding: '12px 16px', borderRadius: 12, background: 'rgba(255,160,0,0.07)', border: '1px solid rgba(255,160,0,0.25)', fontSize: 13, color: '#E65100', textAlign: 'center', fontWeight: 600 }}>
+                  ⏰ You haven't selected an appointment slot yet
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onSelectSlot(c)}
+                  style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #1930AA, #00AFEF)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <CalendarPlus size={16} /> Select Appointment Slot
+                </button>
+              </>
+            )}
+            {(c.rawStatus === 'scheduled' || c.rawStatus === 'ongoing') && c.slotSelected && c.consultType === 'video' && c.status !== 'completed' && (
               <JoinCallButton
                 datetime={c.datetime}
                 rawStatus={c.rawStatus}
@@ -334,7 +349,7 @@ function DetailDrawer({ c, onClose, now, onReschedule }) {
                 size="lg"
               />
             )}
-            {(c.rawStatus === 'scheduled' || c.rawStatus === 'ongoing') && c.consultType !== 'video' && c.status !== 'completed' && (
+            {(c.rawStatus === 'scheduled' || c.rawStatus === 'ongoing') && c.slotSelected && c.consultType !== 'video' && c.status !== 'completed' && (
               <div style={{ padding: '12px 16px', borderRadius: 12, background: 'rgba(0,180,100,0.07)', border: '1px solid rgba(0,180,100,0.25)', fontSize: 13, color: '#00a855', textAlign: 'center', fontWeight: 600 }}>
                 Booking confirmed — visit {c.doctorName} at their clinic
                 {c.clinicAddress && <div style={{ fontSize: 12, fontWeight: 400, marginTop: 4, color: '#00a855' }}>{c.clinicAddress}</div>}
@@ -345,7 +360,7 @@ function DetailDrawer({ c, onClose, now, onReschedule }) {
                 Appointment time has passed
               </div>
             )}
-            {c.rawStatus === 'scheduled' && c.doctorId && c.status !== 'completed' && (
+            {c.rawStatus === 'scheduled' && c.doctorId && c.slotSelected && c.status !== 'completed' && (
               <button
                 type="button"
                 onClick={() => onReschedule(c)}
@@ -404,6 +419,7 @@ export default function ConsultationsPage() {
   const [selected, setSelected]         = useState(null)
   const [payTarget, setPayTarget]       = useState(null)  // consultation to pay for
   const [rescheduleTarget, setRescheduleTarget] = useState(null) // consultation to reschedule
+  const [slotTarget, setSlotTarget]     = useState(null)  // consultation missing a slot
   const [authToken, setAuthToken]       = useState('')
   const [now, setNow]                   = useState(Date.now())
 
@@ -435,6 +451,28 @@ export default function ConsultationsPage() {
 
   useEffect(() => { fetchConsultations() }, [])
 
+  async function handleSelectSlot(slot) {
+    if (!slotTarget) return
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      const form = new FormData()
+      form.append('scheduled_at', slot.date + 'T' + slot.time + ':00')
+      if (slot.consultationType) form.append('consultation_type', slot.consultationType)
+      const res = await fetch(`/api/consultation/${slotTarget.id}/slot`, {
+        method: 'PATCH',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: form,
+      })
+      if (!res.ok) throw new Error('Failed to save slot')
+      setSlotTarget(null)
+      setSelected(null)
+      fetchConsultations()
+    } catch (e) {
+      console.error('Slot selection failed:', e)
+    }
+  }
+
   async function handlePatientReschedule(slot) {
     if (!rescheduleTarget) return
     try {
@@ -442,6 +480,7 @@ export default function ConsultationsPage() {
       const token = session?.access_token
       const form = new FormData()
       form.append('scheduled_at', slot.date + 'T' + slot.time + ':00')
+      if (slot.consultationType) form.append('consultation_type', slot.consultationType)
       const res = await fetch(`/api/consultation/${rescheduleTarget.id}/slot`, {
         method: 'PATCH',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -598,7 +637,15 @@ export default function ConsultationsPage() {
                         size="sm"
                       />
                     )}
-                    {c.rawStatus === 'scheduled' && c.doctorId && c.status !== 'completed' && (
+                    {(c.rawStatus === 'scheduled' || c.rawStatus === 'confirmed') && c.doctorId && !c.slotSelected && c.status !== 'completed' && (
+                      <button
+                        type="button"
+                        onClick={() => setSlotTarget(c)}
+                        style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #1930AA, #00AFEF)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                        <CalendarPlus size={14} /> Select Slot
+                      </button>
+                    )}
+                    {c.rawStatus === 'scheduled' && c.doctorId && c.slotSelected && c.status !== 'completed' && (
                       <button
                         type="button"
                         onClick={() => setRescheduleTarget(c)}
@@ -665,7 +712,7 @@ export default function ConsultationsPage() {
       </div>
 
       {/* ── Detail Drawer ── */}
-      {selected && <DetailDrawer c={selected} onClose={() => setSelected(null)} now={now} onReschedule={setRescheduleTarget} />}
+      {selected && <DetailDrawer c={selected} onClose={() => setSelected(null)} now={now} onReschedule={setRescheduleTarget} onSelectSlot={setSlotTarget} />}
 
       {/* ── Payment Modal ── */}
       {payTarget && (
@@ -674,6 +721,15 @@ export default function ConsultationsPage() {
           token={authToken}
           onClose={() => setPayTarget(null)}
           onSuccess={() => { setPayTarget(null); fetchConsultations() }}
+        />
+      )}
+
+      {/* ── Select Slot Picker (paid but no slot chosen yet) ── */}
+      {slotTarget && slotTarget.doctorId && (
+        <TimeSlotPicker
+          doctor={{ id: slotTarget.doctorId, name: slotTarget.doctorName }}
+          onConfirm={handleSelectSlot}
+          onClose={() => setSlotTarget(null)}
         />
       )}
 

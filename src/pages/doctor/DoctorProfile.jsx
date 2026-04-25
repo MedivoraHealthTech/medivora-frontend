@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import {
   UserCircle, Save, Edit3, Activity, Phone, MapPin, DollarSign,
   Award, BookOpen, CheckCircle, AlertCircle, AlertTriangle, X,
-  Clock, Plus, Trash2,
+  Clock, Plus, Trash2, Video, Building2,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
@@ -11,6 +11,8 @@ import { useBreakpoint } from '../../hooks/useBreakpoint'
 import { formatSpecialty } from '../../utils/labels'
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+const DEFAULT_SLOTS = DAYS_OF_WEEK.map(day => ({ day, start: '09:00', end: '23:30', type: 'both' }))
 
 const SPECIALTIES_LIST = [
   'general_medicine', 'cardiology', 'neurology', 'dermatology', 'pediatrics',
@@ -67,7 +69,10 @@ export default function DoctorProfile() {
         setExpYears(data.experience_years != null ? String(data.experience_years) : '')
         setNmc(data.nmc_number || '')
         setSpecialties(Array.isArray(data.specialties) ? data.specialties : [])
-        setSlots(Array.isArray(data.available_slots) ? data.available_slots : [])
+        const savedSlots = Array.isArray(data.available_slots) && data.available_slots.length > 0
+          ? data.available_slots
+          : DEFAULT_SLOTS
+        setSlots(savedSlots)
       } catch (e) {
         setError('Could not load profile. ' + (e.message || ''))
       } finally {
@@ -84,7 +89,7 @@ export default function DoctorProfile() {
   }
 
   function addSlot() {
-    setSlots(prev => [...prev, { day: 'Monday', start: '09:00', end: '17:00' }])
+    setSlots(prev => [...prev, { day: 'Monday', start: '09:00', end: '23:30', type: 'both' }])
   }
 
   function removeSlot(idx) {
@@ -218,39 +223,72 @@ export default function DoctorProfile() {
           )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {slots.map((slot, idx) => (
-              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <select
-                  value={slot.day}
-                  onChange={e => updateSlot(idx, 'day', e.target.value)}
-                  style={{ ...slotSelect, minWidth: 120 }}
-                >
-                  {DAYS_OF_WEEK.map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
-                <span style={{ fontSize: 12, color: 'var(--g500)', flexShrink: 0 }}>from</span>
-                <input
-                  type="time"
-                  value={slot.start}
-                  onChange={e => updateSlot(idx, 'start', e.target.value)}
-                  style={slotSelect}
-                />
-                <span style={{ fontSize: 12, color: 'var(--g500)', flexShrink: 0 }}>to</span>
-                <input
-                  type="time"
-                  value={slot.end}
-                  onChange={e => updateSlot(idx, 'end', e.target.value)}
-                  style={slotSelect}
-                />
-                <button
-                  type="button"
-                  onClick={() => removeSlot(idx)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--g500)', padding: 4, display: 'flex', alignItems: 'center', flexShrink: 0 }}
-                  title="Remove slot"
-                >
-                  <Trash2 size={15} />
-                </button>
-              </div>
-            ))}
+            {slots.map((slot, idx) => {
+              const slotType = slot.type || 'both'
+              return (
+                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 12px', borderRadius: 10, background: 'rgba(0,0,0,0.02)', border: '1.5px solid rgba(0,0,0,0.07)' }}>
+                  <select
+                    value={slot.day}
+                    onChange={e => updateSlot(idx, 'day', e.target.value)}
+                    style={{ ...slotSelect, minWidth: 120 }}
+                  >
+                    {DAYS_OF_WEEK.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                  <span style={{ fontSize: 12, color: 'var(--g500)', flexShrink: 0 }}>from</span>
+                  <input
+                    type="time"
+                    value={slot.start}
+                    onChange={e => updateSlot(idx, 'start', e.target.value)}
+                    style={slotSelect}
+                  />
+                  <span style={{ fontSize: 12, color: 'var(--g500)', flexShrink: 0 }}>to</span>
+                  <input
+                    type="time"
+                    value={slot.end}
+                    onChange={e => updateSlot(idx, 'end', e.target.value)}
+                    style={slotSelect}
+                  />
+                  {/* Slot type toggle */}
+                  <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1.5px solid rgba(0,0,0,0.1)', flexShrink: 0 }}>
+                    {[
+                      { value: 'online',  label: 'Online',   icon: <Video size={12} /> },
+                      { value: 'both',    label: 'Both',     icon: null },
+                      { value: 'offline', label: 'In-Clinic', icon: <Building2 size={12} /> },
+                    ].map((opt, i) => {
+                      const active = slotType === opt.value
+                      const color  = opt.value === 'online' ? '#1930AA' : opt.value === 'offline' ? '#00875A' : '#7B5EA7'
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => updateSlot(idx, 'type', opt.value)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 4,
+                            padding: '6px 10px',
+                            background: active ? `${color}18` : 'transparent',
+                            color: active ? color : 'var(--g500)',
+                            border: 'none',
+                            borderLeft: i > 0 ? '1px solid rgba(0,0,0,0.08)' : 'none',
+                            cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 11, fontWeight: active ? 700 : 500,
+                            transition: 'all 0.15s',
+                          }}
+                        >
+                          {opt.icon}{opt.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeSlot(idx)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--g500)', padding: 4, display: 'flex', alignItems: 'center', flexShrink: 0, marginLeft: 'auto' }}
+                    title="Remove slot"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              )
+            })}
           </div>
         </section>
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Search, MapPin, Star, Stethoscope, Video, RefreshCw } from 'lucide-react'
+import { Search, MapPin, Star, RefreshCw, Stethoscope } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from './supabase'
 import ComingSoonModal from '../components/ComingSoonModal'
@@ -200,7 +200,7 @@ export default function DoctorsPage() {
                       <button
                         onClick={() => d.available_status === 'available' ? navigate('/book-appointment', { state: { preSelectedDoctor: d, videoConsultation: true } }) : null}
                         style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: 'none', background: d.available_status === 'available' ? 'linear-gradient(135deg, #1930AA, #00AFEF)' : 'rgba(0,0,0,0.06)', color: d.available_status === 'available' ? '#fff' : '#9E9E9E', fontSize: 13, fontWeight: 600, cursor: d.available_status === 'available' ? 'pointer' : 'not-allowed', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                        <Video size={15} /> {d.available_status === 'available' ? 'Book Video' : 'Unavailable'}
+                        <Stethoscope size={15} /> {d.available_status === 'available' ? 'Book Consultation' : 'Unavailable'}
                       </button>
                       <button
                         onClick={() => navigate(`/doctors/${d.id}`)}
