@@ -29,7 +29,7 @@ const STATUS_OPTIONS = [
 ]
 
 export default function DoctorProfile() {
-  const { displayName, getToken, logout } = useAuth()
+  const { displayName, getToken, logout, updateDoctorUser } = useAuth()
   const navigate = useNavigate()
   const { isMobile } = useBreakpoint()
 
@@ -123,6 +123,8 @@ export default function DoctorProfile() {
         specialties:      specialties.join(','),
         available_slots:  JSON.stringify(slots),
       }, getToken())
+      const fullName = `${firstName.trim()} ${lastName.trim()}`.trim()
+      if (fullName) updateDoctorUser({ full_name: fullName })
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } catch (err) {

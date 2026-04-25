@@ -198,6 +198,14 @@ export function AuthProvider({ children }) {
     return { token, doctor: doctorInfo }
   }
 
+  // ─── Update doctor user info (after profile save) ────────────────────────
+
+  function updateDoctorUser(patch) {
+    const updated = { ...doctorUser, ...patch }
+    localStorage.setItem(DOCTOR_USER_KEY, JSON.stringify(updated))
+    setDoctorUser(updated)
+  }
+
   // ─── Logout ──────────────────────────────────────────────────────────────
 
   async function logout() {
@@ -263,6 +271,7 @@ export function AuthProvider({ children }) {
       sendDoctorOtp,
       verifyDoctorOtp,
       doctorLogin,
+      updateDoctorUser,
       logout,
       getToken,
       pendingChatRestore,
