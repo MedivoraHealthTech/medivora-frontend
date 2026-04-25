@@ -12,6 +12,12 @@ import { formatSpecialty, formatConsultationStatus } from '../../utils/labels'
 
 const STATUS_TABS = ['All', 'Requested', 'Scheduled', 'Completed', 'Cancelled']
 
+function fmtWhen(iso) {
+  if (!iso) return '—'
+  try { return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) }
+  catch { return iso }
+}
+
 const statusColor = s => {
   if (s === 'requested')  return 'var(--warn)'
   if (s === 'scheduled')  return 'var(--cyan)'
@@ -303,7 +309,7 @@ export default function DoctorConsultations() {
                     </p>
                     <p style={{ fontSize: 12, color: 'var(--g500)', margin: 0 }}>
                       {formatSpecialty(c.specialty) || 'General Medicine'}
-                      {c.scheduled_at && ` · ${new Date(c.scheduled_at).toLocaleString()}`}
+                      {c.scheduled_at && ` · ${fmtWhen(c.scheduled_at)}`}
                     </p>
                   </div>
                 </div>
@@ -330,7 +336,7 @@ export default function DoctorConsultations() {
                     </div>
                     <div style={detailBox}>
                       <span style={detailLabel}>Requested At</span>
-                      <span style={detailVal}>{c.created_at ? new Date(c.created_at).toLocaleString() : '—'}</span>
+                      <span style={detailVal}>{fmtWhen(c.created_at)}</span>
                     </div>
                     <div style={detailBox}>
                       <span style={detailLabel}>Phone</span>
