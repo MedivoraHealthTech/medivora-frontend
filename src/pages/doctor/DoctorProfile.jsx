@@ -46,6 +46,9 @@ export default function DoctorProfile() {
   const [deleteError,     setDeleteError]     = useState('')
 
   // Editable fields
+  const [firstName,    setFirstName]    = useState('')
+  const [lastName,     setLastName]     = useState('')
+  const [email,        setEmail]        = useState('')
   const [clinicName,   setClinicName]   = useState('')
   const [clinicAddr,   setClinicAddr]   = useState('')
   const [clinicPhone,  setClinicPhone]  = useState('')
@@ -61,6 +64,9 @@ export default function DoctorProfile() {
       try {
         const data = await doctorAPI.getProfile(getToken())
         setProfile(data)
+        setFirstName(data.first_name || '')
+        setLastName(data.last_name || '')
+        setEmail(data.email || '')
         setClinicName(data.clinic_name  || '')
         setClinicAddr(data.clinic_address || '')
         setClinicPhone(data.clinic_phone || '')
@@ -105,6 +111,8 @@ export default function DoctorProfile() {
     setSaving(true); setError(''); setSaved(false)
     try {
       await doctorAPI.updateProfile({
+        full_name:        `${firstName.trim()} ${lastName.trim()}`.trim(),
+        email:            email,
         clinic_name:      clinicName,
         clinic_address:   clinicAddr,
         clinic_phone:     clinicPhone,
@@ -143,7 +151,8 @@ export default function DoctorProfile() {
     </div>
   )
 
-  const cleanName = displayName.replace(/^Dr\.\s*/i, '')
+  const liveName = `${firstName} ${lastName}`.trim() || displayName.replace(/^Dr\.\s*/i, '')
+  const cleanName = liveName
   const initials = cleanName.charAt(0).toUpperCase()
 
   return (
@@ -185,6 +194,25 @@ export default function DoctorProfile() {
       )}
 
       <form onSubmit={handleSave}>
+
+        {/* Personal Information */}
+        <section style={section}>
+          <h3 style={sectionTitle}><UserCircle size={15} /> Personal Information</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16 }}>
+            <div>
+              <label style={fieldLabel}>First Name</label>
+              <input value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="First name" style={fieldInput} />
+            </div>
+            <div>
+              <label style={fieldLabel}>Last Name</label>
+              <input value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Last name" style={fieldInput} />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={fieldLabel}>Email Address</label>
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="doctor@example.com" style={fieldInput} />
+            </div>
+          </div>
+        </section>
 
         {/* Availability */}
         <section style={section}>
