@@ -287,7 +287,7 @@ function DetailDrawer({ c, onClose, now, onReschedule, onSelectSlot }) {
           <Section icon={<CalendarClock size={15} color="var(--cyan)" />} title="Appointment Details">
             <Row label="Type"       value={formatConsultationType(c.consultType)} />
             <Row label="Requested"  value={formatWhen(c.createdAt)} />
-            {c.datetime && <Row label="Scheduled"  value={formatWhen(c.datetime)} />}
+            <Row label="Scheduled" value={c.slotSelected ? formatWhen(c.datetime) : 'N/A'} />
             {c.startedAt && <Row label="Started"    value={formatWhen(c.startedAt)} />}
             {c.completedAt && <Row label="Completed" value={formatWhen(c.completedAt)} />}
             {c.durationMin && <Row label="Duration"  value={`${c.durationMin} min`} />}
@@ -457,7 +457,7 @@ export default function ConsultationsPage() {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
       const form = new FormData()
-      form.append('scheduled_at', slot.date + 'T' + slot.time + ':00')
+      form.append('scheduled_at', new Date(`${slot.date}T${slot.time}:00`).toISOString())
       if (slot.consultationType) form.append('consultation_type', slot.consultationType)
       const res = await fetch(`/api/consultation/${slotTarget.id}/slot`, {
         method: 'PATCH',
@@ -479,7 +479,7 @@ export default function ConsultationsPage() {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
       const form = new FormData()
-      form.append('scheduled_at', slot.date + 'T' + slot.time + ':00')
+      form.append('scheduled_at', new Date(`${slot.date}T${slot.time}:00`).toISOString())
       if (slot.consultationType) form.append('consultation_type', slot.consultationType)
       const res = await fetch(`/api/consultation/${rescheduleTarget.id}/slot`, {
         method: 'PATCH',
@@ -621,7 +621,7 @@ export default function ConsultationsPage() {
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--g500)' }}>
                     <CalendarClock size={16} color="var(--cyan)" />
-                    {formatWhen(c.datetime)}
+                    {c.slotSelected ? formatWhen(c.datetime) : 'N/A'}
                     {c.durationMin && <span style={{ color: 'var(--g700)' }}>· {c.durationMin} min</span>}
                   </div>
 
