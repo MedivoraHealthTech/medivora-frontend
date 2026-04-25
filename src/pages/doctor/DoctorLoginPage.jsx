@@ -43,8 +43,7 @@ export default function DoctorLoginPage() {
     const full = `${countryCode}${digits}`
     setError(''); setLoading(true)
     try {
-      const res = await sendDoctorOtp(full)
-      setDevOtp(res?.otp_for_testing || '')
+      await sendDoctorOtp(full)
       setOtp(['', '', '', '', '', ''])
       setStep('otp')
       setTimeout(() => otpRefs.current[0]?.focus(), 100)

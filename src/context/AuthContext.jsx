@@ -125,36 +125,44 @@ export function AuthProvider({ children }) {
     return data
   }
 
-  // ─── Doctor OTP — send ───────────────────────────────────────────────────
+  // ─── Doctor OTP — send (via Supabase, same as patient) ──────────────────
 
   async function sendDoctorOtp(phone) {
-    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-    const form = new FormData()
-    form.append('phone', phone)
-    const res = await fetch(`${API_BASE}/doctors/send-otp`, { method: 'POST', body: form })
-    const data = await res.json().catch(() => null)
-    if (!res.ok) throw new Error(data?.detail || 'Could not send OTP')
-    return data
+    const { error } = await supabase.auth.signInWithOtp({ phone })
+    if (error) throw new Error(error.message)
+    // Return empty object — no dev OTP exposed (Supabase sends real SMS)
+    return {}
   }
 
   // ─── Doctor OTP — verify ─────────────────────────────────────────────────
+  // Verify via Supabase, then exchange the Supabase session for a doctor JWT.
 
   async function verifyDoctorOtp(phone, otp) {
+    // Step 1: verify OTP with Supabase to prove phone ownership
+    const { data, error } = await supabase.auth.verifyOtp({ phone, token: otp, type: 'sms' })
+    if (error) throw new Error(error.message)
+    if (!data.session) throw new Error('Verification failed. Please try again.')
+
+    // Step 2: exchange Supabase token for a doctor JWT
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-    const form = new FormData()
-    form.append('phone', phone)
-    form.append('otp', otp)
-    const res = await fetch(`${API_BASE}/doctors/verify-otp`, { method: 'POST', body: form })
-    const data = await res.json().catch(() => null)
-    if (!res.ok) throw new Error(data?.detail || 'OTP verification failed')
-    if (data.new_doctor) throw new Error('No doctor account found with this number. Please contact admin to register.')
-    const token = data.token
+    const res = await fetch(`${API_BASE}/doctors/login-via-supabase`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${data.session.access_token}` },
+    })
+    const result = await res.json().catch(() => null)
+
+    // Step 3: sign out from Supabase — doctors use custom JWT, not Supabase session
+    await supabase.auth.signOut()
+
+    if (!res.ok) throw new Error(result?.detail || 'Doctor login failed')
+
+    const token = result.token
     const payload = parseDoctorToken(token)
     const doctorInfo = {
-      id:        data.doctor?.id || payload?.sub,
-      full_name: data.doctor?.name || data.doctor?.full_name || payload?.name || 'Doctor',
-      email:     data.doctor?.email || payload?.email || '',
-      phone:     data.doctor?.phone || phone,
+      id:        result.doctor?.id || payload?.sub,
+      full_name: result.doctor?.name || result.doctor?.full_name || payload?.name || 'Doctor',
+      email:     result.doctor?.email || payload?.email || '',
+      phone:     result.doctor?.phone || phone,
       role:      'doctor',
     }
     localStorage.setItem(DOCTOR_TOKEN_KEY, token)
