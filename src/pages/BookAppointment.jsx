@@ -285,13 +285,8 @@ export default function BookAppointment() {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <h1 style={{ fontSize: 17, fontWeight: 700, color: '#111', margin: 0 }}>
-              {videoConsultation ? 'Book Video Consultation' : 'Book Appointment'}
+              Book Appointment
             </h1>
-            {videoConsultation && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#fff', background: 'linear-gradient(135deg, #1930AA, #00AFEF)', padding: '3px 10px', borderRadius: 20 }}>
-                <Video size={11} /> Video
-              </span>
-            )}
           </div>
           {recommendedSpecialty && !preSelectedDoctor && (
             <p style={{ fontSize: 11, color: '#1930AA', margin: '2px 0 0', fontWeight: 600 }}>
@@ -418,10 +413,8 @@ export default function BookAppointment() {
             {/* Panel header */}
             <div style={{ padding: '16px 20px', background: 'linear-gradient(135deg, #1930AA, #00AFEF)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#fff' }}>
-                {videoConsultation ? <Video size={15} /> : <CreditCard size={15} />}
-                <span style={{ fontSize: 14, fontWeight: 700 }}>
-                  {videoConsultation ? 'Video Consultation' : 'Payment Summary'}
-                </span>
+                <CreditCard size={15} />
+                <span style={{ fontSize: 14, fontWeight: 700 }}>Payment Summary</span>
               </div>
             </div>
 
@@ -449,7 +442,7 @@ export default function BookAppointment() {
                   {/* Fee breakdown */}
                   <div style={{ borderTop: '1px solid rgba(0,0,0,0.07)', paddingTop: 14, marginBottom: 12 }}>
                     {[
-                      { label: videoConsultation ? 'Video Consultation Fee' : 'Consultation Fee', value: `₹${fee}` },
+                      { label: 'Consultation Fee', value: `₹${fee}` },
                       { label: 'Platform Fee', value: '₹0' },
                     ].map(({ label, value }) => (
                       <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#666', marginBottom: 8 }}>
