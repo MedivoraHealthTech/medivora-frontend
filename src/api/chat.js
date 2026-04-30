@@ -3,7 +3,7 @@
 
 import { supabase } from '../pages/supabase'
 
-const CHAT_API_BASE = import.meta.env.VITE_CHAT_API_URL || import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const CHAT_API_BASE = import.meta.env.VITE_CHAT_API_URL || import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 
 /**
  * Get the Supabase access token from the current session (if logged in).
