@@ -71,7 +71,9 @@ export default function PrescriptionReview() {
   const { displayName, getToken } = useAuth()
   const { isMobile, isTablet } = useBreakpoint()
 
+  const [tab,        setTab]        = useState('sent')   // 'sent' | 'ai'
   const [approvals,  setApprovals]  = useState([])
+  const [sentRx,     setSentRx]     = useState([])
   const [loading,    setLoading]    = useState(true)
   const [expanded,   setExpanded]   = useState(null)
   const [error,      setError]      = useState('')
@@ -96,17 +98,30 @@ export default function PrescriptionReview() {
 
   const [actionLoading, setActionLoading] = useState(null)
 
-  useEffect(() => { fetchApprovals() }, [])
+  useEffect(() => { fetchAll() }, [])
+
+  async function fetchAll() {
+    setLoading(true)
+    try {
+      const [aData, sData] = await Promise.allSettled([
+        doctorAPI.getPendingApprovals(getToken()),
+        doctorAPI.getDoctorPrescriptions(getToken()),
+      ])
+      setApprovals(aData.status === 'fulfilled' ? (aData.value?.approvals || []) : [])
+      setSentRx(sData.status === 'fulfilled' ? (sData.value?.prescriptions || []) : [])
+    } catch (e) {
+      setError('Could not load prescriptions.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   async function fetchApprovals() {
-    setLoading(true)
     try {
       const data = await doctorAPI.getPendingApprovals(getToken())
       setApprovals(data?.approvals || [])
     } catch (e) {
       setError('Could not load prescription approvals.')
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -200,6 +215,23 @@ export default function PrescriptionReview() {
     }
   }
 
+  async function handleDownloadSentPdf(rx) {
+    try {
+      const token = getToken()
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+      const res = await fetch(`${API_BASE}/prescriptions/${rx.id}/download-pdf`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) { setError('PDF not available.'); return }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a'); a.href = url; a.download = `prescription_${rx.prescription_number || rx.id}.pdf`; a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setError('Failed to download PDF.')
+    }
+  }
+
   if (loading) return (
     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
       <div style={{ width: 40, height: 40, borderRadius: '50%', border: '3px solid rgba(0,188,212,0.2)', borderTopColor: 'var(--cyan)', animation: 'spin 0.8s linear infinite' }} />
@@ -210,9 +242,26 @@ export default function PrescriptionReview() {
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '16px' : isTablet ? '20px 24px' : '28px 32px', background: 'var(--dark)' }}>
 
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 800, color: 'var(--g300)', fontFamily: 'var(--serif)', margin: '0 0 4px' }}>Prescription Reviews</h1>
-        <p style={{ fontSize: 13, color: 'var(--g500)', margin: 0 }}>AI-generated prescriptions awaiting your review. Approve, modify, or reject each one.</p>
+      <div style={{ marginBottom: 20 }}>
+        <h1 style={{ fontSize: 20, fontWeight: 800, color: 'var(--g300)', fontFamily: 'var(--serif)', margin: '0 0 4px' }}>Prescriptions</h1>
+        <p style={{ fontSize: 13, color: 'var(--g500)', margin: 0 }}>Your sent prescriptions and AI-triage approvals.</p>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 24, borderBottom: '2px solid rgba(0,0,0,0.06)', paddingBottom: 0 }}>
+        {[
+          { id: 'sent', label: `Sent Prescriptions${sentRx.length ? ` (${sentRx.length})` : ''}` },
+          { id: 'ai',   label: `AI Triage Review${approvals.filter(a => a.status === 'pending').length ? ` (${approvals.filter(a => a.status === 'pending').length})` : ''}` },
+        ].map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)} style={{
+            padding: '10px 18px', borderRadius: '8px 8px 0 0', border: 'none', cursor: 'pointer',
+            fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700,
+            background: tab === t.id ? 'var(--pw)' : 'transparent',
+            color: tab === t.id ? 'var(--g300)' : 'var(--g500)',
+            borderBottom: tab === t.id ? '2px solid #1930AA' : '2px solid transparent',
+            marginBottom: -2,
+          }}>{t.label}</button>
+        ))}
       </div>
 
       {error && (
@@ -227,7 +276,103 @@ export default function PrescriptionReview() {
         </div>
       )}
 
-      {approvals.length === 0 ? (
+      {/* ── Sent Prescriptions Tab ── */}
+      {tab === 'sent' && (
+        sentRx.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '64px 0' }}>
+            <FileText size={40} color='var(--g700)' style={{ margin: '0 auto 12px', display: 'block' }} />
+            <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--g300)', marginBottom: 4 }}>No prescriptions sent yet</p>
+            <p style={{ fontSize: 13, color: 'var(--g500)' }}>Prescriptions you submit from consultations will appear here.</p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {sentRx.map(rx => {
+              const items = rx.prescription_items || []
+              const isExp = expanded === rx.id
+              return (
+                <div key={rx.id} style={{ borderRadius: 14, background: 'var(--pw)', border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                  <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+                    onClick={() => setExpanded(isExp ? null : rx.id)}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                      <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'rgba(0,200,83,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <User size={18} color='var(--ok)' />
+                      </div>
+                      <div>
+                        <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--g300)', margin: '0 0 2px' }}>{rx.patient_name || 'Patient'}</p>
+                        <p style={{ fontSize: 12, color: 'var(--g500)', margin: 0 }}>
+                          {rx.prescription_number} · {items.length} medication{items.length !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 50, background: 'rgba(0,200,83,0.12)', color: 'var(--ok)' }}>Sent</span>
+                      <span style={{ fontSize: 11, color: 'var(--g700)' }}>{rx.prescribed_at ? new Date(rx.prescribed_at).toLocaleDateString() : ''}</span>
+                      {isExp ? <ChevronUp size={16} color='var(--g500)' /> : <ChevronDown size={16} color='var(--g500)' />}
+                    </div>
+                  </div>
+
+                  {isExp && (
+                    <div style={{ padding: '0 20px 20px', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+                      <div style={{ paddingTop: 16, marginBottom: 14 }}>
+                        <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ok)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>Medications</p>
+                        {items.length === 0 ? (
+                          <p style={{ fontSize: 13, color: 'var(--g500)', fontStyle: 'italic' }}>No medications recorded.</p>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {items.map((med, mi) => (
+                              <div key={mi} style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(0,200,83,0.04)', border: '1px solid rgba(0,200,83,0.12)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--g300)' }}>{med.medicine_name}</span>
+                                  {med.generic_name && <span style={{ fontSize: 11, color: 'var(--g500)', background: 'rgba(0,0,0,0.04)', padding: '2px 8px', borderRadius: 50 }}>{med.generic_name}</span>}
+                                </div>
+                                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                                  {med.dosage     && <span style={rxTag}>Dosage: {med.dosage}</span>}
+                                  {med.frequency  && <span style={rxTag}>Frequency: {med.frequency}</span>}
+                                  {med.duration   && <span style={rxTag}>Duration: {med.duration}</span>}
+                                </div>
+                                {med.instructions && <p style={{ fontSize: 12, color: 'var(--g500)', margin: '6px 0 0', fontStyle: 'italic' }}>{med.instructions}</p>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {Array.isArray(rx.general_instructions) && rx.general_instructions.length > 0 && (
+                        <div style={{ marginBottom: 10, padding: '10px 12px', borderRadius: 9, background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.05)' }}>
+                          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--g700)', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 }}>General Instructions</p>
+                          <ul style={{ margin: 0, paddingLeft: 16 }}>
+                            {rx.general_instructions.map((inst, i) => <li key={i} style={{ fontSize: 12, color: 'var(--g400)', marginBottom: 2 }}>{inst}</li>)}
+                          </ul>
+                        </div>
+                      )}
+
+                      {rx.follow_up_instructions && (
+                        <div style={{ marginBottom: 14, padding: '10px 12px', borderRadius: 9, background: 'rgba(0,188,212,0.04)', border: '1px solid rgba(0,188,212,0.1)' }}>
+                          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--cyan)', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 }}>Follow-up</p>
+                          <p style={{ fontSize: 13, color: 'var(--g400)', margin: 0, lineHeight: 1.55 }}>{rx.follow_up_instructions}</p>
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                        <span style={{ fontSize: 12, color: 'var(--ok)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <CheckCircle size={13} /> Prescription sent
+                        </span>
+                        <button onClick={() => handleDownloadSentPdf(rx)} style={{ ...actionBtn, color: '#1930AA', borderColor: '#1930AA', background: 'rgba(25,48,170,0.06)' }}>
+                          <Download size={13} /> Download PDF
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )
+      )}
+
+      {/* ── AI Triage Approvals Tab ── */}
+      {tab === 'ai' && (
+      approvals.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '64px 0' }}>
           <CheckCircle size={40} color='var(--ok)' style={{ margin: '0 auto 12px', display: 'block' }} />
           <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--g300)', marginBottom: 4 }}>All caught up!</p>
@@ -379,6 +524,7 @@ export default function PrescriptionReview() {
             )
           })}
         </div>
+      )
       )}
 
       {/* ── Approve Modal ── */}

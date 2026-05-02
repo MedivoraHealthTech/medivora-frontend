@@ -362,7 +362,7 @@ export default function ChatPage() {
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, paddingBottom: 10, borderBottom: '1px solid rgba(25,48,170,0.12)' }}>
                           <ClipboardList size={14} color="#1930AA" />
-                          <span style={{ fontSize: 11, fontWeight: 700, color: '#1930AA', textTransform: 'uppercase', letterSpacing: 0.5 }}>Medical Assessment Report</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#1930AA', textTransform: 'uppercase', letterSpacing: 0.5 }}>Medical Triage</span>
                         </div>
                         <div dangerouslySetInnerHTML={{ __html: formatMessage(lastReport.content) }} />
                       </div>
@@ -381,7 +381,7 @@ export default function ChatPage() {
                       {msg.is_medical_report && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, paddingBottom: 10, borderBottom: '1px solid rgba(25,48,170,0.12)' }}>
                           <ClipboardList size={14} color="#1930AA" />
-                          <span style={{ fontSize: 11, fontWeight: 700, color: '#1930AA', textTransform: 'uppercase', letterSpacing: 0.5 }}>Medical Assessment Report</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#1930AA', textTransform: 'uppercase', letterSpacing: 0.5 }}>Medical Triage</span>
                         </div>
                       )}
                       <div dangerouslySetInnerHTML={{ __html: formatMessage(msg.content) }} />

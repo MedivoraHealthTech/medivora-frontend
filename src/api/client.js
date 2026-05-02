@@ -150,6 +150,10 @@ export const doctorAPI = {
   submitConsultationPrescription: (consultationId, data, token) =>
     apiFetch(`/consultation/${consultationId}/submit-prescription`, { method: 'POST', body: data, token }),
 
+  // Doctor's own submitted prescriptions
+  getDoctorPrescriptions: (token) =>
+    apiFetch('/doctor/prescriptions', { token }),
+
   // Patients
   getPatients: (token) =>
     apiFetch('/doctors/patients', { token }),
