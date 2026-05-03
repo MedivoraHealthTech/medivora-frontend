@@ -1449,7 +1449,7 @@ export default function HomePage() {
               {ALERT_CARDS.map((a, i) => (
                 <div className={`lp-ac ${a.wide ? 'lp-ac-wide' : ''}`} key={i}>
                   <div className="lp-ac-head">
-                    <div className={`lp-ac-icon ${a.iconClass}`}>{a.icon}</div>
+                    <div className={`lp-ac-icon ${a.iconClass}`}><a.icon size={20} /></div>
                     <div className="lp-ac-label">{a.label}</div>
                   </div>
                   <div className="lp-ac-title">{a.title}</div>
