@@ -28,6 +28,7 @@ import DoctorDashboard from './pages/doctor/DoctorDashboard'
 import DoctorConsultations from './pages/doctor/DoctorConsultations'
 import DoctorProfile from './pages/doctor/DoctorProfile'
 import PrescriptionReview from './pages/doctor/PrescriptionReview'
+import WelcomeDoctorPage from './pages/WelcomeDoctorPage'
 
 export default function App() {
   return (
@@ -36,6 +37,7 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/doctor/login" element={<DoctorLoginPage />} />
+      <Route path="/welcome-doctor" element={<WelcomeDoctorPage />} />
 
       {/* Patient routes */}
       <Route element={<ProtectedRoute />}>
