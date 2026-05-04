@@ -749,7 +749,7 @@ const styles = `
   }
   .lp-testi-dot.lp-active { background:var(--lp-blue-bright); width:20px; border-radius:3px; }
   .lp-testi-stars { display:flex; gap:3px; margin-bottom:1rem; }
-  .lp-testi-quote { font-size:13.5px; color:var(--lp-ink-2); line-height:1.7; margin-bottom:1.25rem; font-style:italic; }
+  .lp-testi-quote { font-size:13.5px; color:var(--lp-ink-2); line-height:1.7; margin-bottom:1.25rem; font-style:italic; max-width:520px; }
   .lp-testi-author { display:flex; align-items:center; gap:10px; }
   .lp-testi-avatar {
     width:36px; height:36px; border-radius:50%; flex-shrink:0;
