@@ -40,15 +40,11 @@ export default function Navbar() {
     }}>
       {/* Main bar */}
       <div style={{
-        height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: isMobile ? '0 16px' : '0 32px',
+        height: 44, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: isMobile ? '0 12px' : '0 24px',
       }}>
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-          <Logo size={30} />
-          <span style={{ fontSize: 17, fontWeight: 800, letterSpacing: -0.5 }}>
-            <span style={{ color: 'var(--blue)' }}>Medi</span>
-            <span style={{ color: 'var(--cyan)' }}>vora</span>
-          </span>
+          <Logo size={80} />
         </Link>
 
         {/* Desktop nav */}

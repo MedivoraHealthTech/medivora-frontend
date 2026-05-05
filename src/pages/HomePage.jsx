@@ -138,7 +138,7 @@ const styles = `
   .lp-nav {
     position:fixed; top:0; left:0; right:0; z-index:100;
     display:flex; align-items:center; justify-content:space-between;
-    padding:1rem 2.5rem;
+    padding:0.25rem 2.5rem;
     background:rgba(255,255,255,0.7);
     backdrop-filter:blur(24px) saturate(180%);
     -webkit-backdrop-filter:blur(24px) saturate(180%);
@@ -1144,8 +1144,7 @@ export default function HomePage() {
       {/* ── NAV ── */}
       <nav className="lp-nav">
         <Link to="/" className="lp-nav-logo">
-          <Logo size={32} />
-          Medivora
+          <Logo size={80} />
         </Link>
         <div className="lp-nav-links">
           <span className="lp-nav-link" onClick={() => document.getElementById('lp-how').scrollIntoView({ behavior:'smooth' })}>How it works</span>
