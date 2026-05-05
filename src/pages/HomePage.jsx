@@ -1149,20 +1149,15 @@ export default function HomePage() {
         </Link>
         <div className="lp-nav-links">
           <span className="lp-nav-link" onClick={() => document.getElementById('lp-how').scrollIntoView({ behavior:'smooth' })}>How it works</span>
-          <Link to="/doctor/login" className="lp-nav-link">For Doctors</Link>
           <span className="lp-nav-link" onClick={() => setComingSoon('Mental Health')}>Mental Health</span>
           <span className="lp-nav-link" onClick={() => setComingSoon('Skin & Hair')}>Skin & Hair</span>
+          <Link to="/doctor/login" className="lp-nav-link">For Doctors</Link>
           <Link to="/login" className="lp-nav-link">Log in</Link>
         </div>
       </nav>
 
       {/* ── HERO ── */}
       <section className="lp-hero">
-        {/* Doctor image — outside the blue card */}
-        <div className="lp-hero-doc-wrap">
-          <img src="/doctor-hero-male.jpeg" alt="Medivora Doctor" className="lp-hero-doc-img" />
-        </div>
-
         {/* Blue card — original text-left / mockup-right layout */}
         <div className="lp-hero-blue">
           <div className="lp-hero-grid-bg" />
