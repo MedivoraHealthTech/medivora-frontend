@@ -13,6 +13,7 @@ import Logo from '../components/Logo'
 import ComingSoonModal from '../components/ComingSoonModal'
 import { useBreakpoint } from '../hooks/useBreakpoint'
 import { sendMessage as sendChatMessage } from '../api/chat'
+import { apiFetch } from '../api/client'
 
 /* ─────────────────────────────────────────────
    DATA
@@ -1077,6 +1078,43 @@ export default function HomePage() {
     return () => cancelAnimationFrame(raf)
   }, [])
 
+  // Waitlist popup state
+  const [waitlistOpen, setWaitlistOpen]     = useState(false)
+  const [waitlistName, setWaitlistName]     = useState('')
+  const [waitlistPhone, setWaitlistPhone]   = useState('')
+  const [waitlistLoading, setWaitlistLoading] = useState(false)
+  const [waitlistError, setWaitlistError]   = useState('')
+  const [waitlistDone, setWaitlistDone]     = useState(false)
+
+  async function handleWaitlistSubmit(e) {
+    e.preventDefault()
+    setWaitlistError('')
+    if (!waitlistName.trim()) { setWaitlistError('Please enter your name.'); return }
+    if (!/^\+?[0-9]{10,15}$/.test(waitlistPhone.replace(/\s/g, ''))) {
+      setWaitlistError('Please enter a valid phone number.'); return
+    }
+    setWaitlistLoading(true)
+    try {
+      await apiFetch('/waitlist/doctor', {
+        method: 'POST',
+        body: { name: waitlistName.trim(), phone: waitlistPhone.trim() },
+      })
+      setWaitlistDone(true)
+    } catch (err) {
+      setWaitlistError(err.message || 'Something went wrong. Please try again.')
+    } finally {
+      setWaitlistLoading(false)
+    }
+  }
+
+  function closeWaitlist() {
+    setWaitlistOpen(false)
+    setWaitlistName('')
+    setWaitlistPhone('')
+    setWaitlistError('')
+    setWaitlistDone(false)
+  }
+
   // Chat popup state
   const [chatOpen, setChatOpen] = useState(false)
   const [chatMsgs, setChatMsgs] = useState([{ role:'ai', text:'Hi! Describe your symptoms in Hindi or English. I\'ll help you understand what\'s happening and guide you to the right care.' }])
@@ -1134,7 +1172,7 @@ export default function HomePage() {
 
   function handleWaitlist(e) {
     e.preventDefault()
-    navigate('/welcome-doctor')
+    setWaitlistOpen(true)
   }
 
   return (
@@ -1629,6 +1667,172 @@ export default function HomePage() {
                 <Send size={15} color="#fff" />
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── WAITLIST POPUP ── */}
+      {waitlistOpen && (
+        <div
+          onClick={closeWaitlist}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 2000,
+            background: 'rgba(10,27,71,0.55)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 16,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#fff', borderRadius: 20,
+              boxShadow: '0 16px 64px rgba(10,27,71,0.18)',
+              padding: '2.5rem 2rem',
+              width: '100%', maxWidth: 440,
+              position: 'relative',
+              fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+            }}
+          >
+            {/* Close button */}
+            <button
+              onClick={closeWaitlist}
+              style={{
+                position: 'absolute', top: 16, right: 16,
+                background: 'none', border: 'none', cursor: 'pointer',
+                padding: 4, borderRadius: 8,
+                color: '#8B95A8',
+              }}
+            >
+              <X size={20} />
+            </button>
+
+            {waitlistDone ? (
+              /* ── Thank you state ── */
+              <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+                <div style={{
+                  width: 64, height: 64,
+                  background: 'linear-gradient(135deg, #10b981, #059669)',
+                  borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  margin: '0 auto 1.25rem',
+                  boxShadow: '0 4px 20px rgba(16,185,129,0.3)',
+                }}>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                    <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#111827', marginBottom: '0.5rem' }}>
+                  You're on the list!
+                </h2>
+                <p style={{ color: '#6b7280', fontSize: '0.95rem', lineHeight: 1.6 }}>
+                  We'll reach out to <strong>{waitlistPhone}</strong> when your city goes live.
+                </p>
+                <button
+                  onClick={closeWaitlist}
+                  style={{
+                    marginTop: '1.5rem',
+                    padding: '0.7rem 2rem',
+                    background: 'linear-gradient(135deg, #1B3FB8, #2D5BFF)',
+                    color: '#fff', border: 'none', borderRadius: 10,
+                    fontSize: '0.95rem', fontWeight: 600, cursor: 'pointer',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
+              /* ── Form state ── */
+              <>
+                <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                  <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0A1B47', marginBottom: '0.4rem' }}>
+                    Join the Waitlist
+                  </h2>
+                  <p style={{ color: '#4A5568', fontSize: '0.9rem' }}>
+                    First 500 users get premium free for 6 months.
+                  </p>
+                </div>
+
+                <form onSubmit={handleWaitlistSubmit} style={{ textAlign: 'left' }}>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#374151', marginBottom: '0.35rem' }}>
+                      Full Name
+                    </label>
+                    <input
+                      type="text"
+                      value={waitlistName}
+                      onChange={e => setWaitlistName(e.target.value)}
+                      placeholder="Your full name"
+                      required
+                      style={{
+                        width: '100%', boxSizing: 'border-box',
+                        padding: '0.75rem 1rem',
+                        border: '1.5px solid #e5e7eb', borderRadius: 10,
+                        fontSize: '0.95rem', outline: 'none',
+                        fontFamily: 'inherit', transition: 'border-color 0.2s',
+                      }}
+                      onFocus={e => e.target.style.borderColor = '#2D5BFF'}
+                      onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#374151', marginBottom: '0.35rem' }}>
+                      Mobile Number
+                    </label>
+                    <input
+                      type="tel"
+                      value={waitlistPhone}
+                      onChange={e => setWaitlistPhone(e.target.value)}
+                      placeholder="+91 98765 43210"
+                      required
+                      style={{
+                        width: '100%', boxSizing: 'border-box',
+                        padding: '0.75rem 1rem',
+                        border: '1.5px solid #e5e7eb', borderRadius: 10,
+                        fontSize: '0.95rem', outline: 'none',
+                        fontFamily: 'inherit', transition: 'border-color 0.2s',
+                      }}
+                      onFocus={e => e.target.style.borderColor = '#2D5BFF'}
+                      onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+                    />
+                  </div>
+
+                  {waitlistError && (
+                    <p style={{
+                      color: '#ef4444', fontSize: '0.85rem',
+                      background: '#fef2f2', border: '1px solid #fecaca',
+                      borderRadius: 8, padding: '0.5rem 0.8rem',
+                      marginBottom: '1rem',
+                    }}>
+                      {waitlistError}
+                    </p>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={waitlistLoading}
+                    style={{
+                      width: '100%', padding: '0.85rem',
+                      background: waitlistLoading
+                        ? '#93c5fd'
+                        : 'linear-gradient(135deg, #1B3FB8, #2D5BFF)',
+                      color: '#fff', border: 'none', borderRadius: 10,
+                      fontSize: '1rem', fontWeight: 700,
+                      cursor: waitlistLoading ? 'not-allowed' : 'pointer',
+                      boxShadow: waitlistLoading ? 'none' : '0 4px 16px rgba(45,91,255,0.35)',
+                      transition: 'all 0.2s', fontFamily: 'inherit',
+                    }}
+                  >
+                    {waitlistLoading ? 'Submitting…' : 'Join the Waitlist →'}
+                  </button>
+                </form>
+
+                <p style={{ textAlign: 'center', color: '#9ca3af', fontSize: '0.78rem', marginTop: '1rem' }}>
+                  No spam. Just a message when your city goes live.
+                </p>
+              </>
+            )}
           </div>
         </div>
       )}
