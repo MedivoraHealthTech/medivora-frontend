@@ -111,6 +111,14 @@ export const consultationAPI = {
   getMy: (token) => apiFetch('/consultation/my', { token }),
 }
 
+// ─── Family Members API ───────────────────────────────────────────────────
+export const familyMembersAPI = {
+  list:   (token)              => apiFetch('/family-members', { token }),
+  add:    (body, token)        => apiFetch('/family-members', { method: 'POST', body, token }),
+  update: (id, body, token)    => apiFetch(`/family-members/${id}`, { method: 'PUT', body, token }),
+  remove: (id, token)          => apiFetch(`/family-members/${id}`, { method: 'DELETE', token }),
+}
+
 // ─── Doctor API ───────────────────────────────────────────────────────────
 
 export const doctorAPI = {

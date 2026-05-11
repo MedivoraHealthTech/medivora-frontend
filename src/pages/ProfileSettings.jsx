@@ -4,10 +4,10 @@ import {
   ArrowLeft, User, Clock, Save, Phone, Mail, Calendar,
   Droplets, MapPin,
   MessageSquare, Trash2, ChevronRight, LogOut, CheckCircle,
-  AlertTriangle, X,
+  AlertTriangle, X, Users, Plus, Edit2,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { profileAPI, chatHistoryAPI, consultationAPI } from '../api/client'
+import { profileAPI, chatHistoryAPI, consultationAPI, familyMembersAPI } from '../api/client'
 import { supabase } from './supabase'
 import { useBreakpoint } from '../hooks/useBreakpoint'
 
@@ -88,6 +88,17 @@ export default function ProfileSettings() {
 
   // ─── Consultations state ───────────────────────────────────────
   const [consultations, setConsultations] = useState([])
+
+  // ─── Family members state ──────────────────────────────────────
+  const [familyMembers, setFamilyMembers]     = useState([])
+  const [loadingFamily, setLoadingFamily]     = useState(false)
+  const [familyModal, setFamilyModal]         = useState(null) // null | 'add' | member object (edit)
+  const [familyForm, setFamilyForm]           = useState({
+    name: '', age: '', gender: '', relationship: '',
+    blood_group: '', medical_history: '', allergies: '', current_medications: '',
+  })
+  const [familySaving, setFamilySaving]       = useState(false)
+  const [familyMsg, setFamilyMsg]             = useState('')
 
   // ─── Load profile on mount ─────────────────────────────────────
   useEffect(() => {
@@ -172,6 +183,72 @@ export default function ProfileSettings() {
     }
     loadHistory()
   }, [activeTab, user, token])
+
+  // ─── Load family members when tab opens ────────────────────────
+  useEffect(() => {
+    if (activeTab !== 'family') return
+    async function loadFamily() {
+      setLoadingFamily(true)
+      try {
+        const data = await familyMembersAPI.list(token)
+        setFamilyMembers(data?.members || [])
+      } catch { /* silently ignore */ }
+      finally { setLoadingFamily(false) }
+    }
+    loadFamily()
+  }, [activeTab, token])
+
+  function openAddModal() {
+    setFamilyForm({ name: '', age: '', gender: '', relationship: '', blood_group: '', medical_history: '', allergies: '', current_medications: '' })
+    setFamilyMsg('')
+    setFamilyModal('add')
+  }
+
+  function openEditModal(member) {
+    setFamilyForm({
+      name:                member.name || '',
+      age:                 member.age != null ? String(member.age) : '',
+      gender:              member.gender || '',
+      relationship:        member.relationship || '',
+      blood_group:         member.blood_group || '',
+      medical_history:     member.medical_history || '',
+      allergies:           member.allergies || '',
+      current_medications: member.current_medications || '',
+    })
+    setFamilyMsg('')
+    setFamilyModal(member)
+  }
+
+  async function handleFamilySave() {
+    if (!familyForm.name.trim()) { setFamilyMsg('Name is required'); return }
+    setFamilySaving(true); setFamilyMsg('')
+    try {
+      const payload = {
+        ...familyForm,
+        age: familyForm.age ? Number(familyForm.age) : null,
+      }
+      if (familyModal === 'add') {
+        const data = await familyMembersAPI.add(payload, token)
+        setFamilyMembers(prev => [...prev, data.member])
+      } else {
+        const data = await familyMembersAPI.update(familyModal.id, payload, token)
+        setFamilyMembers(prev => prev.map(m => m.id === familyModal.id ? data.member : m))
+      }
+      setFamilyModal(null)
+    } catch (err) {
+      setFamilyMsg(err.message || 'Failed to save')
+    } finally {
+      setFamilySaving(false)
+    }
+  }
+
+  async function handleFamilyDelete(member) {
+    if (!window.confirm(`Remove ${member.name} from your family members?`)) return
+    try {
+      await familyMembersAPI.remove(member.id, token)
+      setFamilyMembers(prev => prev.filter(m => m.id !== member.id))
+    } catch { /* ignore */ }
+  }
 
   // ─── Profile save handler ──────────────────────────────────────
   async function handleSave(e) {
@@ -334,6 +411,10 @@ export default function ProfileSettings() {
           <button style={tabBtn(activeTab === 'profile')} onClick={() => setActiveTab('profile')}>
             <User size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
             Profile
+          </button>
+          <button style={tabBtn(activeTab === 'family')} onClick={() => setActiveTab('family')}>
+            <Users size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+            Family
           </button>
           <button style={tabBtn(activeTab === 'history')} onClick={() => setActiveTab('history')}>
             <Clock size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
@@ -628,6 +709,248 @@ export default function ProfileSettings() {
                 </div>
               )}
               </>
+            )}
+          </>
+        )}
+
+        {/* ══════════════ FAMILY MEMBERS TAB ══════════════ */}
+        {activeTab === 'family' && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <p style={{ fontSize: 13, color: '#888888' }}>
+                {familyMembers.length === 0 ? 'No family members added yet' : `${familyMembers.length} family member${familyMembers.length > 1 ? 's' : ''}`}
+              </p>
+              <button
+                onClick={openAddModal}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '9px 16px', borderRadius: 10, border: 'none',
+                  background: 'linear-gradient(135deg, #1930AA, #00AFEF)',
+                  color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 700,
+                  fontFamily: 'var(--font)',
+                }}
+              >
+                <Plus size={14} /> Add Member
+              </button>
+            </div>
+
+            {loadingFamily ? (
+              <div style={{ textAlign: 'center', padding: 40, color: '#999999' }}>Loading…</div>
+            ) : familyMembers.length === 0 ? (
+              <div style={{ ...card, textAlign: 'center', padding: '40px 20px' }}>
+                <Users size={36} color="#d0daea" style={{ marginBottom: 12 }} />
+                <p style={{ fontSize: 15, fontWeight: 600, color: '#555555', marginBottom: 6 }}>No family members yet</p>
+                <p style={{ fontSize: 13, color: '#999999' }}>Add your family members to manage their health information</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {familyMembers.map(member => (
+                  <div key={member.id} style={{ ...card, marginBottom: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
+                          background: 'linear-gradient(135deg, #e8f0ff, #f0f8ff)',
+                          border: '1.5px solid #c7d7ff',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          <User size={16} color="#1930AA" />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 14, fontWeight: 700, color: '#111111' }}>{member.name}</span>
+                            {member.relationship && (
+                              <span style={{
+                                fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20,
+                                background: '#f0f4ff', color: '#1930AA', textTransform: 'capitalize',
+                              }}>{member.relationship}</span>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', gap: 12, marginTop: 4, flexWrap: 'wrap' }}>
+                            {member.age && <span style={{ fontSize: 12, color: '#888888' }}>{member.age} yrs</span>}
+                            {member.gender && <span style={{ fontSize: 12, color: '#888888', textTransform: 'capitalize' }}>{member.gender}</span>}
+                            {member.blood_group && (
+                              <span style={{ fontSize: 12, color: '#e63946', fontWeight: 600 }}>
+                                <Droplets size={10} style={{ verticalAlign: 'middle', marginRight: 2 }} />{member.blood_group}
+                              </span>
+                            )}
+                          </div>
+                          {(member.medical_history || member.allergies || member.current_medications) && (
+                            <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              {member.medical_history && (
+                                <p style={{ fontSize: 12, color: '#666666', margin: 0 }}>
+                                  <span style={{ fontWeight: 600, color: '#555' }}>History: </span>{member.medical_history}
+                                </p>
+                              )}
+                              {member.allergies && (
+                                <p style={{ fontSize: 12, color: '#666666', margin: 0 }}>
+                                  <span style={{ fontWeight: 600, color: '#555' }}>Allergies: </span>{member.allergies}
+                                </p>
+                              )}
+                              {member.current_medications && (
+                                <p style={{ fontSize: 12, color: '#666666', margin: 0 }}>
+                                  <span style={{ fontWeight: 600, color: '#555' }}>Medications: </span>{member.current_medications}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                        <button
+                          onClick={() => openEditModal(member)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, color: '#a0aec0', transition: 'color 0.2s' }}
+                          onMouseEnter={e => e.currentTarget.style.color = '#1930AA'}
+                          onMouseLeave={e => e.currentTarget.style.color = '#a0aec0'}
+                          title="Edit"
+                        >
+                          <Edit2 size={15} />
+                        </button>
+                        <button
+                          onClick={() => handleFamilyDelete(member)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, color: '#a0aec0', transition: 'color 0.2s' }}
+                          onMouseEnter={e => e.currentTarget.style.color = '#d93a00'}
+                          onMouseLeave={e => e.currentTarget.style.color = '#a0aec0'}
+                          title="Remove"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* ── Add / Edit Modal ── */}
+            {familyModal !== null && (
+              <div style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+                <div style={{
+                  background: '#fff', borderRadius: 18, padding: isMobile ? '20px 16px' : '28px',
+                  width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto',
+                  boxShadow: '0 12px 40px rgba(0,0,0,0.2)',
+                }}>
+                  {/* Header */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Users size={18} color="#1930AA" />
+                      <span style={{ fontSize: 16, fontWeight: 700, color: '#111' }}>
+                        {familyModal === 'add' ? 'Add Family Member' : 'Edit Family Member'}
+                      </span>
+                    </div>
+                    <button onClick={() => setFamilyModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+                      <X size={18} color="#888" />
+                    </button>
+                  </div>
+
+                  {/* Form */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    <div>
+                      <label style={labelStyle}>Name *</label>
+                      <input style={inp} placeholder="Full name" value={familyForm.name}
+                        onChange={e => setFamilyForm(f => ({ ...f, name: e.target.value }))}
+                        onFocus={e => e.target.style.borderColor = '#1930AA'}
+                        onBlur={e => e.target.style.borderColor = '#d0daea'} />
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <div>
+                        <label style={labelStyle}>Relationship</label>
+                        <select style={inp} value={familyForm.relationship}
+                          onChange={e => setFamilyForm(f => ({ ...f, relationship: e.target.value }))}>
+                          <option value="">Select</option>
+                          {['Spouse', 'Child', 'Parent', 'Sibling', 'Grandparent', 'Other'].map(r => (
+                            <option key={r} value={r.toLowerCase()}>{r}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={labelStyle}>Age</label>
+                        <input style={inp} type="number" min="0" max="150" placeholder="Age"
+                          value={familyForm.age}
+                          onChange={e => setFamilyForm(f => ({ ...f, age: e.target.value }))}
+                          onFocus={e => e.target.style.borderColor = '#1930AA'}
+                          onBlur={e => e.target.style.borderColor = '#d0daea'} />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <div>
+                        <label style={labelStyle}>Gender</label>
+                        <select style={inp} value={familyForm.gender}
+                          onChange={e => setFamilyForm(f => ({ ...f, gender: e.target.value }))}>
+                          <option value="">Select</option>
+                          <option value="male">Male</option>
+                          <option value="female">Female</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={labelStyle}><Droplets size={12} /> Blood Group</label>
+                        <select style={inp} value={familyForm.blood_group}
+                          onChange={e => setFamilyForm(f => ({ ...f, blood_group: e.target.value }))}>
+                          <option value="">Select</option>
+                          {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bg => (
+                            <option key={bg} value={bg}>{bg}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={labelStyle}>Medical History</label>
+                      <textarea style={{ ...inp, minHeight: 64, resize: 'vertical' }}
+                        placeholder="e.g. Diabetes, Hypertension"
+                        value={familyForm.medical_history}
+                        onChange={e => setFamilyForm(f => ({ ...f, medical_history: e.target.value }))}
+                        onFocus={e => e.target.style.borderColor = '#1930AA'}
+                        onBlur={e => e.target.style.borderColor = '#d0daea'} />
+                    </div>
+
+                    <div>
+                      <label style={labelStyle}>Allergies</label>
+                      <textarea style={{ ...inp, minHeight: 52, resize: 'vertical' }}
+                        placeholder="e.g. Penicillin, Nuts"
+                        value={familyForm.allergies}
+                        onChange={e => setFamilyForm(f => ({ ...f, allergies: e.target.value }))}
+                        onFocus={e => e.target.style.borderColor = '#1930AA'}
+                        onBlur={e => e.target.style.borderColor = '#d0daea'} />
+                    </div>
+
+                    <div>
+                      <label style={labelStyle}>Current Medications</label>
+                      <textarea style={{ ...inp, minHeight: 52, resize: 'vertical' }}
+                        placeholder="e.g. Metformin 500mg daily"
+                        value={familyForm.current_medications}
+                        onChange={e => setFamilyForm(f => ({ ...f, current_medications: e.target.value }))}
+                        onFocus={e => e.target.style.borderColor = '#1930AA'}
+                        onBlur={e => e.target.style.borderColor = '#d0daea'} />
+                    </div>
+
+                    {familyMsg && (
+                      <p style={{ fontSize: 13, color: '#d93a00', margin: 0 }}>{familyMsg}</p>
+                    )}
+
+                    <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                      <button onClick={() => setFamilyModal(null)} style={{
+                        flex: 1, padding: '12px 0', borderRadius: 10, border: '1.5px solid #d0daea',
+                        background: '#fff', color: '#666', cursor: 'pointer', fontFamily: 'var(--font)',
+                        fontSize: 14, fontWeight: 600,
+                      }}>Cancel</button>
+                      <button onClick={handleFamilySave} disabled={familySaving} style={{
+                        flex: 1, padding: '12px 0', borderRadius: 10, border: 'none',
+                        background: 'linear-gradient(135deg, #1930AA, #00AFEF)',
+                        color: '#fff', cursor: familySaving ? 'wait' : 'pointer',
+                        fontFamily: 'var(--font)', fontSize: 14, fontWeight: 700,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                        opacity: familySaving ? 0.7 : 1,
+                      }}>
+                        <Save size={14} /> {familySaving ? 'Saving…' : 'Save'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
           </>
         )}
