@@ -185,7 +185,6 @@ export default function AdminDoctors() {
                     >
                       <option value="available">Set Available</option>
                       <option value="suspended">Suspend</option>
-                      <option value="on_leave">On Leave</option>
                       <option value="inactive">Inactive</option>
                     </select>
                   </td>
