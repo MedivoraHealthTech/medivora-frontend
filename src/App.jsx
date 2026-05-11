@@ -29,6 +29,11 @@ import DoctorConsultations from './pages/doctor/DoctorConsultations'
 import DoctorProfile from './pages/doctor/DoctorProfile'
 import PrescriptionReview from './pages/doctor/PrescriptionReview'
 import WelcomeDoctorPage from './pages/WelcomeDoctorPage'
+import AdminLoginPage from './pages/admin/AdminLoginPage'
+import AdminLayout from './pages/admin/AdminLayout'
+import AdminDashboard from './pages/admin/AdminDashboard'
+import AdminPatients from './pages/admin/AdminPatients'
+import AdminDoctors from './pages/admin/AdminDoctors'
 
 export default function App() {
   return (
@@ -38,6 +43,12 @@ export default function App() {
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/doctor/login" element={<DoctorLoginPage />} />
       <Route path="/welcome-doctor" element={<WelcomeDoctorPage />} />
+      <Route path="/admin/login" element={<AdminLoginPage />} />
+      <Route path="/admin" element={<AdminLayout />}>
+        <Route index element={<AdminDashboard />} />
+        <Route path="patients" element={<AdminPatients />} />
+        <Route path="doctors" element={<AdminDoctors />} />
+      </Route>
 
       {/* Patient routes */}
       <Route element={<ProtectedRoute />}>
