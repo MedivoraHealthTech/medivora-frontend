@@ -52,12 +52,10 @@ export default function AdminDoctors() {
   async function updateStatus(doctorId, newStatus) {
     setUpdating(doctorId)
     try {
-      const body = new FormData()
-      body.append('status', newStatus)
       const res = await fetch(`${API_BASE}/admin/doctors/${doctorId}/status`, {
         method: 'PATCH',
-        headers: { Authorization: `Bearer ${token()}` },
-        body,
+        headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
       })
       if (res.ok) {
         setDoctors(prev => prev.map(d => d.id === doctorId ? { ...d, available_status: newStatus } : d))
