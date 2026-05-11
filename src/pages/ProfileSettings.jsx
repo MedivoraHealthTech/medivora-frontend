@@ -743,80 +743,91 @@ export default function ProfileSettings() {
                 <p style={{ fontSize: 13, color: '#999999' }}>Add your family members to manage their health information</p>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
                 {familyMembers.map(member => (
-                  <div key={member.id} style={{ ...card, marginBottom: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+                  <div key={member.id} style={{
+                    background: '#fff', borderRadius: 16, border: '1px solid rgba(0,0,0,0.06)',
+                    padding: '18px 16px', display: 'flex', flexDirection: 'column', gap: 12,
+                    boxShadow: '0 1px 4px rgba(25,48,170,0.04)',
+                  }}>
+                    {/* Card header */}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <div style={{
-                          width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
-                          background: 'linear-gradient(135deg, #e8f0ff, #f0f8ff)',
+                          width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
+                          background: 'linear-gradient(135deg, #e8f0ff, #ddf4ff)',
                           border: '1.5px solid #c7d7ff',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
-                          <User size={16} color="#1930AA" />
+                          <span style={{ fontSize: 18, fontWeight: 800, color: '#1930AA' }}>
+                            {member.name.charAt(0).toUpperCase()}
+                          </span>
                         </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: 14, fontWeight: 700, color: '#111111' }}>{member.name}</span>
-                            {member.relationship && (
-                              <span style={{
-                                fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20,
-                                background: '#f0f4ff', color: '#1930AA', textTransform: 'capitalize',
-                              }}>{member.relationship}</span>
-                            )}
-                          </div>
-                          <div style={{ display: 'flex', gap: 12, marginTop: 4, flexWrap: 'wrap' }}>
-                            {member.age && <span style={{ fontSize: 12, color: '#888888' }}>{member.age} yrs</span>}
-                            {member.gender && <span style={{ fontSize: 12, color: '#888888', textTransform: 'capitalize' }}>{member.gender}</span>}
-                            {member.blood_group && (
-                              <span style={{ fontSize: 12, color: '#e63946', fontWeight: 600 }}>
-                                <Droplets size={10} style={{ verticalAlign: 'middle', marginRight: 2 }} />{member.blood_group}
-                              </span>
-                            )}
-                          </div>
-                          {(member.medical_history || member.allergies || member.current_medications) && (
-                            <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                              {member.medical_history && (
-                                <p style={{ fontSize: 12, color: '#666666', margin: 0 }}>
-                                  <span style={{ fontWeight: 600, color: '#555' }}>History: </span>{member.medical_history}
-                                </p>
-                              )}
-                              {member.allergies && (
-                                <p style={{ fontSize: 12, color: '#666666', margin: 0 }}>
-                                  <span style={{ fontWeight: 600, color: '#555' }}>Allergies: </span>{member.allergies}
-                                </p>
-                              )}
-                              {member.current_medications && (
-                                <p style={{ fontSize: 12, color: '#666666', margin: 0 }}>
-                                  <span style={{ fontWeight: 600, color: '#555' }}>Medications: </span>{member.current_medications}
-                                </p>
-                              )}
-                            </div>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: '#111111', lineHeight: 1.2 }}>{member.name}</div>
+                          {member.relationship && (
+                            <span style={{
+                              fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, marginTop: 4, display: 'inline-block',
+                              background: '#f0f4ff', color: '#1930AA', textTransform: 'capitalize', letterSpacing: 0.3,
+                            }}>{member.relationship}</span>
                           )}
                         </div>
                       </div>
-                      <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                        <button
-                          onClick={() => openEditModal(member)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, color: '#a0aec0', transition: 'color 0.2s' }}
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <button onClick={() => openEditModal(member)} title="Edit"
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 5, color: '#c0cce0', borderRadius: 6, transition: 'color 0.15s' }}
                           onMouseEnter={e => e.currentTarget.style.color = '#1930AA'}
-                          onMouseLeave={e => e.currentTarget.style.color = '#a0aec0'}
-                          title="Edit"
-                        >
-                          <Edit2 size={15} />
+                          onMouseLeave={e => e.currentTarget.style.color = '#c0cce0'}>
+                          <Edit2 size={14} />
                         </button>
-                        <button
-                          onClick={() => handleFamilyDelete(member)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, color: '#a0aec0', transition: 'color 0.2s' }}
+                        <button onClick={() => handleFamilyDelete(member)} title="Remove"
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 5, color: '#c0cce0', borderRadius: 6, transition: 'color 0.15s' }}
                           onMouseEnter={e => e.currentTarget.style.color = '#d93a00'}
-                          onMouseLeave={e => e.currentTarget.style.color = '#a0aec0'}
-                          title="Remove"
-                        >
-                          <Trash2 size={15} />
+                          onMouseLeave={e => e.currentTarget.style.color = '#c0cce0'}>
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </div>
+
+                    {/* Quick stats row */}
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {member.age && (
+                        <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: '#f5f8fc', color: '#555' }}>
+                          {member.age} yrs
+                        </span>
+                      )}
+                      {member.gender && (
+                        <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: '#f5f8fc', color: '#555', textTransform: 'capitalize' }}>
+                          {member.gender}
+                        </span>
+                      )}
+                      {member.blood_group && (
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, background: '#fff0f1', color: '#e63946', display: 'flex', alignItems: 'center', gap: 3 }}>
+                          <Droplets size={10} />{member.blood_group}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Medical info */}
+                    {(member.medical_history || member.allergies || member.current_medications) && (
+                      <div style={{ borderTop: '1px solid #f0f4fa', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                        {member.medical_history && (
+                          <p style={{ fontSize: 11, color: '#666', margin: 0, lineHeight: 1.4 }}>
+                            <span style={{ fontWeight: 700, color: '#444' }}>History: </span>{member.medical_history}
+                          </p>
+                        )}
+                        {member.allergies && (
+                          <p style={{ fontSize: 11, color: '#666', margin: 0, lineHeight: 1.4 }}>
+                            <span style={{ fontWeight: 700, color: '#444' }}>Allergies: </span>{member.allergies}
+                          </p>
+                        )}
+                        {member.current_medications && (
+                          <p style={{ fontSize: 11, color: '#666', margin: 0, lineHeight: 1.4 }}>
+                            <span style={{ fontWeight: 700, color: '#444' }}>Medications: </span>{member.current_medications}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
