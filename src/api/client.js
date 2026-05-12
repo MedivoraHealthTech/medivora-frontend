@@ -162,6 +162,10 @@ export const doctorAPI = {
   getDoctorPrescriptions: (token) =>
     apiFetch('/doctor/prescriptions', { token }),
 
+  // Approval
+  submitApproval: (token) =>
+    apiFetch('/doctors/me/submit-approval', { method: 'POST', token }),
+
   // Patients
   getPatients: (token) =>
     apiFetch('/doctors/patients', { token }),

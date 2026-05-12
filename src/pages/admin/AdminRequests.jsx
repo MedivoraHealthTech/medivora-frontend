@@ -40,8 +40,11 @@ function Field({ icon: Icon, label, value }) {
 
 function ApproveModal({ req, onClose, onApproved }) {
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState(null) // { doctor_id, temp_password }
+  const [result, setResult] = useState(null) // { doctor_id, temp_password? }
   const [copied, setCopied] = useState(false)
+
+  // Self-registered doctors have a doctor_id on the request
+  const isSelfRegistered = !!req.doctor_id
 
   async function confirm() {
     setLoading(true)
@@ -75,7 +78,9 @@ function ApproveModal({ req, onClose, onApproved }) {
           <>
             <div style={{ fontSize: 17, fontWeight: 800, color: '#0A1B47', marginBottom: 8 }}>Approve Dr. {name}?</div>
             <p style={{ fontSize: 13, color: '#718096', marginBottom: 24 }}>
-              This will create a doctor account with a temporary password. Share the credentials with the doctor so they can log in and update their password.
+              {isSelfRegistered
+                ? 'This doctor has already registered via OTP. Approving will activate their account so they can accept patient bookings.'
+                : 'This will create a doctor account with a temporary password. Share the credentials with the doctor so they can log in.'}
             </p>
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={onClose} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1.5px solid #e2e8f0', background: '#fff', color: '#4a5568', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -93,18 +98,24 @@ function ApproveModal({ req, onClose, onApproved }) {
                 <CheckCircle size={22} color="#10b981" />
               </div>
               <div style={{ fontSize: 17, fontWeight: 800, color: '#0A1B47' }}>Dr. {name} Approved!</div>
-              <p style={{ fontSize: 13, color: '#718096', marginTop: 4 }}>Account created. Share the temporary password below.</p>
+              <p style={{ fontSize: 13, color: '#718096', marginTop: 4 }}>
+                {result.temp_password
+                  ? 'Account created. Share the temporary password below.'
+                  : 'Account activated. The doctor can now accept patient consultations.'}
+              </p>
             </div>
-            <div style={{ background: '#f7f9fc', borderRadius: 12, padding: '14px 16px', marginBottom: 20, border: '1px solid #e8eef8' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#a0aec0', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Temporary Password</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <code style={{ fontSize: 15, fontWeight: 700, color: '#0A1B47', flex: 1, fontFamily: 'monospace' }}>{result.temp_password}</code>
-                <button onClick={copyPw} style={{ background: copied ? '#d1fae5' : '#e8f0ff', border: 'none', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', color: copied ? '#10b981' : '#1930AA', fontWeight: 700, fontSize: 12, fontFamily: 'inherit' }}>
-                  {copied ? 'Copied!' : <Copy size={13} />}
-                </button>
+            {result.temp_password && (
+              <div style={{ background: '#f7f9fc', borderRadius: 12, padding: '14px 16px', marginBottom: 20, border: '1px solid #e8eef8' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#a0aec0', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Temporary Password</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <code style={{ fontSize: 15, fontWeight: 700, color: '#0A1B47', flex: 1, fontFamily: 'monospace' }}>{result.temp_password}</code>
+                  <button onClick={copyPw} style={{ background: copied ? '#d1fae5' : '#e8f0ff', border: 'none', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', color: copied ? '#10b981' : '#1930AA', fontWeight: 700, fontSize: 12, fontFamily: 'inherit' }}>
+                    {copied ? 'Copied!' : <Copy size={13} />}
+                  </button>
+                </div>
+                <div style={{ fontSize: 11, color: '#a0aec0', marginTop: 6 }}>Phone: {req.phone}</div>
               </div>
-              <div style={{ fontSize: 11, color: '#a0aec0', marginTop: 6 }}>Phone: {req.phone}</div>
-            </div>
+            )}
             <button onClick={onClose} style={{ width: '100%', padding: '10px 0', borderRadius: 10, border: 'none', background: '#0A1B47', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
               Done
             </button>

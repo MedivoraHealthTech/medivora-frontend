@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   Users, CalendarDays, ClipboardList, TrendingUp,
   Clock, CheckCircle, AlertTriangle, ChevronRight,
-  Activity, Stethoscope, IndianRupee,
+  Activity, Stethoscope, IndianRupee, AlertCircle,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { doctorAPI } from '../../api/client'
@@ -11,7 +11,7 @@ import { useBreakpoint } from '../../hooks/useBreakpoint'
 import { formatSpecialty, formatConsultationStatus } from '../../utils/labels'
 
 export default function DoctorDashboard() {
-  const { displayName, getToken } = useAuth()
+  const { displayName, getToken, doctorUser } = useAuth()
   const navigate = useNavigate()
   const { isMobile, isTablet } = useBreakpoint()
 
@@ -98,6 +98,36 @@ export default function DoctorDashboard() {
         </h1>
         <p style={{ fontSize: 13, color: 'var(--g500)', margin: 0 }}>Here's your practice overview for today.</p>
       </div>
+
+      {/* Approval pending banner */}
+      {doctorUser?.available_status === 'inactive' && (
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', gap: 12,
+          padding: '16px 20px', borderRadius: 14, marginBottom: 24,
+          background: 'rgba(255,152,0,0.07)', border: '1.5px solid rgba(255,152,0,0.25)',
+        }}>
+          <AlertCircle size={20} color="#FF9800" style={{ flexShrink: 0, marginTop: 1 }} />
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: '0 0 3px', fontSize: 14, fontWeight: 700, color: '#e65100' }}>
+              Your account is pending admin approval
+            </p>
+            <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--g500)' }}>
+              Patients can see your profile but cannot book appointments until you are approved.
+              Complete your profile details and submit for approval to get activated.
+            </p>
+            <button
+              onClick={() => navigate('/doctor/profile')}
+              style={{
+                padding: '8px 16px', borderRadius: 8, border: 'none',
+                background: '#FF9800', color: '#fff',
+                fontFamily: 'var(--font)', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+              }}
+            >
+              Complete Profile & Submit for Approval
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Stat cards */}
       {stats && (

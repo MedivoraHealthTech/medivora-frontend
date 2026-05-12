@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import {
   UserCircle, Save, Edit3, Activity, Phone, MapPin, DollarSign,
   Award, BookOpen, CheckCircle, AlertCircle, AlertTriangle, X,
-  Clock, Plus, Trash2, Video, Building2,
+  Clock, Plus, Trash2, Video, Building2, Send,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
@@ -38,6 +38,11 @@ export default function DoctorProfile() {
   const [saving,   setSaving]   = useState(false)
   const [saved,    setSaved]    = useState(false)
   const [error,    setError]    = useState('')
+
+  // Approval submission state
+  const [submittingApproval, setSubmittingApproval] = useState(false)
+  const [approvalSubmitted,  setApprovalSubmitted]  = useState(false)
+  const [approvalError,      setApprovalError]      = useState('')
 
   // Delete account state
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -124,13 +129,32 @@ export default function DoctorProfile() {
         available_slots:  JSON.stringify(slots),
       }, getToken())
       const fullName = `${firstName.trim()} ${lastName.trim()}`.trim()
-      if (fullName) updateDoctorUser({ full_name: fullName })
+      const patch = {}
+      if (fullName) patch.full_name = fullName
+      patch.available_status = status
+      updateDoctorUser(patch)
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } catch (err) {
       setError(err.message || 'Failed to save profile.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleSubmitApproval() {
+    setSubmittingApproval(true); setApprovalError('')
+    try {
+      await doctorAPI.submitApproval(getToken())
+      setApprovalSubmitted(true)
+    } catch (err) {
+      if (err.message?.includes('409') || err.message?.toLowerCase().includes('pending')) {
+        setApprovalSubmitted(true) // already submitted
+      } else {
+        setApprovalError(err.message || 'Failed to submit approval request.')
+      }
+    } finally {
+      setSubmittingApproval(false)
     }
   }
 
@@ -165,6 +189,55 @@ export default function DoctorProfile() {
         <p style={{ fontSize: 13, color: 'var(--g500)', margin: 0 }}>Update your professional details, availability, and clinic information.</p>
       </div>
 
+      {/* Approval banner — shown only when account is inactive (pending approval) */}
+      {profile?.available_status === 'inactive' && (
+        <div style={{
+          padding: '16px 20px', borderRadius: 14, marginBottom: 20,
+          background: approvalSubmitted ? 'rgba(0,200,83,0.07)' : 'rgba(255,152,0,0.07)',
+          border: `1.5px solid ${approvalSubmitted ? 'rgba(0,200,83,0.2)' : 'rgba(255,152,0,0.25)'}`,
+        }}>
+          {approvalSubmitted ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <CheckCircle size={18} color="#00C853" />
+              <div>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#00a852' }}>Approval Request Submitted</p>
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--g500)' }}>
+                  Our admin team will review your profile and activate your account. You'll be able to accept consultations once approved.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
+                <AlertCircle size={18} color="#FF9800" style={{ flexShrink: 0, marginTop: 1 }} />
+                <div>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#e65100' }}>Account Pending Approval</p>
+                  <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--g500)' }}>
+                    Fill in your professional details below, then submit for admin approval. You'll be able to accept patient bookings once approved.
+                  </p>
+                </div>
+              </div>
+              {approvalError && (
+                <p style={{ margin: '0 0 10px', fontSize: 12, color: '#d93a00' }}>{approvalError}</p>
+              )}
+              <button
+                onClick={handleSubmitApproval}
+                disabled={submittingApproval}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 7,
+                  padding: '10px 20px', borderRadius: 10, border: 'none',
+                  background: submittingApproval ? 'rgba(255,152,0,0.3)' : '#FF9800',
+                  color: '#fff', cursor: submittingApproval ? 'wait' : 'pointer',
+                  fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700,
+                }}
+              >
+                <Send size={14} /> {submittingApproval ? 'Submitting…' : 'Submit for Approval'}
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Avatar + basic info */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 20, padding: '20px 24px', borderRadius: 14, background: 'var(--pw)', border: '1px solid rgba(0,0,0,0.06)', marginBottom: 20 }}>
         <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'linear-gradient(135deg, #1930AA, #00AFEF)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -176,7 +249,11 @@ export default function DoctorProfile() {
             {profile?.email || ''}{profile?.phone ? ` · ${profile.phone}` : ''}
           </p>
           {/* Status badge */}
-          {STATUS_OPTIONS.map(opt => opt.value === status && (
+          {profile?.available_status === 'inactive' ? (
+            <span style={{ fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 50, background: 'rgba(255,152,0,0.1)', color: '#FF9800' }}>
+              ● Pending Approval
+            </span>
+          ) : STATUS_OPTIONS.map(opt => opt.value === status && (
             <span key={opt.value} style={{ fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 50, background: `${opt.color}18`, color: opt.color }}>
               ● {opt.label}
             </span>
@@ -216,22 +293,24 @@ export default function DoctorProfile() {
           </div>
         </section>
 
-        {/* Availability */}
-        <section style={section}>
-          <h3 style={sectionTitle}><Activity size={15} /> Availability Status</h3>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            {STATUS_OPTIONS.map(opt => (
-              <button key={opt.value} type="button" onClick={() => setStatus(opt.value)} style={{
-                padding: '9px 20px', borderRadius: 50, border: `2px solid ${status === opt.value ? opt.color : 'rgba(0,0,0,0.1)'}`,
-                background: status === opt.value ? `${opt.color}18` : 'transparent',
-                color: status === opt.value ? opt.color : 'var(--g500)',
-                cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, transition: 'all 0.2s',
-              }}>
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </section>
+        {/* Availability — hidden for inactive doctors (status controlled by admin approval) */}
+        {profile?.available_status !== 'inactive' && (
+          <section style={section}>
+            <h3 style={sectionTitle}><Activity size={15} /> Availability Status</h3>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {STATUS_OPTIONS.map(opt => (
+                <button key={opt.value} type="button" onClick={() => setStatus(opt.value)} style={{
+                  padding: '9px 20px', borderRadius: 50, border: `2px solid ${status === opt.value ? opt.color : 'rgba(0,0,0,0.1)'}`,
+                  background: status === opt.value ? `${opt.color}18` : 'transparent',
+                  color: status === opt.value ? opt.color : 'var(--g500)',
+                  cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, transition: 'all 0.2s',
+                }}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Available Slots */}
         <section style={section}>

@@ -11,10 +11,11 @@ import { formatSpecialty } from '../utils/labels'
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
 
 const STATUS_META = {
-  available: { bg: 'rgba(0,200,83,0.1)',  border: 'rgba(0,200,83,0.25)',  color: '#00C853', label: 'Available now' },
-  busy:      { bg: 'rgba(255,160,0,0.1)', border: 'rgba(255,160,0,0.25)', color: '#FFA000', label: 'Currently busy' },
-  offline:   { bg: 'rgba(0,0,0,0.05)',    border: 'rgba(0,0,0,0.12)',     color: '#9E9E9E', label: 'Offline' },
-  on_leave:  { bg: 'rgba(0,0,0,0.05)',    border: 'rgba(0,0,0,0.12)',     color: '#9E9E9E', label: 'On leave' },
+  available: { bg: 'rgba(0,200,83,0.1)',   border: 'rgba(0,200,83,0.25)',   color: '#00C853', label: 'Available now' },
+  busy:      { bg: 'rgba(255,160,0,0.1)',  border: 'rgba(255,160,0,0.25)',  color: '#FFA000', label: 'Currently busy' },
+  offline:   { bg: 'rgba(0,0,0,0.05)',     border: 'rgba(0,0,0,0.12)',      color: '#9E9E9E', label: 'Offline' },
+  on_leave:  { bg: 'rgba(0,0,0,0.05)',     border: 'rgba(0,0,0,0.12)',      color: '#9E9E9E', label: 'On leave' },
+  inactive:  { bg: 'rgba(255,152,0,0.08)', border: 'rgba(255,152,0,0.22)', color: '#FF9800', label: 'Pending Approval' },
 }
 
 function initials(name) {
@@ -234,26 +235,41 @@ export default function DoctorPublicProfile() {
 
           {/* ── Book Appointment CTA ── */}
           <div style={{ marginTop: 20 }}>
-            <button
-              onClick={() => doctor.available_status === 'available'
-                ? navigate('/book-appointment', { state: { preSelectedDoctor: doctor, videoConsultation: true } })
-                : null}
-              disabled={doctor.available_status !== 'available'}
-              style={{
-                width: '100%', padding: '16px', borderRadius: 14, border: 'none',
-                background: doctor.available_status === 'available'
-                  ? 'linear-gradient(135deg, #1930AA, #00AFEF)'
-                  : 'rgba(0,0,0,0.06)',
-                color: doctor.available_status === 'available' ? '#fff' : '#9E9E9E',
-                fontSize: 15, fontWeight: 700, cursor: doctor.available_status === 'available' ? 'pointer' : 'not-allowed',
-                fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                boxShadow: doctor.available_status === 'available' ? '0 4px 16px rgba(25,48,170,0.25)' : 'none',
-                transition: 'opacity 0.2s',
-              }}
-            >
-              <Video size={17} />
-              {doctor.available_status === 'available' ? 'Book Appointment' : 'Currently Unavailable'}
-            </button>
+            {doctor.available_status === 'inactive' ? (
+              <div style={{
+                width: '100%', padding: '16px', borderRadius: 14,
+                background: 'rgba(255,152,0,0.07)', border: '1.5px solid rgba(255,152,0,0.2)',
+                textAlign: 'center',
+              }}>
+                <p style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 700, color: '#FF9800' }}>
+                  Not Yet Available for Bookings
+                </p>
+                <p style={{ margin: 0, fontSize: 12, color: '#9E9E9E' }}>
+                  This doctor's account is pending admin approval. Check back soon.
+                </p>
+              </div>
+            ) : (
+              <button
+                onClick={() => doctor.available_status === 'available'
+                  ? navigate('/book-appointment', { state: { preSelectedDoctor: doctor, videoConsultation: true } })
+                  : null}
+                disabled={doctor.available_status !== 'available'}
+                style={{
+                  width: '100%', padding: '16px', borderRadius: 14, border: 'none',
+                  background: doctor.available_status === 'available'
+                    ? 'linear-gradient(135deg, #1930AA, #00AFEF)'
+                    : 'rgba(0,0,0,0.06)',
+                  color: doctor.available_status === 'available' ? '#fff' : '#9E9E9E',
+                  fontSize: 15, fontWeight: 700, cursor: doctor.available_status === 'available' ? 'pointer' : 'not-allowed',
+                  fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  boxShadow: doctor.available_status === 'available' ? '0 4px 16px rgba(25,48,170,0.25)' : 'none',
+                  transition: 'opacity 0.2s',
+                }}
+              >
+                <Video size={17} />
+                {doctor.available_status === 'available' ? 'Book Appointment' : 'Currently Unavailable'}
+              </button>
+            )}
           </div>
 
           {/* ── About / bio ── */}
