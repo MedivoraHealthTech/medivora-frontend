@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Search, User, Phone, Calendar, MessageSquare, CheckCircle, XCircle, Users, X, Droplets } from 'lucide-react'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_BASE = ''
 function token() { return localStorage.getItem('medivora_admin_token') || '' }
 
 function formatDate(iso) {

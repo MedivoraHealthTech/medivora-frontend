@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Search, Stethoscope, Phone, Star, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_BASE = ''
 function token() { return localStorage.getItem('medivora_admin_token') || '' }
 
 const STATUS_CONFIG = {
