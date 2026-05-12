@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Shield, Eye, EyeOff } from 'lucide-react'
 
-const API_BASE = ''
+const API_BASE = '/api'
 
 export default function AdminLoginPage() {
   const [username, setUsername] = useState('')

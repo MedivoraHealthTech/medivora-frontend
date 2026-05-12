@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Users, Stethoscope, MessageSquare, ClipboardList } from 'lucide-react'
 
-const API_BASE = ''
+const API_BASE = '/api'
 
 function token() { return localStorage.getItem('medivora_admin_token') || '' }
 
