@@ -2,16 +2,17 @@ import { useState, useEffect } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Stethoscope, FlaskConical,
-  ShoppingBag, LogOut, Shield, Menu, X,
+  ShoppingBag, LogOut, Shield, Menu, X, ClipboardList,
 } from 'lucide-react'
 import Logo from '../../components/Logo'
 
 const NAV = [
-  { path: '/admin',           label: 'Dashboard',   icon: LayoutDashboard },
-  { path: '/admin/patients',  label: 'Patients',    icon: Users },
-  { path: '/admin/doctors',   label: 'Doctors',     icon: Stethoscope },
-  { path: '/admin/labs',      label: 'Labs',        icon: FlaskConical,  soon: true },
-  { path: '/admin/pharmacies',label: 'Pharmacies',  icon: ShoppingBag,   soon: true },
+  { path: '/admin',            label: 'Dashboard',   icon: LayoutDashboard },
+  { path: '/admin/patients',   label: 'Patients',    icon: Users },
+  { path: '/admin/doctors',    label: 'Doctors',     icon: Stethoscope },
+  { path: '/admin/requests',   label: 'Requests',    icon: ClipboardList },
+  { path: '/admin/labs',       label: 'Labs',        icon: FlaskConical,  soon: true },
+  { path: '/admin/pharmacies', label: 'Pharmacies',  icon: ShoppingBag,   soon: true },
 ]
 
 export default function AdminLayout() {

@@ -34,6 +34,7 @@ import AdminLayout from './pages/admin/AdminLayout'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminPatients from './pages/admin/AdminPatients'
 import AdminDoctors from './pages/admin/AdminDoctors'
+import AdminRequests from './pages/admin/AdminRequests'
 
 export default function App() {
   return (
@@ -48,6 +49,7 @@ export default function App() {
         <Route index element={<AdminDashboard />} />
         <Route path="patients" element={<AdminPatients />} />
         <Route path="doctors" element={<AdminDoctors />} />
+        <Route path="requests" element={<AdminRequests />} />
       </Route>
 
       {/* Patient routes */}
