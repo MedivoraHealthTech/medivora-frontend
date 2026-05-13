@@ -241,7 +241,7 @@ export default function AdminDashboard() {
 
         {/* 2. Age groups */}
         <Card title="Patient Age Groups" subtitle="Distribution across age brackets">
-          <BarChart data={p.age_groups || []} color={PALETTE} />
+          <BarChart data={(p.age_groups || []).filter(x => x.label !== 'Unknown')} color={PALETTE} />
         </Card>
 
         {/* 3. Consultation status */}
