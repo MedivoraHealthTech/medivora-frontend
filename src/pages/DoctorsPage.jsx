@@ -9,8 +9,9 @@ import { formatSpecialty } from '../utils/labels'
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
 
 const SPECIALIZATION_FILTERS = [
-  'All', 'Neurology', 'Cardiology', 'Dermatology', 'General Physician',
-  'Pediatrics', 'Orthopedics', 'Gynecology', 'Psychiatry', 'ENT', 'Pulmonology',
+  'All', 'Gynecology', 'Psychiatry', 'Sexology', 'Endocrinology', 'Dermatology',
+  'Cardiology', 'Neurology', 'General Physician', 'Pediatrics', 'Orthopedics',
+  'ENT', 'Pulmonology',
 ]
 
 // Filter label → additional formatted specialties it should match

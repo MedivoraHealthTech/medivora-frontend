@@ -9,6 +9,7 @@ export const SPECIALTY_LABELS = {
   womens_health:       "Women's Health",
   gynecology:          'Gynecology',
   obstetrics:          'Obstetrics',
+  sexology:            'Sexology',
   cardiology:          'Cardiology',
   dermatology:         'Dermatology',
   pediatrics:          'Pediatrics',
