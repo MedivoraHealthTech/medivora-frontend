@@ -139,40 +139,46 @@ const styles = `
   .lp-nav {
     position:fixed; top:0; left:0; right:0; z-index:100;
     display:flex; align-items:center; justify-content:space-between;
-    padding:0.25rem 2.5rem;
-    background:rgba(255,255,255,0.7);
-    backdrop-filter:blur(24px) saturate(180%);
-    -webkit-backdrop-filter:blur(24px) saturate(180%);
-    border-bottom:1px solid var(--lp-line);
+    padding:0 2.5rem; height:68px;
+    background: var(--lp-blue-deep);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   }
   .lp-nav-logo {
-    font-family:'Fraunces',serif; font-size:24px; font-weight:400;
-    color:var(--lp-ink); letter-spacing:-0.5px; text-decoration:none;
+    font-family:'Fraunces',serif; font-size:24px; font-weight:600;
+    color:#fff; letter-spacing:-0.3px; text-decoration:none;
     display:flex; align-items:center; gap:10px;
   }
   .lp-dot {
     display:inline-block; width:6px; height:6px;
-    background:var(--lp-blue-bright); border-radius:50%;
+    background:var(--lp-cyan); border-radius:50%;
     animation:lp-pulse 2s infinite;
   }
   .lp-nav-links { display:flex; gap:2rem; align-items:center; }
   .lp-nav-link {
-    font-size:13px; font-weight:400; color:var(--lp-ink-2);
+    font-size:16px; font-weight:500; color:rgba(255,255,255,0.82);
     text-decoration:none; cursor:pointer; transition:color .2s;
   }
-  .lp-nav-link:hover { color:var(--lp-blue-bright); }
+  .lp-nav-link:hover { color:#fff; }
+  .lp-nav-btn-outline {
+    background:transparent; color:#fff;
+    border:1.5px solid rgba(255,255,255,0.7); border-radius:100px;
+    padding:10px 22px; font-size:15px; font-weight:500;
+    cursor:pointer; transition:all .2s; font-family:'Plus Jakarta Sans',sans-serif;
+    text-decoration:none; display:inline-flex; align-items:center; gap:5px;
+  }
+  .lp-nav-btn-outline:hover { border-color:#fff; background:rgba(255,255,255,0.08); }
   .lp-nav-cta {
-    background:var(--lp-ink); color:var(--lp-white);
+    background:#fff; color:var(--lp-ink);
     border:none; border-radius:100px;
-    padding:9px 20px; font-size:13px; font-weight:500;
+    padding:11px 26px; font-size:15px; font-weight:600;
     cursor:pointer; transition:all .2s; font-family:'Plus Jakarta Sans',sans-serif;
     text-decoration:none; display:inline-block;
   }
-  .lp-nav-cta:hover { background:var(--lp-blue-bright); box-shadow:0 8px 24px rgba(45,91,255,.3); }
+  .lp-nav-cta:hover { background:var(--lp-cyan); color:var(--lp-ink); }
 
   /* ── HERO ── */
   .lp-hero {
-    position:relative; margin-top:70px;
+    position:relative; margin-top:68px;
     padding:3.2rem 2rem 4rem;
     min-height:80vh;
     display:flex; align-items:stretch; justify-content:center;
@@ -856,7 +862,7 @@ const styles = `
     .lp-ls-grid { grid-template-columns:1fr; }
     .lp-alerts-cards { grid-template-columns:1fr; }
     .lp-ac-wide { grid-column:span 1; }
-    .lp-nav { padding:.75rem 1.25rem; }
+    .lp-nav { padding:0 1.25rem; height:60px; }
     .lp-hero { padding:2rem 1rem 3rem; }
     .lp-cta-card { padding:2.4rem 1.5rem; }
     .lp-section { padding:3.2rem 1.25rem; }
@@ -1182,14 +1188,14 @@ export default function HomePage() {
       {/* ── NAV ── */}
       <nav className="lp-nav">
         <Link to="/" className="lp-nav-logo">
-          <Logo size={80} />
+          <Logo size={44} />
+          <span style={{ fontFamily:'Fraunces,serif', fontSize:20, fontWeight:600, color:'#fff', letterSpacing:'-0.3px' }}>Medivora</span>
         </Link>
         <div className="lp-nav-links">
           <span className="lp-nav-link" onClick={() => document.getElementById('lp-how').scrollIntoView({ behavior:'smooth' })}>How it works</span>
-          <span className="lp-nav-link" onClick={() => setComingSoon('Mental Health')}>Mental Health</span>
-          <span className="lp-nav-link" onClick={() => setComingSoon('Skin & Hair')}>Skin & Hair</span>
           <Link to="/doctor/login" className="lp-nav-link">For Doctors</Link>
-          <Link to="/login" className="lp-nav-link">Log in</Link>
+          <Link to="/signup" className="lp-nav-btn-outline">Get Started ↗</Link>
+          <Link to="/login" className="lp-nav-cta">Sign in</Link>
         </div>
       </nav>
 
