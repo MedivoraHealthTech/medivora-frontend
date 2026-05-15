@@ -136,49 +136,64 @@ const styles = `
   .lp-fi.lp-in { opacity:1; transform:translateY(0); }
 
   /* ── NAV ── */
+  .lp-nav-wrap {
+    position:fixed; top:16px; left:0; right:0; z-index:100;
+    display:flex; justify-content:center; pointer-events:none;
+  }
   .lp-nav {
-    position:fixed; top:0; left:0; right:0; z-index:100;
-    display:flex; align-items:center; justify-content:space-between;
-    padding:0 2.5rem; height:68px;
-    background: var(--lp-blue-deep);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    pointer-events:all;
+    display:flex; align-items:center; gap:2rem;
+    padding:0 10px 0 14px; height:56px;
+    background:#ffffff;
+    border:1px solid rgba(0,0,0,0.09);
+    border-radius:100px;
+    box-shadow:0 4px 24px rgba(0,0,0,0.08);
+    width:calc(100% - 48px); max-width:820px;
   }
   .lp-nav-logo {
-    font-family:'Fraunces',serif; font-size:24px; font-weight:600;
-    color:#fff; letter-spacing:-0.3px; text-decoration:none;
-    display:flex; align-items:center; gap:10px;
+    font-size:17px; font-weight:700;
+    color:#111111; letter-spacing:-0.3px; text-decoration:none;
+    display:flex; align-items:center; gap:9px; flex-shrink:0;
+  }
+  .lp-nav-logo-icon {
+    width:42px; height:42px; border-radius:50%;
+    background:linear-gradient(135deg,#1930AA,#00AFEF);
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 2px 8px rgba(0,175,239,0.3); flex-shrink:0;
   }
   .lp-dot {
     display:inline-block; width:6px; height:6px;
     background:var(--lp-cyan); border-radius:50%;
     animation:lp-pulse 2s infinite;
   }
-  .lp-nav-links { display:flex; gap:2rem; align-items:center; }
+  .lp-nav-links {
+    display:flex; gap:1.75rem; align-items:center; flex:1;
+  }
   .lp-nav-link {
-    font-size:16px; font-weight:500; color:rgba(255,255,255,0.82);
-    text-decoration:none; cursor:pointer; transition:color .2s;
+    font-size:14px; font-weight:500; color:#555555;
+    text-decoration:none; cursor:pointer; transition:color .2s; white-space:nowrap;
   }
-  .lp-nav-link:hover { color:#fff; }
-  .lp-nav-btn-outline {
-    background:transparent; color:#fff;
-    border:1.5px solid rgba(255,255,255,0.7); border-radius:100px;
-    padding:10px 22px; font-size:15px; font-weight:500;
-    cursor:pointer; transition:all .2s; font-family:'Plus Jakarta Sans',sans-serif;
-    text-decoration:none; display:inline-flex; align-items:center; gap:5px;
+  .lp-nav-link:hover { color:#111111; }
+  .lp-nav-auth { display:flex; align-items:center; gap:14px; flex-shrink:0; margin-left:auto; }
+  .lp-nav-signin {
+    font-size:14px; font-weight:500; color:#444444;
+    text-decoration:none; cursor:pointer; transition:color .2s; white-space:nowrap;
   }
-  .lp-nav-btn-outline:hover { border-color:#fff; background:rgba(255,255,255,0.08); }
+  .lp-nav-signin:hover { color:#1930AA; }
   .lp-nav-cta {
-    background:#fff; color:var(--lp-ink);
+    background:#111111; color:#fff;
     border:none; border-radius:100px;
-    padding:11px 26px; font-size:15px; font-weight:600;
-    cursor:pointer; transition:all .2s; font-family:'Plus Jakarta Sans',sans-serif;
-    text-decoration:none; display:inline-block;
+    padding:10px 22px; font-size:13px; font-weight:600;
+    cursor:pointer; transition:background .2s;
+    text-decoration:none; display:inline-block; white-space:nowrap;
   }
-  .lp-nav-cta:hover { background:var(--lp-cyan); color:var(--lp-ink); }
+  .lp-nav-cta:hover { background:#1930AA; color:#fff; }
+  /* keep old outline class in case referenced elsewhere */
+  .lp-nav-btn-outline { display:none; }
 
   /* ── HERO ── */
   .lp-hero {
-    position:relative; margin-top:68px;
+    position:relative; margin-top:88px;
     padding:3.2rem 2rem 4rem;
     min-height:80vh;
     display:flex; align-items:stretch; justify-content:center;
@@ -850,6 +865,7 @@ const styles = `
     .lp-hero-content, .lp-dash-grid, .lp-alerts-row { grid-template-columns:1fr; }
     .lp-ls-2col { grid-template-columns:1fr; }
     .lp-nav-links { display:none; }
+    .lp-nav-auth .lp-nav-signin { display:none; }
     .lp-float-chip { display:none; }
     .lp-hero-blue { padding:3rem 1.5rem; }
     .lp-testi-grid { grid-template-columns:1fr 1fr; }
@@ -862,7 +878,8 @@ const styles = `
     .lp-ls-grid { grid-template-columns:1fr; }
     .lp-alerts-cards { grid-template-columns:1fr; }
     .lp-ac-wide { grid-column:span 1; }
-    .lp-nav { padding:0 1.25rem; height:60px; }
+    .lp-nav { padding:0 8px 0 12px; height:52px; }
+    .lp-nav-wrap { top:12px; }
     .lp-hero { padding:2rem 1rem 3rem; }
     .lp-cta-card { padding:2.4rem 1.5rem; }
     .lp-section { padding:3.2rem 1.25rem; }
@@ -1186,18 +1203,25 @@ export default function HomePage() {
       <style>{styles}</style>
 
       {/* ── NAV ── */}
-      <nav className="lp-nav">
-        <Link to="/" className="lp-nav-logo">
-          <Logo size={44} />
-          <span style={{ fontFamily:'Fraunces,serif', fontSize:20, fontWeight:600, color:'#fff', letterSpacing:'-0.3px' }}>Medivora</span>
-        </Link>
-        <div className="lp-nav-links">
-          <span className="lp-nav-link" onClick={() => document.getElementById('lp-how').scrollIntoView({ behavior:'smooth' })}>How it works</span>
-          <Link to="/doctor/login" className="lp-nav-link">For Doctors</Link>
-          <Link to="/signup" className="lp-nav-btn-outline">Get Started ↗</Link>
-          <Link to="/login" className="lp-nav-cta">Sign in</Link>
-        </div>
-      </nav>
+      <div className="lp-nav-wrap">
+        <nav className="lp-nav">
+          <Link to="/" className="lp-nav-logo">
+            <div className="lp-nav-logo-icon">
+              <Logo size={28} />
+            </div>
+            <span>Medivora</span>
+          </Link>
+          <div className="lp-nav-links">
+            <span className="lp-nav-link" onClick={() => document.getElementById('lp-how').scrollIntoView({ behavior:'smooth' })}>How it works</span>
+            <Link to="/doctor/login" className="lp-nav-link">For Doctors</Link>
+            <Link to="/signup" className="lp-nav-link">Pricing</Link>
+          </div>
+          <div className="lp-nav-auth">
+            <Link to="/login" className="lp-nav-signin">Sign In</Link>
+            <Link to="/signup" className="lp-nav-cta">Get Started</Link>
+          </div>
+        </nav>
+      </div>
 
       {/* ── HERO ── */}
       <section className="lp-hero">

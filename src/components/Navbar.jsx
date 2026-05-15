@@ -17,7 +17,6 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', h)
   }, [])
 
-  // Close menu when switching from mobile to desktop
   useEffect(() => {
     if (!isMobile) setMenuOpen(false)
   }, [isMobile])
@@ -33,70 +32,103 @@ export default function Navbar() {
   return (
     <nav style={{
       position: 'sticky', top: 0, zIndex: 100,
-      background: scrolled ? 'rgba(6,14,31,0.95)' : 'transparent',
-      backdropFilter: scrolled ? 'blur(20px)' : 'none',
-      borderBottom: scrolled ? '1px solid rgba(0,188,212,0.06)' : 'none',
-      transition: 'all 0.4s',
+      background: '#ffffff',
+      borderBottom: '1px solid rgba(0,0,0,0.07)',
+      boxShadow: scrolled ? '0 2px 16px rgba(0,0,0,0.06)' : 'none',
+      transition: 'box-shadow 0.3s',
     }}>
-      {/* Main bar */}
       <div style={{
-        height: 44, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: isMobile ? '0 12px' : '0 24px',
+        height: 68,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: isMobile ? '0 16px' : '0 32px',
+        maxWidth: 1280,
+        margin: '0 auto',
       }}>
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-          <Logo size={80} />
+
+        {/* Logo */}
+        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', flexShrink: 0 }}>
+          <div style={{
+            width: 72, height: 72, borderRadius: 18,
+            background: 'linear-gradient(135deg, #1930AA, #00AFEF)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(0,175,239,0.35)',
+            flexShrink: 0,
+          }}>
+            <Logo size={44} />
+          </div>
+          <span style={{ fontSize: 17, fontWeight: 700, color: '#111111', letterSpacing: '-0.3px' }}>
+            Medivora
+          </span>
         </Link>
 
-        {/* Desktop nav */}
+        {/* Desktop nav links — centered */}
         {!isMobile && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 36, position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
             {navLinks.map(label => (
-              <a key={label} href={`/#${label.toLowerCase()}`}
-                style={{ fontSize: 13, fontWeight: 500, color: 'var(--g400)', textDecoration: 'none', transition: 'color 0.3s' }}
-                onMouseEnter={e => e.target.style.color = 'var(--cyan)'}
-                onMouseLeave={e => e.target.style.color = 'var(--g400)'}>
+              <a
+                key={label}
+                href={`/#${label.toLowerCase()}`}
+                style={{ fontSize: 14, fontWeight: 500, color: '#555555', textDecoration: 'none', transition: 'color 0.2s' }}
+                onMouseEnter={e => e.target.style.color = '#111111'}
+                onMouseLeave={e => e.target.style.color = '#555555'}
+              >
                 {label}
               </a>
             ))}
+          </div>
+        )}
 
+        {/* Desktop auth */}
+        {!isMobile && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexShrink: 0 }}>
             {isAuthenticated ? (
               <>
-                <span style={{ fontSize: 12, color: 'var(--g400)' }}>
+                <span style={{ fontSize: 13, color: '#555555' }}>
                   {user?.user_metadata?.first_name || displayName?.split(' ')[0]}
                 </span>
                 <button onClick={handleLogout} style={{
-                  padding: '7px 16px', borderRadius: 50, fontSize: 12, fontWeight: 600,
-                  border: '1px solid rgba(255,255,255,0.08)', background: 'transparent',
-                  color: 'var(--g400)', cursor: 'pointer',
+                  padding: '8px 18px', borderRadius: 50, fontSize: 13, fontWeight: 600,
+                  border: '1px solid rgba(0,0,0,0.12)', background: 'transparent',
+                  color: '#444444', cursor: 'pointer', transition: 'border-color 0.2s',
                 }}>
                   Logout
                 </button>
                 <Link to="/chat" style={{
-                  padding: '9px 24px', borderRadius: 50, fontSize: 13, fontWeight: 700,
-                  background: 'linear-gradient(135deg, var(--blue), var(--cyan))', color: '#fff',
-                  textDecoration: 'none',
+                  padding: '9px 22px', borderRadius: 50, fontSize: 13, fontWeight: 700,
+                  background: 'linear-gradient(135deg, #1930AA, #00AFEF)',
+                  color: '#fff', textDecoration: 'none',
+                  boxShadow: '0 4px 14px rgba(0,175,239,0.4)',
                 }}>
                   AI Doctor
                 </Link>
               </>
             ) : (
               <>
-                <Link to="/login" style={{ fontSize: 13, fontWeight: 600, color: 'var(--g300)', textDecoration: 'none' }}>
-                  Log in
+                <Link to="/login" style={{
+                  fontSize: 14, fontWeight: 500, color: '#333333', textDecoration: 'none',
+                  transition: 'color 0.2s',
+                }}
+                  onMouseEnter={e => e.target.style.color = '#1930AA'}
+                  onMouseLeave={e => e.target.style.color = '#333333'}
+                >
+                  Sign In
                 </Link>
                 <Link to="/signup" style={{
-                  padding: '9px 24px', borderRadius: 50, fontSize: 13, fontWeight: 700,
-                  background: 'linear-gradient(135deg, var(--blue), var(--cyan))', color: '#fff',
-                  textDecoration: 'none',
+                  padding: '9px 22px', borderRadius: 50, fontSize: 13, fontWeight: 700,
+                  background: 'linear-gradient(135deg, #1930AA, #00AFEF)',
+                  color: '#fff', textDecoration: 'none',
+                  boxShadow: '0 4px 14px rgba(0,175,239,0.35)',
                 }}>
-                  Get Started Free
+                  Get Started
                 </Link>
               </>
             )}
           </div>
         )}
 
-        {/* Mobile: hamburger */}
+        {/* Mobile hamburger */}
         {isMobile && (
           <button
             onClick={() => setMenuOpen(o => !o)}
@@ -107,20 +139,19 @@ export default function Navbar() {
             }}
             aria-label={menuOpen ? 'Close menu' : 'Open menu'}
           >
-            <span style={{ display: 'block', width: 22, height: 2, background: 'var(--g400)', borderRadius: 2, transition: 'all 0.25s', transform: menuOpen ? 'rotate(45deg) translate(5px, 5px)' : 'none' }} />
-            <span style={{ display: 'block', width: 22, height: 2, background: 'var(--g400)', borderRadius: 2, transition: 'all 0.25s', opacity: menuOpen ? 0 : 1 }} />
-            <span style={{ display: 'block', width: 22, height: 2, background: 'var(--g400)', borderRadius: 2, transition: 'all 0.25s', transform: menuOpen ? 'rotate(-45deg) translate(5px, -5px)' : 'none' }} />
+            <span style={{ display: 'block', width: 22, height: 2, background: '#444', borderRadius: 2, transition: 'all 0.25s', transform: menuOpen ? 'rotate(45deg) translate(5px, 5px)' : 'none' }} />
+            <span style={{ display: 'block', width: 22, height: 2, background: '#444', borderRadius: 2, transition: 'all 0.25s', opacity: menuOpen ? 0 : 1 }} />
+            <span style={{ display: 'block', width: 22, height: 2, background: '#444', borderRadius: 2, transition: 'all 0.25s', transform: menuOpen ? 'rotate(-45deg) translate(5px, -5px)' : 'none' }} />
           </button>
         )}
       </div>
 
-      {/* Mobile dropdown drawer */}
+      {/* Mobile dropdown */}
       {isMobile && menuOpen && (
         <div style={{
-          background: scrolled ? 'rgba(6,14,31,0.98)' : 'rgba(6,14,31,0.97)',
-          backdropFilter: 'blur(20px)',
-          borderTop: '1px solid rgba(0,188,212,0.08)',
-          padding: '16px 16px 24px',
+          background: '#ffffff',
+          borderTop: '1px solid rgba(0,0,0,0.07)',
+          padding: '16px 20px 24px',
           display: 'flex', flexDirection: 'column', gap: 4,
         }}>
           {navLinks.map(label => (
@@ -129,32 +160,32 @@ export default function Navbar() {
               href={`/#${label.toLowerCase()}`}
               onClick={() => setMenuOpen(false)}
               style={{
-                fontSize: 15, fontWeight: 500, color: 'var(--g400)',
+                fontSize: 15, fontWeight: 500, color: '#444444',
                 textDecoration: 'none', padding: '12px 8px',
-                borderBottom: '1px solid rgba(255,255,255,0.04)',
+                borderBottom: '1px solid rgba(0,0,0,0.05)',
               }}
             >
               {label}
             </a>
           ))}
 
-          <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
             {isAuthenticated ? (
               <>
-                <span style={{ fontSize: 13, color: 'var(--g400)', padding: '0 8px' }}>
+                <span style={{ fontSize: 13, color: '#555555', padding: '0 8px' }}>
                   {user?.user_metadata?.first_name || displayName?.split(' ')[0]}
                 </span>
                 <Link to="/chat" onClick={() => setMenuOpen(false)} style={{
                   padding: '12px 20px', borderRadius: 50, fontSize: 14, fontWeight: 700,
-                  background: 'linear-gradient(135deg, var(--blue), var(--cyan))', color: '#fff',
+                  background: 'linear-gradient(135deg, #1930AA, #00AFEF)', color: '#fff',
                   textDecoration: 'none', textAlign: 'center',
                 }}>
                   AI Doctor
                 </Link>
                 <button onClick={handleLogout} style={{
                   padding: '12px 20px', borderRadius: 50, fontSize: 14, fontWeight: 600,
-                  border: '1px solid rgba(255,255,255,0.12)', background: 'transparent',
-                  color: 'var(--g400)', cursor: 'pointer',
+                  border: '1px solid rgba(0,0,0,0.12)', background: 'transparent',
+                  color: '#444444', cursor: 'pointer',
                 }}>
                   Logout
                 </button>
@@ -163,17 +194,17 @@ export default function Navbar() {
               <>
                 <Link to="/login" onClick={() => setMenuOpen(false)} style={{
                   padding: '12px 20px', borderRadius: 50, fontSize: 14, fontWeight: 600,
-                  border: '1px solid rgba(255,255,255,0.12)', color: 'var(--g300)',
+                  border: '1px solid rgba(0,0,0,0.12)', color: '#333333',
                   textDecoration: 'none', textAlign: 'center',
                 }}>
-                  Log in
+                  Sign In
                 </Link>
                 <Link to="/signup" onClick={() => setMenuOpen(false)} style={{
                   padding: '12px 20px', borderRadius: 50, fontSize: 14, fontWeight: 700,
-                  background: 'linear-gradient(135deg, var(--blue), var(--cyan))', color: '#fff',
+                  background: 'linear-gradient(135deg, #1930AA, #00AFEF)', color: '#fff',
                   textDecoration: 'none', textAlign: 'center',
                 }}>
-                  Get Started Free
+                  Get Started
                 </Link>
               </>
             )}
