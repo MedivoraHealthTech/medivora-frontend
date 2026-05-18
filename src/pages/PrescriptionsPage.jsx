@@ -301,7 +301,7 @@ export default function PrescriptionsPage() {
                     >
                       <RefreshCw size={15} /> {ordering === p.id ? 'Ordering…' : 'Refill'}
                     </button>
-                    {p.status === 'active' && p.items.some(i => i.item_type === 'lab_test') && (
+                    {p.status === 'active' && p.testItems && p.testItems.length > 0 && (
                       <button
                         onClick={() => placeOrder(p, 'lab')}
                         disabled={ordering === p.id}
