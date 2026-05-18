@@ -239,7 +239,7 @@ export default function AdminDashboard() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
           <div>
             <div style={{ fontSize: 14, fontWeight: 700, color: '#0A1B47' }}>Revenue Analytics</div>
-            <div style={{ fontSize: 12, color: '#a0aec0', marginTop: 2 }}>Completed payments across all consultations</div>
+            <div style={{ fontSize: 12, color: '#a0aec0', marginTop: 2 }}>Bookings × consultation fee per doctor</div>
           </div>
           <div style={{ background: 'linear-gradient(135deg, #10b981, #059669)', borderRadius: 12, padding: '10px 20px', textAlign: 'center' }}>
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>Total Revenue</div>
@@ -247,7 +247,7 @@ export default function AdminDashboard() {
           </div>
         </div>
         {(rv.by_doctor || []).length === 0 ? (
-          <div style={{ color: '#a0aec0', fontSize: 13, padding: '20px 0', textAlign: 'center' }}>No completed payments recorded yet.</div>
+          <div style={{ color: '#a0aec0', fontSize: 13, padding: '20px 0', textAlign: 'center' }}>No bookings with a set consultation fee yet.</div>
         ) : (
           <>
             <div style={{ fontSize: 13, fontWeight: 600, color: '#4a5568', marginBottom: 12 }}>Doctor-wise Revenue</div>
@@ -261,8 +261,11 @@ export default function AdminDashboard() {
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: '#0A1B47', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '60%' }}>{doc.label}</span>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: '#10b981', flexShrink: 0 }}>{fmtRupees(doc.value)}</span>
+                        <div style={{ minWidth: 0 }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: '#0A1B47', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', maxWidth: 220 }}>{doc.label}</span>
+                          {doc.bookings != null && <span style={{ fontSize: 11, color: '#a0aec0' }}>{doc.bookings} booking{doc.bookings !== 1 ? 's' : ''} × {fmtRupees(doc.fee)}</span>}
+                        </div>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#10b981', flexShrink: 0, marginLeft: 8 }}>{fmtRupees(doc.value)}</span>
                       </div>
                       <div style={{ height: 6, background: '#f0f4ff', borderRadius: 4, overflow: 'hidden' }}>
                         <div style={{ width: `${pct}%`, height: '100%', background: PALETTE[i % PALETTE.length], borderRadius: 4, transition: 'width 0.5s ease' }} />
