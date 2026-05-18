@@ -19,8 +19,8 @@ import { apiFetch } from '../api/client'
    DATA
 ───────────────────────────────────────────── */
 const STATS = [
-  { val: '50K+',    label: 'Patients Served' },
-  { val: '1,200+',  label: 'Verified Doctors' },
+  { val: '50+',     label: 'Patients Served' },
+  { val: '12+',     label: 'Verified Doctors' },
   { val: '4.9★',   label: 'Average Rating' },
   { val: '<2 min',  label: 'Avg. Triage Time' },
 ]
