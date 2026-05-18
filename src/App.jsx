@@ -35,6 +35,12 @@ import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminPatients from './pages/admin/AdminPatients'
 import AdminDoctors from './pages/admin/AdminDoctors'
 import AdminRequests from './pages/admin/AdminRequests'
+import PharmacyLoginPage from './pages/pharmacy/PharmacyLoginPage'
+import PharmacyLayout from './pages/pharmacy/PharmacyLayout'
+import PharmacyOrders from './pages/pharmacy/PharmacyOrders'
+import LabLoginPage from './pages/lab/LabLoginPage'
+import LabLayout from './pages/lab/LabLayout'
+import LabOrders from './pages/lab/LabOrders'
 
 export default function App() {
   return (
@@ -66,6 +72,18 @@ export default function App() {
           <Route path="prescriptions" element={<PrescriptionsPage />} />
           <Route path="book-appointment" element={<BookAppointment />} />
         </Route>
+      </Route>
+
+      {/* Pharmacy portal */}
+      <Route path="/pharmacy/login" element={<PharmacyLoginPage />} />
+      <Route path="/pharmacy" element={<PharmacyLayout />}>
+        <Route index element={<PharmacyOrders />} />
+      </Route>
+
+      {/* Lab portal */}
+      <Route path="/lab/login" element={<LabLoginPage />} />
+      <Route path="/lab" element={<LabLayout />}>
+        <Route index element={<LabOrders />} />
       </Route>
 
       {/* Doctor routes */}

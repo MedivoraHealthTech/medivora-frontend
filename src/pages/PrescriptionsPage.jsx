@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Search, Pill, Download, RefreshCw } from 'lucide-react'
+import { Search, Pill, Download, RefreshCw, FlaskConical, CheckCircle } from 'lucide-react'
 import { supabase } from './supabase'
-import ComingSoonModal from '../components/ComingSoonModal'
 import { useBreakpoint } from '../hooks/useBreakpoint'
 import { formatPrescriptionStatus } from '../utils/labels'
 
@@ -92,7 +91,8 @@ export default function PrescriptionsPage() {
   const [error, setError]                 = useState(null)
   const [query, setQuery]                 = useState('')
   const [statusTab, setStatusTab]         = useState('All')
-  const [comingSoon, setComingSoon]       = useState(false)
+  const [orderSuccess, setOrderSuccess]   = useState(null)   // 'pharmacy' | 'lab'
+  const [ordering, setOrdering]           = useState(null)   // prescription id being ordered
 
   const load = async () => {
     setLoading(true)
@@ -108,6 +108,23 @@ export default function PrescriptionsPage() {
   }
 
   useEffect(() => { load() }, [])
+
+  async function placeOrder(p, type) {
+    setOrdering(p.id)
+    try {
+      const token = await getToken()
+      if (!token) return
+      const items = p.items.map(i => ({ name: i.medicine_name || i.test_name, dosage: i.dosage, frequency: i.frequency }))
+      await fetch(`${API_BASE}/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ type, prescription_id: p.id, items, delivery_type: 'home' }),
+      })
+      setOrderSuccess(type)
+      setTimeout(() => setOrderSuccess(null), 3500)
+    } catch { /* ignore */ }
+    finally { setOrdering(null) }
+  }
 
   const filtered = useMemo(() => {
     let list = prescriptions
@@ -239,21 +256,30 @@ export default function PrescriptionsPage() {
                     </span>
                   </div>
 
-                  <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                  <div style={{ display: 'flex', gap: 10, marginTop: 4, flexWrap: 'wrap' }}>
                     <button
                       onClick={() => downloadPdf(p.id)}
                       disabled={p.status === 'pending'}
-                      style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(0,0,0,0.12)', background: '#fff', color: p.status !== 'pending' ? 'var(--g400)' : 'var(--g700)', fontSize: 13, fontWeight: 600, cursor: p.status !== 'pending' ? 'pointer' : 'not-allowed', fontFamily: 'var(--font)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                      style={{ flex: '1 1 80px', padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(0,0,0,0.12)', background: '#fff', color: p.status !== 'pending' ? 'var(--g400)' : 'var(--g700)', fontSize: 13, fontWeight: 600, cursor: p.status !== 'pending' ? 'pointer' : 'not-allowed', fontFamily: 'var(--font)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
                     >
                       <Download size={15} /> PDF
                     </button>
                     <button
-                      onClick={() => p.status === 'active' && setComingSoon(true)}
-                      disabled={p.status !== 'active'}
-                      style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: 'none', background: p.status === 'active' ? 'linear-gradient(135deg, #1930AA, #00AFEF)' : 'rgba(0,0,0,0.06)', color: p.status === 'active' ? '#fff' : 'var(--g700)', fontSize: 13, fontWeight: 600, cursor: p.status === 'active' ? 'pointer' : 'not-allowed', fontFamily: 'var(--font)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                      onClick={() => p.status === 'active' && placeOrder(p, 'pharmacy')}
+                      disabled={p.status !== 'active' || ordering === p.id}
+                      style={{ flex: '1 1 80px', padding: '10px 14px', borderRadius: 10, border: 'none', background: p.status === 'active' ? 'linear-gradient(135deg, #1930AA, #00AFEF)' : 'rgba(0,0,0,0.06)', color: p.status === 'active' ? '#fff' : 'var(--g700)', fontSize: 13, fontWeight: 600, cursor: p.status === 'active' ? 'pointer' : 'not-allowed', fontFamily: 'var(--font)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: ordering === p.id ? 0.6 : 1 }}
                     >
-                      <RefreshCw size={15} /> Refill
+                      <RefreshCw size={15} /> {ordering === p.id ? 'Ordering…' : 'Refill'}
                     </button>
+                    {p.status === 'active' && (
+                      <button
+                        onClick={() => placeOrder(p, 'lab')}
+                        disabled={ordering === p.id}
+                        style={{ flex: '1 1 100px', padding: '10px 14px', borderRadius: 10, border: '1.5px solid rgba(29,78,216,0.3)', background: '#eff6ff', color: '#1D4ED8', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: ordering === p.id ? 0.6 : 1 }}
+                      >
+                        <FlaskConical size={15} /> Book Tests
+                      </button>
+                    )}
                   </div>
                 </article>
               ))}
@@ -269,7 +295,14 @@ export default function PrescriptionsPage() {
       </div>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      {comingSoon && <ComingSoonModal feature="Prescription refill" onClose={() => setComingSoon(false)} />}
+      {orderSuccess && (
+        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: '#fff', border: '1.5px solid #d1fae5', borderRadius: 12, padding: '12px 20px', boxShadow: '0 4px 20px rgba(0,0,0,0.12)', display: 'flex', alignItems: 'center', gap: 10, zIndex: 9999, whiteSpace: 'nowrap' }}>
+          <CheckCircle size={18} color="#00875A" />
+          <span style={{ fontSize: 14, fontWeight: 600, color: '#065F46' }}>
+            {orderSuccess === 'pharmacy' ? 'Pharmacy order placed!' : 'Lab test order placed!'}
+          </span>
+        </div>
+      )}
     </div>
   )
 }
