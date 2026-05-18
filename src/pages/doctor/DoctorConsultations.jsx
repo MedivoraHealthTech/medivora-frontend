@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   CalendarDays, Clock, CheckCircle, XCircle, Video,
   User, ChevronDown, ChevronUp, Calendar, AlertTriangle, X,
-  FileText, Plus, Trash2, Loader,
+  FileText, Plus, Trash2, Loader, FlaskConical,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { doctorAPI } from '../../api/client'
@@ -49,6 +49,8 @@ const EMPTY_MEDICINE = () => ({
   medicine_name: '', generic_name: '', dosage: '', frequency: '', duration: '', instructions: '', before_food: false,
 })
 
+const EMPTY_TEST = () => ({ test_name: '', reason: '', priority: 'routine' })
+
 export default function DoctorConsultations() {
   const { getToken } = useAuth()
   const navigate = useNavigate()
@@ -79,6 +81,7 @@ export default function DoctorConsultations() {
   const [rxDietary,     setRxDietary]     = useState('')
   const [rxWarning,     setRxWarning]     = useState('')
   const [rxFollowup,    setRxFollowup]    = useState('')
+  const [rxTests,       setRxTests]       = useState([])
   const [rxSubmitting,  setRxSubmitting]  = useState(false)
   const [rxError,       setRxError]       = useState('')
   const [submittedRxIds, setSubmittedRxIds] = useState(new Set())
@@ -176,6 +179,7 @@ export default function DoctorConsultations() {
     setRxFor(consultation)
     setRxDraft(null)
     setRxMedicines([])
+    setRxTests([])
     setRxGeneral('')
     setRxDietary('')
     setRxWarning('')
@@ -188,6 +192,7 @@ export default function DoctorConsultations() {
       const draft = result.draft || {}
       setRxDraft(result)
       setRxMedicines((draft.medicines || []).map(m => ({ ...EMPTY_MEDICINE(), ...m })))
+      setRxTests((draft.suggested_tests || []).map(t => ({ ...EMPTY_TEST(), ...t })))
       setRxGeneral((draft.general_instructions || []).join('\n'))
       setRxDietary((draft.dietary_advice || []).join('\n'))
       setRxWarning((draft.warning_signs || []).join('\n'))
@@ -202,7 +207,20 @@ export default function DoctorConsultations() {
   function handleCloseRxModal() {
     setRxFor(null)
     setRxDraft(null)
+    setRxTests([])
     setRxError('')
+  }
+
+  function updateTest(idx, field, value) {
+    setRxTests(prev => prev.map((t, i) => i === idx ? { ...t, [field]: value } : t))
+  }
+
+  function addTest() {
+    setRxTests(prev => [...prev, EMPTY_TEST()])
+  }
+
+  function removeTest(idx) {
+    setRxTests(prev => prev.filter((_, i) => i !== idx))
   }
 
   function updateMedicine(idx, field, value) {
@@ -218,8 +236,8 @@ export default function DoctorConsultations() {
   }
 
   async function handleSubmitPrescription() {
-    if (rxMedicines.length === 0) {
-      setRxError('Add at least one medicine.')
+    if (rxMedicines.length === 0 && rxTests.length === 0) {
+      setRxError('Add at least one medicine or lab test.')
       return
     }
     setRxSubmitting(true)
@@ -227,6 +245,7 @@ export default function DoctorConsultations() {
     try {
       const payload = {
         medicines: rxMedicines,
+        lab_tests: rxTests.filter(t => t.test_name.trim()),
         general_instructions: rxGeneral.split('\n').map(s => s.trim()).filter(Boolean),
         dietary_advice: rxDietary.split('\n').map(s => s.trim()).filter(Boolean),
         warning_signs: rxWarning.split('\n').map(s => s.trim()).filter(Boolean),
@@ -553,6 +572,61 @@ export default function DoctorConsultations() {
                       <input type="checkbox" checked={med.before_food} onChange={e => updateMedicine(idx, 'before_food', e.target.checked)} />
                       Before food
                     </label>
+                  </div>
+                ))}
+              </div>
+
+              {/* Recommended Tests */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--g300)' }}>Recommended Tests</span>
+                    {rxTests.length > 0 && (
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 50, background: 'rgba(29,78,216,0.1)', color: '#1D4ED8' }}>
+                        {rxTests.length} test{rxTests.length !== 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </div>
+                  <button onClick={addTest} style={{ ...actionBtn, padding: '6px 12px', color: '#1D4ED8', borderColor: '#1D4ED8', background: 'rgba(29,78,216,0.06)', fontSize: 12 }}>
+                    <Plus size={12} /> Add Test
+                  </button>
+                </div>
+
+                {rxTests.length === 0 && (
+                  <p style={{ fontSize: 13, color: 'var(--g500)', textAlign: 'center', padding: '12px 0', borderRadius: 8, border: '1px dashed rgba(0,0,0,0.1)' }}>
+                    No tests added. AI suggests tests when clinically indicated.
+                  </p>
+                )}
+
+                {rxTests.map((test, idx) => (
+                  <div key={idx} style={{ background: 'rgba(29,78,216,0.03)', borderRadius: 10, padding: '12px 14px', border: '1px solid rgba(29,78,216,0.12)', marginBottom: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <FlaskConical size={13} color='#1D4ED8' />
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#1D4ED8', textTransform: 'uppercase', letterSpacing: 0.8 }}>Test {idx + 1}</span>
+                      </div>
+                      <button onClick={() => removeTest(idx)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}>
+                        <Trash2 size={14} color='var(--err)' />
+                      </button>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 8 }}>
+                      <div>
+                        <label style={inlineLabel}>Test Name</label>
+                        <input value={test.test_name} onChange={e => updateTest(idx, 'test_name', e.target.value)} style={formInput} placeholder="e.g. Complete Blood Count" />
+                      </div>
+                      <div>
+                        <label style={inlineLabel}>Priority</label>
+                        <select value={test.priority} onChange={e => updateTest(idx, 'priority', e.target.value)}
+                          style={{ ...formInput, appearance: 'none', cursor: 'pointer' }}>
+                          <option value="routine">Routine</option>
+                          <option value="urgent">Urgent</option>
+                        </select>
+                      </div>
+                      <div style={{ gridColumn: isMobile ? '1' : '1 / -1' }}>
+                        <label style={inlineLabel}>Clinical Reason</label>
+                        <input value={test.reason} onChange={e => updateTest(idx, 'reason', e.target.value)} style={formInput} placeholder="e.g. Evaluate anaemia" />
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>

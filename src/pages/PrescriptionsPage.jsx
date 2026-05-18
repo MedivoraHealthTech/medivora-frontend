@@ -45,18 +45,23 @@ function mapRow(rx) {
   }
   const status = statusMap[rx.status] || 'pending'
 
+  const medicineItems = items.filter(i => i.item_type !== 'lab_test')
+  const testItems     = items.filter(i => i.item_type === 'lab_test')
+  const primaryMedItem = medicineItems[0] || {}
+
   return {
     id: rx.id,
-    medication: allMeds || primaryItem.medicine_name || 'Prescription',
-    dosage: primaryItem.frequency
-      ? `${primaryItem.dosage || ''} ${primaryItem.frequency}`.trim()
+    medication: medicineItems.map(i => i.medicine_name).join(', ') || primaryItem.medicine_name || 'Prescription',
+    dosage: primaryMedItem.frequency
+      ? `${primaryMedItem.dosage || ''} ${primaryMedItem.frequency}`.trim()
       : rx.follow_up_instructions || '',
     doctorName: rx.doctor_name || 'Medivora Doctor',
     prescribedOn: rx.prescribed_at || rx.created_at,
     validUntil: rx.expires_at,
     status,
     refillsLeft: 0,
-    items,
+    items: medicineItems,
+    testItems,
     rawStatus: rx.status,
     pdfUrl: rx.pdf_url || null,
   }
@@ -233,6 +238,28 @@ export default function PrescriptionsPage() {
                           <span>{item.frequency}</span>
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  {/* Lab test items */}
+                  {p.testItems && p.testItems.length > 0 && (
+                    <div style={{ background: 'rgba(29,78,216,0.04)', borderRadius: 8, padding: '8px 12px', border: '1px solid rgba(29,78,216,0.1)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                        <FlaskConical size={12} color='#1D4ED8' />
+                        <span style={{ fontSize: 10, fontWeight: 700, color: '#1D4ED8', textTransform: 'uppercase', letterSpacing: 0.8 }}>Recommended Tests</span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {p.testItems.map((item, i) => (
+                          <div key={i} style={{ fontSize: 11, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontWeight: 600, color: '#1e3a5f' }}>{item.medicine_name}</span>
+                            {item.dosage && (
+                              <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 50, background: item.dosage === 'urgent' ? 'rgba(220,38,38,0.1)' : 'rgba(29,78,216,0.08)', color: item.dosage === 'urgent' ? '#dc2626' : '#1D4ED8', fontWeight: 600, textTransform: 'capitalize' }}>
+                                {item.dosage}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
 
