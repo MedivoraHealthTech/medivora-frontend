@@ -4,7 +4,7 @@ import {
   ArrowLeft, User, Clock, Save, Phone, Mail, Calendar,
   Droplets, MapPin,
   MessageSquare, Trash2, ChevronRight, LogOut, CheckCircle,
-  AlertTriangle, X, Users, Plus, Edit2,
+  AlertTriangle, X, Users, Plus, Edit2, FileText, Download,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { profileAPI, chatHistoryAPI, consultationAPI, familyMembersAPI } from '../api/client'
@@ -88,6 +88,10 @@ export default function ProfileSettings() {
 
   // ─── Consultations state ───────────────────────────────────────
   const [consultations, setConsultations] = useState([])
+
+  // ─── Invoices state ────────────────────────────────────────────
+  const [invoices, setInvoices]             = useState([])
+  const [loadingInvoices, setLoadingInvoices] = useState(false)
 
   // ─── Family members state ──────────────────────────────────────
   const [familyMembers, setFamilyMembers]     = useState([])
@@ -196,6 +200,22 @@ export default function ProfileSettings() {
       finally { setLoadingFamily(false) }
     }
     loadFamily()
+  }, [activeTab, token])
+
+  // ─── Load invoices when tab opens ─────────────────────────────
+  useEffect(() => {
+    if (activeTab !== 'invoices') return
+    async function loadInvoices() {
+      setLoadingInvoices(true)
+      try {
+        const d = await consultationAPI.getMy(token)
+        const all = Array.isArray(d) ? d : d?.sessions || []
+        // Only consultations that had a payment (has consultation_fee or payment_id)
+        setInvoices(all)
+      } catch { /* silently ignore */ }
+      finally { setLoadingInvoices(false) }
+    }
+    loadInvoices()
   }, [activeTab, token])
 
   function openAddModal() {
@@ -372,6 +392,128 @@ export default function ProfileSettings() {
   const fullNameDisplay = (form.first_name + ' ' + form.last_name).trim() || displayName || ''
   const avatarInitial = (fullNameDisplay || 'U').charAt(0).toUpperCase()
 
+  // ─── Download invoice as PDF ───────────────────────────────────
+  async function downloadInvoicePDF(c, invoiceNum) {
+    const { jsPDF } = await import('jspdf')
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' })
+
+    const pageW = doc.internal.pageSize.getWidth()
+    const margin = 48
+    const colRight = pageW - margin
+
+    const dateStr = (c.scheduled_at || c.created_at)
+      ? new Date(c.scheduled_at || c.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+      : '—'
+    const doctorName  = c.doctor_name || 'Doctor'
+    const specialty   = (c.specialty || c.doctor_specialty || '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+    const fee         = c.consultation_fee != null ? `Rs. ${Number(c.consultation_fee).toLocaleString('en-IN')}` : '—'
+    const paymentId   = c.payment_id || '—'
+    const statusLabel = c.status === 'completed' ? 'Paid'
+      : c.status === 'scheduled' ? 'Confirmed'
+      : (c.status === 'cancelled' || c.status === 'no_show') ? 'Cancelled'
+      : 'Pending'
+    const patientName = fullNameDisplay || 'Patient'
+
+    // Header bar
+    doc.setFillColor(25, 48, 170)
+    doc.rect(0, 0, pageW, 72, 'F')
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(22)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Medivora', margin, 44)
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.text('themedivora.com', colRight, 44, { align: 'right' })
+
+    // Invoice title
+    doc.setTextColor(17, 17, 17)
+    doc.setFontSize(18)
+    doc.setFont('helvetica', 'bold')
+    doc.text('INVOICE', margin, 112)
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(100, 100, 100)
+    doc.text(invoiceNum, margin, 130)
+
+    // Date & Status (right)
+    doc.setTextColor(17, 17, 17)
+    doc.setFontSize(10)
+    doc.text(`Date: ${dateStr}`, colRight, 112, { align: 'right' })
+    doc.text(`Status: ${statusLabel}`, colRight, 128, { align: 'right' })
+
+    // Divider
+    doc.setDrawColor(220, 220, 230)
+    doc.line(margin, 148, colRight, 148)
+
+    // Billed to
+    doc.setFontSize(9)
+    doc.setTextColor(120, 120, 120)
+    doc.setFont('helvetica', 'bold')
+    doc.text('BILLED TO', margin, 170)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(30, 30, 30)
+    doc.setFontSize(11)
+    doc.text(patientName, margin, 186)
+
+    // Doctor
+    doc.setFontSize(9)
+    doc.setTextColor(120, 120, 120)
+    doc.setFont('helvetica', 'bold')
+    doc.text('DOCTOR', colRight - 120, 170)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(30, 30, 30)
+    doc.setFontSize(11)
+    doc.text(`Dr. ${doctorName}`, colRight - 120, 186)
+    if (specialty) {
+      doc.setFontSize(9)
+      doc.setTextColor(100, 100, 100)
+      doc.text(specialty, colRight - 120, 200)
+    }
+
+    // Table header
+    const tableY = 240
+    doc.setFillColor(245, 248, 252)
+    doc.rect(margin, tableY - 16, pageW - margin * 2, 24, 'F')
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(80, 80, 80)
+    doc.text('DESCRIPTION', margin + 8, tableY)
+    doc.text('AMOUNT', colRight - 8, tableY, { align: 'right' })
+
+    // Table row
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(30, 30, 30)
+    doc.setFontSize(11)
+    doc.text(`Consultation${specialty ? ' — ' + specialty : ''}`, margin + 8, tableY + 26)
+    doc.text(fee, colRight - 8, tableY + 26, { align: 'right' })
+
+    // Divider
+    doc.setDrawColor(220, 220, 230)
+    doc.line(margin, tableY + 38, colRight, tableY + 38)
+
+    // Total
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(12)
+    doc.setTextColor(25, 48, 170)
+    doc.text('Total', margin + 8, tableY + 58)
+    doc.text(fee, colRight - 8, tableY + 58, { align: 'right' })
+
+    // Payment ref
+    if (c.payment_id) {
+      doc.setFontSize(9)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(140, 140, 140)
+      doc.text(`Payment Reference: ${paymentId}`, margin, tableY + 84)
+    }
+
+    // Footer
+    doc.setFontSize(8)
+    doc.setTextColor(180, 180, 180)
+    doc.text('Medivora HealthTech · Gurugram, India · nikhil.syal@themedivora.com', pageW / 2, 800, { align: 'center' })
+
+    doc.save(`${invoiceNum}-Medivora.pdf`)
+  }
+
   return (
     <div style={{ height: '100%', minHeight: 0, overflow: 'auto', background: '#f5f8fc', fontFamily: 'var(--font)' }}>
 
@@ -419,6 +561,10 @@ export default function ProfileSettings() {
           <button style={tabBtn(activeTab === 'history')} onClick={() => setActiveTab('history')}>
             <Clock size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
             History
+          </button>
+          <button style={tabBtn(activeTab === 'invoices')} onClick={() => setActiveTab('invoices')}>
+            <FileText size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+            Invoices
           </button>
         </div>
 
@@ -1148,6 +1294,99 @@ export default function ProfileSettings() {
               </div>
             )}
           </>
+        )}
+
+        {/* ── INVOICES TAB ── */}
+        {activeTab === 'invoices' && (
+          <div>
+            <p style={{ fontSize: 12, fontWeight: 700, color: '#555555', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 14 }}>
+              Booking Invoices
+            </p>
+
+            {loadingInvoices ? (
+              <div style={{ textAlign: 'center', padding: 40, color: '#999999' }}>Loading invoices…</div>
+            ) : invoices.length === 0 ? (
+              <div style={{ ...card, textAlign: 'center', padding: '40px 20px' }}>
+                <FileText size={36} color="#d0daea" style={{ marginBottom: 12 }} />
+                <p style={{ fontSize: 15, fontWeight: 600, color: '#555555', marginBottom: 6 }}>No invoices yet</p>
+                <p style={{ fontSize: 13, color: '#999999' }}>Your consultation invoices will appear here after booking.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {invoices.map((c, i) => {
+                  const invoiceNum  = `INV-${String(i + 1).padStart(4, '0')}`
+                  const dateStr     = (c.scheduled_at || c.created_at)
+                    ? new Date(c.scheduled_at || c.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                    : '—'
+                  const doctorName  = c.doctor_name || 'Doctor'
+                  const specialty   = (c.specialty || c.doctor_specialty || '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                  const fee         = c.consultation_fee != null ? `₹${Number(c.consultation_fee).toLocaleString('en-IN')}` : '—'
+                  const paymentId   = c.payment_id || null
+                  const statusColor = c.status === 'completed' ? '#00a040'
+                    : c.status === 'scheduled' ? '#1930AA'
+                    : (c.status === 'cancelled' || c.status === 'no_show') ? '#d93a00'
+                    : '#f59e0b'
+                  const statusLabel = c.status === 'completed' ? 'Paid'
+                    : c.status === 'scheduled' ? 'Confirmed'
+                    : (c.status === 'cancelled' || c.status === 'no_show') ? 'Cancelled'
+                    : 'Pending'
+
+                  return (
+                    <div key={c.id || i} style={{
+                      ...card, marginBottom: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                    }}>
+                      {/* Left — invoice meta */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                          background: 'rgba(25,48,170,0.06)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          <FileText size={18} color="#1930AA" />
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: '#111111' }}>{invoiceNum}</span>
+                            <span style={{
+                              padding: '2px 7px', borderRadius: 4, fontSize: 10, fontWeight: 600,
+                              background: statusColor + '18', color: statusColor,
+                            }}>{statusLabel}</span>
+                          </div>
+                          <p style={{ fontSize: 12, color: '#555555', margin: '3px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            Dr. {doctorName}{specialty ? ` · ${specialty}` : ''}
+                          </p>
+                          <p style={{ fontSize: 11, color: '#999999', margin: '2px 0 0' }}>
+                            {dateStr}{paymentId ? ` · Ref: ${paymentId}` : ''}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Right — amount + download */}
+                      <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                        <p style={{ fontSize: 16, fontWeight: 700, color: '#111111', margin: 0 }}>{fee}</p>
+                        <p style={{ fontSize: 10, color: '#aaaaaa', margin: 0 }}>Consultation fee</p>
+                        <button
+                          onClick={() => downloadInvoicePDF(c, invoiceNum)}
+                          title="Download Invoice PDF"
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 4,
+                            padding: '5px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                            border: '1px solid #d0daea', background: '#f5f8fc',
+                            color: '#1930AA', cursor: 'pointer', transition: 'all 0.2s',
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#1930AA'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#1930AA' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = '#f5f8fc'; e.currentTarget.style.color = '#1930AA'; e.currentTarget.style.borderColor = '#d0daea' }}
+                        >
+                          <Download size={11} /> PDF
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>

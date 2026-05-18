@@ -4,6 +4,7 @@ import { CheckCircle, ArrowLeft, Video, Stethoscope, Calendar, ShieldCheck, Clip
 import { supabase } from './supabase'
 import MedicalInfoModal from '../components/MedicalInfoModal'
 import TimeSlotPicker from '../components/TimeSlotPicker'
+import { useBreakpoint } from '../hooks/useBreakpoint'
 
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
 const IS_DEV   = import.meta.env.VITE_DEV_PAYMENT === 'true'
@@ -20,6 +21,7 @@ function stripDr(name = '') { return name.replace(/^Dr\.?\s*/i, '').trim() }
 export default function PaymentPage() {
   const navigate  = useNavigate()
   const location  = useLocation()
+  const { isMobile } = useBreakpoint()
 
   const params = new URLSearchParams(location.search)
   const isSuccess  = params.get('success') === 'true'
@@ -222,10 +224,10 @@ export default function PaymentPage() {
         <div style={{
           minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
           background: 'linear-gradient(135deg, #f0f4ff 0%, #e8f8ff 100%)',
-          fontFamily: 'var(--font, Inter, sans-serif)', padding: 24,
+          fontFamily: 'var(--font, Inter, sans-serif)', padding: isMobile ? 16 : 24,
         }}>
           <div style={{
-            background: '#fff', borderRadius: 24, padding: '36px 32px', maxWidth: 460, width: '100%',
+            background: '#fff', borderRadius: 24, padding: isMobile ? '28px 20px' : '36px 32px', maxWidth: 460, width: '100%',
             textAlign: 'center', boxShadow: '0 20px 60px rgba(25,48,170,0.12)',
           }}>
             <CheckCircle size={48} color="#00c853" style={{ marginBottom: 16 }} />
@@ -277,7 +279,7 @@ export default function PaymentPage() {
         fontFamily: 'var(--font, Inter, sans-serif)', padding: 24,
       }}>
         <div style={{
-          background: '#fff', borderRadius: 24, padding: '48px 40px', maxWidth: 420, width: '100%',
+          background: '#fff', borderRadius: 24, padding: isMobile ? '28px 20px' : '48px 40px', maxWidth: 420, width: '100%',
           textAlign: 'center', boxShadow: '0 20px 60px rgba(25,48,170,0.12)',
         }}>
           <CheckCircle size={64} color="#00c853" style={{ marginBottom: 20 }} />
@@ -361,7 +363,7 @@ export default function PaymentPage() {
     }}>
       {/* Header */}
       <div style={{
-        padding: '14px 24px', background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.07)',
+        padding: isMobile ? '12px 16px' : '14px 24px', background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.07)',
         display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0,
       }}>
         <button
@@ -387,7 +389,7 @@ export default function PaymentPage() {
       {/* Body */}
       <div style={{
         flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-        padding: '40px 24px', gap: 24, flexWrap: 'wrap',
+        padding: isMobile ? '20px 16px' : '40px 24px', gap: 24, flexWrap: 'wrap',
       }}>
 
         {/* Left: Order summary */}

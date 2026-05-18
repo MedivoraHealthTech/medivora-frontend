@@ -849,11 +849,20 @@ const styles = `
 
   /* ── FOOTER ── */
   .lp-footer { padding:2rem 2rem; border-top:1px solid var(--lp-line); }
-  .lp-footer-inner { max-width:1280px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; }
+  .lp-footer-inner { max-width:1280px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; }
   .lp-footer-copy { font-size:12px; color:var(--lp-ink-3); }
-  .lp-footer-contact { display:flex; gap:20px; flex-wrap:wrap; }
+  .lp-footer-contact { display:flex; gap:20px; flex-wrap:wrap; align-items:center; }
   .lp-footer-link { font-size:12px; color:var(--lp-ink-3); text-decoration:none; transition:color .2s; }
   .lp-footer-link:hover { color:var(--lp-blue-bright); }
+  .lp-footer-social { display:flex; gap:10px; align-items:center; }
+  .lp-social-icon {
+    width:32px; height:32px; border-radius:50%;
+    background:rgba(255,255,255,0.06); border:1px solid var(--lp-line);
+    display:flex; align-items:center; justify-content:center;
+    color:var(--lp-ink-3); text-decoration:none; transition:all .2s;
+  }
+  .lp-social-icon:hover { background:var(--lp-blue-bright); border-color:var(--lp-blue-bright); color:#fff; }
+  .lp-social-icon svg { display:block; }
 
   /* ── RESPONSIVE ── */
   @media (max-width:1024px) {
@@ -1214,7 +1223,6 @@ export default function HomePage() {
           <div className="lp-nav-links">
             <span className="lp-nav-link" onClick={() => document.getElementById('lp-how').scrollIntoView({ behavior:'smooth' })}>How it works</span>
             <Link to="/doctor/login" className="lp-nav-link">For Doctors</Link>
-            <Link to="/signup" className="lp-nav-link">Pricing</Link>
           </div>
           <div className="lp-nav-auth">
             <Link to="/login" className="lp-nav-signin">Sign In</Link>
@@ -1629,6 +1637,38 @@ export default function HomePage() {
             <a href="mailto:nikhil.syal@themedivora.com" className="lp-footer-link">nikhil.syal@themedivora.com</a>
             <a href="tel:+919971615161" className="lp-footer-link">+91-9971615161</a>
             <span className="lp-footer-copy">Gurgaon, Delhi NCR</span>
+          </div>
+          <div className="lp-footer-social">
+            {/* Instagram */}
+            <a href="https://www.instagram.com/medivora.one?igsh=MTRqbXNrNzNjZ3dleQ%3D%3D&utm_source=qr" target="_blank" rel="noopener noreferrer" className="lp-social-icon" aria-label="Instagram">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+              </svg>
+            </a>
+            {/* Facebook */}
+            <a href="https://www.facebook.com/share/1E8bufnwHS/?mibextid=wwXIfr" target="_blank" rel="noopener noreferrer" className="lp-social-icon" aria-label="Facebook">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+              </svg>
+            </a>
+            {/* X / Twitter */}
+            <a href="https://x.com/medivoraone" target="_blank" rel="noopener noreferrer" className="lp-social-icon" aria-label="X">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+              </svg>
+            </a>
+            {/* YouTube */}
+            <a href="https://www.youtube.com/@medivoraone" target="_blank" rel="noopener noreferrer" className="lp-social-icon" aria-label="YouTube">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="#fff" stroke="none"/>
+              </svg>
+            </a>
+            {/* LinkedIn */}
+            <a href="https://www.linkedin.com/company/medivoraone/" target="_blank" rel="noopener noreferrer" className="lp-social-icon" aria-label="LinkedIn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/>
+              </svg>
+            </a>
           </div>
         </div>
       </footer>
