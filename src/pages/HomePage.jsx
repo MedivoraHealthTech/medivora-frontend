@@ -159,7 +159,7 @@ const styles = `
     width:42px; height:42px; border-radius:50%;
     background:transparent;
     display:flex; align-items:center; justify-content:center;
-    flex-shrink:0;
+    box-shadow:0 2px 8px rgba(0,175,239,0.3); flex-shrink:0;
   }
   .lp-dot {
     display:inline-block; width:6px; height:6px;
