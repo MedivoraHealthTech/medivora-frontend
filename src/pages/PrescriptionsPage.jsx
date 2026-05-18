@@ -97,7 +97,7 @@ export default function PrescriptionsPage() {
   const [query, setQuery]                 = useState('')
   const [statusTab, setStatusTab]         = useState('All')
   const [orderSuccess, setOrderSuccess]   = useState(null)   // 'pharmacy' | 'lab'
-  const [ordering, setOrdering]           = useState(null)   // prescription id being ordered
+  const [ordering, setOrdering]           = useState(null)   // `${prescriptionId}:${type}`
 
   const load = async () => {
     setLoading(true)
@@ -115,7 +115,7 @@ export default function PrescriptionsPage() {
   useEffect(() => { load() }, [])
 
   async function placeOrder(p, type) {
-    setOrdering(p.id)
+    setOrdering(`${p.id}:${type}`)
     try {
       const token = await getToken()
       if (!token) return
@@ -296,18 +296,18 @@ export default function PrescriptionsPage() {
                     </button>
                     <button
                       onClick={() => p.status === 'active' && placeOrder(p, 'pharmacy')}
-                      disabled={p.status !== 'active' || ordering === p.id}
-                      style={{ flex: '1 1 80px', padding: '10px 14px', borderRadius: 10, border: 'none', background: p.status === 'active' ? 'linear-gradient(135deg, #1930AA, #00AFEF)' : 'rgba(0,0,0,0.06)', color: p.status === 'active' ? '#fff' : 'var(--g700)', fontSize: 13, fontWeight: 600, cursor: p.status === 'active' ? 'pointer' : 'not-allowed', fontFamily: 'var(--font)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: ordering === p.id ? 0.6 : 1 }}
+                      disabled={p.status !== 'active' || ordering === `${p.id}:pharmacy`}
+                      style={{ flex: '1 1 80px', padding: '10px 14px', borderRadius: 10, border: 'none', background: p.status === 'active' ? 'linear-gradient(135deg, #1930AA, #00AFEF)' : 'rgba(0,0,0,0.06)', color: p.status === 'active' ? '#fff' : 'var(--g700)', fontSize: 13, fontWeight: 600, cursor: p.status === 'active' ? 'pointer' : 'not-allowed', fontFamily: 'var(--font)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: ordering === `${p.id}:pharmacy` ? 0.6 : 1 }}
                     >
-                      <RefreshCw size={15} /> {ordering === p.id ? 'Ordering…' : 'Refill'}
+                      <RefreshCw size={15} /> {ordering === `${p.id}:pharmacy` ? 'Ordering…' : 'Refill'}
                     </button>
                     {p.status === 'active' && p.testItems && p.testItems.length > 0 && (
                       <button
                         onClick={() => placeOrder(p, 'lab')}
-                        disabled={ordering === p.id}
-                        style={{ flex: '1 1 100px', padding: '10px 14px', borderRadius: 10, border: '1.5px solid rgba(29,78,216,0.3)', background: '#eff6ff', color: '#1D4ED8', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: ordering === p.id ? 0.6 : 1 }}
+                        disabled={ordering === `${p.id}:lab`}
+                        style={{ flex: '1 1 100px', padding: '10px 14px', borderRadius: 10, border: '1.5px solid rgba(29,78,216,0.3)', background: '#eff6ff', color: '#1D4ED8', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: ordering === `${p.id}:lab` ? 0.6 : 1 }}
                       >
-                        <FlaskConical size={15} /> Book Tests
+                        <FlaskConical size={15} /> {ordering === `${p.id}:lab` ? 'Booking…' : 'Book Tests'}
                       </button>
                     )}
                   </div>
