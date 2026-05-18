@@ -157,9 +157,9 @@ const styles = `
   }
   .lp-nav-logo-icon {
     width:42px; height:42px; border-radius:50%;
-    background:linear-gradient(135deg,#1930AA,#00AFEF);
+    background:transparent;
     display:flex; align-items:center; justify-content:center;
-    box-shadow:0 2px 8px rgba(0,175,239,0.3); flex-shrink:0;
+    flex-shrink:0;
   }
   .lp-dot {
     display:inline-block; width:6px; height:6px;
