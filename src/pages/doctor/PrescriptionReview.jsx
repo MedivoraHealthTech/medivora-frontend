@@ -43,26 +43,35 @@ function Modal({ title, onClose, children, wide = false }) {
 
 function MedRow({ med, idx, onChange, onRemove }) {
   const { isMobile, isTablet } = useBreakpoint()
-  const gridCols = isMobile
-    ? 'repeat(2, 1fr)'
-    : isTablet
-    ? 'repeat(3, 1fr)'
-    : '2fr 1fr 1fr 1fr 1fr 32px'
+  const isTest = med.item_type === 'lab_test'
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 8, marginBottom: 8, alignItems: 'start' }}>
-      {[
-        ['medicine_name', 'Medicine name'],
-        ['dosage',        'Dosage'],
-        ['frequency',     'Frequency'],
-        ['duration',      'Duration'],
-        ['instructions',  'Instructions'],
-      ].map(([k, ph]) => (
-        <input key={k} value={med[k] || ''} onChange={e => onChange(idx, k, e.target.value)} placeholder={ph}
-          style={{ padding: '8px 10px', borderRadius: 8, border: '1.5px solid rgba(0,0,0,0.1)', background: 'rgba(0,0,0,0.02)', color: 'var(--g300)', fontFamily: 'var(--font)', fontSize: 12, outline: 'none', width: '100%', boxSizing: 'border-box' }} />
-      ))}
-      <button type="button" onClick={() => onRemove(idx)} style={{ padding: 6, borderRadius: 7, border: '1px solid rgba(255,61,0,0.2)', background: 'rgba(255,61,0,0.06)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Trash2 size={13} color='var(--err)' />
-      </button>
+    <div style={{ marginBottom: 10, padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${isTest ? 'rgba(29,78,216,0.2)' : 'rgba(0,0,0,0.08)'}`, background: isTest ? 'rgba(29,78,216,0.03)' : 'rgba(0,0,0,0.01)' }}>
+      {/* Type toggle */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+        {[['medicine', 'Medicine'], ['lab_test', 'Lab Test']].map(([val, label]) => (
+          <button key={val} type="button" onClick={() => onChange(idx, 'item_type', val)}
+            style={{ padding: '4px 12px', borderRadius: 50, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: 'none', fontFamily: 'var(--font)',
+              background: med.item_type === val ? (val === 'lab_test' ? '#1D4ED8' : '#374151') : 'rgba(0,0,0,0.06)',
+              color: med.item_type === val ? '#fff' : 'var(--g500)' }}>
+            {label}
+          </button>
+        ))}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : isTablet ? 'repeat(3,1fr)' : '2fr 1fr 1fr 1fr 1fr 32px', gap: 8, alignItems: 'start' }}>
+        {[
+          ['medicine_name', isTest ? 'Test name' : 'Medicine name'],
+          ['dosage',        isTest ? 'Sample type' : 'Dosage'],
+          ['frequency',     isTest ? 'Priority' : 'Frequency'],
+          ['duration',      isTest ? 'Fasting?' : 'Duration'],
+          ['instructions',  'Instructions'],
+        ].map(([k, ph]) => (
+          <input key={k} value={med[k] || ''} onChange={e => onChange(idx, k, e.target.value)} placeholder={ph}
+            style={{ padding: '8px 10px', borderRadius: 8, border: '1.5px solid rgba(0,0,0,0.1)', background: 'rgba(0,0,0,0.02)', color: 'var(--g300)', fontFamily: 'var(--font)', fontSize: 12, outline: 'none', width: '100%', boxSizing: 'border-box' }} />
+        ))}
+        <button type="button" onClick={() => onRemove(idx)} style={{ padding: 6, borderRadius: 7, border: '1px solid rgba(255,61,0,0.2)', background: 'rgba(255,61,0,0.06)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Trash2 size={13} color='var(--err)' />
+        </button>
+      </div>
     </div>
   )
 }
@@ -128,7 +137,7 @@ export default function PrescriptionReview() {
   function openModify(approval) {
     const rx = approval.proposed_prescription || approval.modified_prescription || {}
     const meds = Array.isArray(rx.medications) ? rx.medications : (rx.medications ? [rx.medications] : [{ medicine_name: '', dosage: '', frequency: '', duration: '', instructions: '' }])
-    setModifyMeds(meds.map(m => ({ ...m })))
+    setModifyMeds(meds.map(m => ({ ...m, item_type: m.item_type || 'medicine' })))
     setModifyNotes('')
     setModifyNmc(approveNmc || '')
     setModifyFor(approval)
@@ -138,7 +147,7 @@ export default function PrescriptionReview() {
     setModifyMeds(prev => prev.map((m, i) => i === idx ? { ...m, [key]: val } : m))
   }
   function addMed() {
-    setModifyMeds(prev => [...prev, { medicine_name: '', dosage: '', frequency: '', duration: '', instructions: '' }])
+    setModifyMeds(prev => [...prev, { medicine_name: '', dosage: '', frequency: '', duration: '', instructions: '', item_type: 'medicine' }])
   }
   function removeMed(idx) {
     setModifyMeds(prev => prev.filter((_, i) => i !== idx))

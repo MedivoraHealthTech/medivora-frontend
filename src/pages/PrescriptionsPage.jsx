@@ -114,7 +114,10 @@ export default function PrescriptionsPage() {
     try {
       const token = await getToken()
       if (!token) return
-      const items = p.items.map(i => ({ name: i.medicine_name || i.test_name, dosage: i.dosage, frequency: i.frequency }))
+      const sourceItems = type === 'lab'
+        ? p.items.filter(i => i.item_type === 'lab_test')
+        : p.items.filter(i => i.item_type !== 'lab_test')
+      const items = sourceItems.map(i => ({ name: i.medicine_name, dosage: i.dosage, frequency: i.frequency }))
       await fetch(`${API_BASE}/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -271,7 +274,7 @@ export default function PrescriptionsPage() {
                     >
                       <RefreshCw size={15} /> {ordering === p.id ? 'Ordering…' : 'Refill'}
                     </button>
-                    {p.status === 'active' && (
+                    {p.status === 'active' && p.items.some(i => i.item_type === 'lab_test') && (
                       <button
                         onClick={() => placeOrder(p, 'lab')}
                         disabled={ordering === p.id}
