@@ -6,6 +6,12 @@ const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_U
 
 function getToken() { return localStorage.getItem('medivora_pharmacy_token') }
 
+function handleUnauthorized() {
+  localStorage.removeItem('medivora_pharmacy_token')
+  localStorage.removeItem('medivora_pharmacy_user')
+  window.location.href = '/pharmacy/login'
+}
+
 const STATUS_COLORS = {
   pending:          { bg: '#FFF7ED', text: '#C2410C', label: 'Pending' },
   confirmed:        { bg: '#EFF6FF', text: '#1D4ED8', label: 'Confirmed' },
@@ -42,6 +48,7 @@ export default function PharmacyOrders() {
       const res = await fetch(`${API_BASE}/portal/orders`, {
         headers: { Authorization: `Bearer ${getToken()}` },
       })
+      if (res.status === 401) { handleUnauthorized(); return }
       const data = await res.json()
       setOrders(data.orders || [])
     } catch { /* ignore */ }
@@ -53,11 +60,12 @@ export default function PharmacyOrders() {
   async function updateStatus(orderId, status) {
     setUpdating(orderId)
     try {
-      await fetch(`${API_BASE}/portal/orders/${orderId}/status`, {
+      const res = await fetch(`${API_BASE}/portal/orders/${orderId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
         body: JSON.stringify({ status }),
       })
+      if (res.status === 401) { handleUnauthorized(); return }
       await load()
     } finally { setUpdating(null) }
   }
