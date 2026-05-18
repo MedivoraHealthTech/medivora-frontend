@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   Users, Stethoscope, MessageSquare, ClipboardList,
-  Activity, TrendingUp, Heart, UserCheck,
+  Activity, TrendingUp, Heart, UserCheck, IndianRupee,
 } from 'lucide-react'
 
 const API_BASE = '/api'
@@ -199,19 +199,28 @@ export default function AdminDashboard() {
   }, [])
 
   if (loading) return (
-    <div style={{ padding: 32, color: '#a0aec0', fontSize: 14 }}>Loading analytics…</div>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 16 }}>
+      <div style={{ width: 44, height: 44, borderRadius: '50%', border: '4px solid #e8eef8', borderTopColor: '#1930AA', animation: 'spin 0.8s linear infinite' }} />
+      <span style={{ fontSize: 14, color: '#a0aec0', fontWeight: 500 }}>Loading analytics…</span>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
   )
 
-  const p = data?.patients        || {}
-  const c = data?.consultations   || {}
-  const d = data?.doctors         || {}
-  const s = data?.sessions        || {}
-  const px = data?.prescriptions  || {}
-  const mg = data?.monthly_growth || []
+  const p  = data?.patients        || {}
+  const c  = data?.consultations   || {}
+  const d  = data?.doctors         || {}
+  const s  = data?.sessions        || {}
+  const px = data?.prescriptions   || {}
+  const mg = data?.monthly_growth  || []
+  const rv = data?.revenue         || {}
 
   // Completion rate
   const completedCount = c.by_status?.find(x => x.label === 'Completed')?.value || 0
   const completionRate = c.total ? Math.round(completedCount / c.total * 100) : 0
+
+  // Revenue helpers
+  const totalRevenue = rv.total || 0
+  const fmtRupees = v => `₹${Number(v).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
 
   return (
     <div style={{ fontFamily: 'inherit' }}>
@@ -229,6 +238,7 @@ export default function AdminDashboard() {
         <KpiCard icon={MessageSquare}label="Chat Sessions"       value={stats?.total_sessions}         color="#8b5cf6" />
         <KpiCard icon={ClipboardList}label="Prescriptions"       value={px.total}                     color="#f59e0b" />
         <KpiCard icon={UserCheck}    label="Doctor Requests"     value={d.join_requests?.reduce((s,x)=>s+x.value,0)||0} color="#ef4444" />
+        <KpiCard icon={IndianRupee}  label="Total Revenue"       value={fmtRupees(totalRevenue)} color="#10b981" sub="Completed payments" />
       </div>
 
       {/* ── Charts grid ── */}
@@ -296,6 +306,55 @@ export default function AdminDashboard() {
           <DonutChart data={d.join_requests || []} centerLabel="requests" />
         </Card>
 
+      </div>
+
+      {/* ── Revenue Card ── */}
+      <div style={{
+        background: '#fff', borderRadius: 16, padding: '20px 22px',
+        border: '1px solid #e8eef8', boxShadow: '0 2px 8px rgba(25,48,170,0.04)',
+        marginBottom: 16,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#0A1B47' }}>Revenue Analytics</div>
+            <div style={{ fontSize: 12, color: '#a0aec0', marginTop: 2 }}>Completed payments across all consultations</div>
+          </div>
+          <div style={{ background: 'linear-gradient(135deg, #10b981, #059669)', borderRadius: 12, padding: '10px 20px', textAlign: 'center' }}>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>Total Revenue</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: '#fff', lineHeight: 1.2, marginTop: 4 }}>{fmtRupees(totalRevenue)}</div>
+          </div>
+        </div>
+
+        {/* Doctor-wise revenue */}
+        {(rv.by_doctor || []).length === 0 ? (
+          <div style={{ color: '#a0aec0', fontSize: 13, padding: '20px 0', textAlign: 'center' }}>No completed payments recorded yet.</div>
+        ) : (
+          <>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#4a5568', marginBottom: 12 }}>Doctor-wise Revenue</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {(rv.by_doctor || []).map((doc, i) => {
+                const pct = totalRevenue > 0 ? (doc.value / totalRevenue) * 100 : 0
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: PALETTE[i % PALETTE.length] + '20', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Stethoscope size={14} color={PALETTE[i % PALETTE.length]} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: '#0A1B47', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '60%' }}>{doc.label}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#10b981', flexShrink: 0 }}>{fmtRupees(doc.value)}</span>
+                      </div>
+                      <div style={{ height: 6, background: '#f0f4ff', borderRadius: 4, overflow: 'hidden' }}>
+                        <div style={{ width: `${pct}%`, height: '100%', background: PALETTE[i % PALETTE.length], borderRadius: 4, transition: 'width 0.5s ease' }} />
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 11, color: '#a0aec0', width: 36, textAlign: 'right', flexShrink: 0 }}>{Math.round(pct)}%</div>
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
       </div>
 
       {/* ── Monthly growth — full width ── */}
