@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Send, Plus, Calendar, Video, ClipboardList, History, X, Camera, Mic, MicOff, Volume2, AlertTriangle } from 'lucide-react'
+import { Send, Plus, Calendar, Video, ClipboardList, History, X, Camera, Mic, MicOff, AlertTriangle } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { sendMessage as chatSend, restorePreLoginChat, uploadChatImage, sendVoiceMessage } from '../api/chat'
 import Logo from '../components/Logo'
@@ -49,8 +49,40 @@ function containsHindi(text) {
   return /[\u0900-\u097F]/.test(text)
 }
 
-/* ─── Orb Component (existing welcome orb) ─── */
-function AiOrb({ isListening, isTyping }) {
+/* ─── Orb Component (welcome orb + voice state animations) ─── */
+function AiOrb({ isTyping, orbState }) {
+  const waveRings  = orbState === 'speaking'  ? [0, 1, 2] : []
+  const listenRings = orbState === 'listening' ? [0, 1]    : []
+
+  const innerAnim = orbState === 'thinking'
+    ? 'orbBreathe 1.2s ease-in-out infinite'
+    : orbState === 'speaking'
+    ? 'orbBreathe 0.7s ease-in-out infinite'
+    : isTyping ? 'orbBreathe 1.5s ease-in-out infinite'
+    : 'none'
+
+  const rotateAnim = orbState === 'thinking'
+    ? 'orbRotateFast 4s linear infinite'
+    : 'orbRotate 20s linear infinite'
+
+  const innerBg = orbState === 'speaking'
+    ? 'radial-gradient(ellipse at 35% 35%, rgba(124,77,255,0.28), rgba(0,188,212,0.12) 60%, rgba(20,73,181,0.06))'
+    : orbState === 'thinking'
+    ? 'radial-gradient(ellipse at 35% 35%, rgba(20,73,181,0.28), rgba(0,188,212,0.12) 60%, rgba(124,77,255,0.06))'
+    : orbState === 'listening'
+    ? 'radial-gradient(ellipse at 35% 35%, rgba(0,188,212,0.28), rgba(124,77,255,0.12) 60%, rgba(20,73,181,0.06))'
+    : 'radial-gradient(ellipse at 35% 35%, rgba(0,188,212,0.18), rgba(124,77,255,0.08) 60%, rgba(20,73,181,0.05))'
+
+  const innerShadow = orbState === 'speaking'
+    ? '0 0 40px 12px rgba(124,77,255,0.22), 0 0 80px 24px rgba(124,77,255,0.08)'
+    : orbState === 'listening'
+    ? '0 0 50px 16px rgba(0,188,212,0.25), 0 0 100px 32px rgba(0,188,212,0.08)'
+    : orbState === 'thinking'
+    ? '0 0 40px 12px rgba(20,73,181,0.18), 0 0 80px 24px rgba(20,73,181,0.06)'
+    : undefined
+
+  const borderColor = orbState === 'speaking' ? 'rgba(124,77,255,0.45)' : 'rgba(0,188,212,0.35)'
+
   return (
     <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 200, height: 200 }}>
       {/* Outer pulse ring */}
@@ -59,10 +91,29 @@ function AiOrb({ isListening, isTyping }) {
         border: '1px solid rgba(0,188,212,0.25)',
         animation: 'orbPulse 3s ease-in-out infinite',
       }} />
+      {/* Listening: expanding pulse rings */}
+      {listenRings.map(i => (
+        <div key={i} style={{
+          position: 'absolute',
+          width: 200 + i * 45, height: 200 + i * 45, borderRadius: '50%',
+          border: `1px solid rgba(0,188,212,${0.3 - i * 0.1})`,
+          animation: `orbPulse ${2.5 + i * 0.6}s ease-in-out infinite`,
+          animationDelay: `${i * 0.4}s`,
+        }} />
+      ))}
+      {/* Speaking: radiating wave rings */}
+      {waveRings.map(i => (
+        <div key={i} style={{
+          position: 'absolute', width: 150, height: 150, borderRadius: '50%',
+          border: '1.5px solid rgba(124,77,255,0.45)',
+          animation: 'voiceWave 1.6s ease-out infinite',
+          animationDelay: `${i * 0.5}s`,
+        }} />
+      ))}
       {/* Rotating particle ring */}
       <div style={{
         position: 'absolute', width: 180, height: 180, borderRadius: '50%',
-        animation: 'orbRotate 20s linear infinite',
+        animation: rotateAnim,
       }}>
         <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 6, height: 6, borderRadius: '50%', background: '#00BCD4', boxShadow: '0 0 8px #00BCD4' }} />
         <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: 5, height: 5, borderRadius: '50%', background: '#7C4DFF', boxShadow: '0 0 6px #7C4DFF' }} />
@@ -72,11 +123,13 @@ function AiOrb({ isListening, isTyping }) {
       {/* Inner orb */}
       <div style={{
         width: 150, height: 150, borderRadius: '50%',
-        background: 'radial-gradient(ellipse at 35% 35%, rgba(0,188,212,0.18), rgba(124,77,255,0.08) 60%, rgba(20,73,181,0.05))',
-        border: '1px solid rgba(0,188,212,0.35)',
+        background: innerBg,
+        border: `1px solid ${borderColor}`,
         backdropFilter: 'blur(8px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        animation: isTyping ? 'orbBreathe 1.5s ease-in-out infinite' : 'none',
+        animation: innerAnim,
+        boxShadow: innerShadow,
+        transition: 'box-shadow 0.5s ease, border-color 0.5s ease',
       }}>
         <Logo size={52} />
       </div>
@@ -84,136 +137,6 @@ function AiOrb({ isListening, isTyping }) {
   )
 }
 
-/* ─── Voice Orb Overlay ─── */
-// orbState: 'listening' | 'thinking' | 'speaking'
-function VoiceOrbOverlay({ orbState, onTap }) {
-  const label = orbState === 'listening' ? 'Listening…'
-    : orbState === 'thinking' ? 'Thinking…'
-    : 'Speaking…'
-
-  const icon = orbState === 'speaking'
-    ? <Volume2 size={28} color="#fff" />
-    : orbState === 'listening'
-    ? <Mic size={28} color="#fff" />
-    : <Logo size={28} />
-
-  /* Inner orb animation per state */
-  const innerAnim = orbState === 'thinking'
-    ? 'orbBreathe 1.2s ease-in-out infinite'
-    : orbState === 'speaking'
-    ? 'orbBreathe 0.7s ease-in-out infinite'
-    : 'none'
-
-  /* Outer ring animation per state */
-  const outerAnim = orbState === 'thinking'
-    ? 'orbRotateFast 4s linear infinite'
-    : 'orbPulse 2.2s ease-in-out infinite'
-
-  /* Speaking wave rings */
-  const waveRings = orbState === 'speaking' ? [1, 2, 3] : []
-
-  /* Listening pulse rings */
-  const listenRings = orbState === 'listening' ? [1, 2] : []
-
-  return (
-    <div
-      onClick={onTap}
-      style={{
-        position: 'absolute',
-        top: 0, left: 0, right: 0, bottom: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 20,
-        background: 'rgba(10,12,28,0.82)',
-        backdropFilter: 'blur(6px)',
-        zIndex: 20,
-        cursor: 'pointer',
-        animation: 'voiceOrbFadeIn 0.25s ease-out',
-      }}
-    >
-      {/* Orb container */}
-      <div style={{ position: 'relative', width: 160, height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-
-        {/* Listening: slow pulse rings */}
-        {listenRings.map(i => (
-          <div key={i} style={{
-            position: 'absolute',
-            width: 160 + i * 40,
-            height: 160 + i * 40,
-            borderRadius: '50%',
-            border: `1px solid rgba(0,188,212,${0.25 - i * 0.08})`,
-            animation: `orbPulse ${2.5 + i * 0.6}s ease-in-out infinite`,
-            animationDelay: `${i * 0.4}s`,
-          }} />
-        ))}
-
-        {/* Speaking: radiating wave rings */}
-        {waveRings.map(i => (
-          <div key={i} style={{
-            position: 'absolute',
-            width: 160,
-            height: 160,
-            borderRadius: '50%',
-            border: '1.5px solid rgba(0,188,212,0.5)',
-            animation: `voiceWave 1.6s ease-out infinite`,
-            animationDelay: `${i * 0.5}s`,
-          }} />
-        ))}
-
-        {/* Thinking: rotating particle ring */}
-        {orbState === 'thinking' && (
-          <div style={{
-            position: 'absolute', width: 148, height: 148, borderRadius: '50%',
-            animation: outerAnim,
-          }}>
-            <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 6, height: 6, borderRadius: '50%', background: '#00BCD4', boxShadow: '0 0 10px #00BCD4' }} />
-            <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: 5, height: 5, borderRadius: '50%', background: '#7C4DFF', boxShadow: '0 0 8px #7C4DFF' }} />
-            <div style={{ position: 'absolute', top: '50%', left: 0, transform: 'translateY(-50%)', width: 4, height: 4, borderRadius: '50%', background: 'rgba(0,188,212,0.6)' }} />
-            <div style={{ position: 'absolute', top: '50%', right: 0, transform: 'translateY(-50%)', width: 5, height: 5, borderRadius: '50%', background: 'rgba(124,77,255,0.6)' }} />
-          </div>
-        )}
-
-        {/* Inner orb core */}
-        <div style={{
-          width: 120, height: 120, borderRadius: '50%',
-          background: orbState === 'speaking'
-            ? 'radial-gradient(ellipse at 35% 35%, rgba(124,77,255,0.35), rgba(0,188,212,0.15) 60%, rgba(20,73,181,0.08))'
-            : orbState === 'thinking'
-            ? 'radial-gradient(ellipse at 35% 35%, rgba(20,73,181,0.35), rgba(0,188,212,0.12) 60%, rgba(124,77,255,0.08))'
-            : 'radial-gradient(ellipse at 35% 35%, rgba(0,188,212,0.30), rgba(124,77,255,0.12) 60%, rgba(20,73,181,0.06))',
-          border: `1.5px solid ${orbState === 'speaking' ? 'rgba(124,77,255,0.5)' : 'rgba(0,188,212,0.5)'}`,
-          backdropFilter: 'blur(10px)',
-          boxShadow: orbState === 'speaking'
-            ? '0 0 40px 12px rgba(124,77,255,0.25), 0 0 80px 24px rgba(124,77,255,0.1)'
-            : orbState === 'thinking'
-            ? '0 0 40px 12px rgba(0,188,212,0.2), 0 0 80px 24px rgba(0,188,212,0.07)'
-            : '0 0 50px 16px rgba(0,188,212,0.3), 0 0 100px 32px rgba(0,188,212,0.1)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          animation: innerAnim,
-          position: 'relative', zIndex: 2,
-        }}>
-          {icon}
-        </div>
-      </div>
-
-      {/* Label */}
-      <div style={{ textAlign: 'center' }}>
-        <p style={{
-          fontSize: 15, fontWeight: 600,
-          color: orbState === 'speaking' ? '#C4B0FF' : '#00BCD4',
-          margin: 0, letterSpacing: 0.3,
-        }}>
-          {label}
-        </p>
-        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 4 }}>
-          Tap to stop
-        </p>
-      </div>
-    </div>
-  )
-}
 
 /* ─── Markdown-lite formatter ─── */
 function formatMessage(text) {
@@ -294,7 +217,7 @@ export default function ChatPage() {
   /* ─── Keep orbStateRef in sync ─── */
   useEffect(() => { orbStateRef.current = orbState }, [orbState])
 
-  const showOrb = messages.length <= 1 && !isTyping
+  const showOrb = (messages.length <= 1 && !isTyping) || orbState !== null
 
   /* ─── Persist messages + specialty to sessionStorage on every change ─── */
   useEffect(() => {
@@ -547,7 +470,7 @@ export default function ChatPage() {
     // Start recording (collect data every 250ms for progressive chunks)
     recorder.start(250)
 
-    // ── Silence detection via AnalyserNode ──────────────────────────────
+    // ── Silence detection via AnalyserNode (adaptive noise floor) ──────────
     try {
       const AudioContext = window.AudioContext || window.webkitAudioContext
       const ctx = new AudioContext()
@@ -560,28 +483,52 @@ export default function ChatPage() {
 
       const dataArray = new Uint8Array(analyser.frequencyBinCount)
       let silenceStart = null
-      const SILENCE_THRESHOLD = 8   // RMS below this is silence
-      const SILENCE_DURATION_MS = 1500  // 1.5s of silence auto-stops
+      const SILENCE_DURATION_MS = 1800  // 1.8s of silence auto-stops
+      const MAX_RECORDING_MS = 20000    // 20s hard cap
+      const recordingStartTime = Date.now()
 
-      const checkSilence = () => {
-        if (!voiceActiveRef.current || !analyserRef.current) return
-        if (mediaRecorderRef.current?.state !== 'recording') return
+      // Calibrate noise floor for first 500ms, then set threshold 1.8× above it.
+      // This makes silence detection work regardless of background noise level.
+      let calibrated = false
+      let calibrationSamples = []
+      let SILENCE_THRESHOLD = 12  // fallback if calibration window not reached
 
+      const getRMS = () => {
         analyser.getByteTimeDomainData(dataArray)
         let sum = 0
         for (let i = 0; i < dataArray.length; i++) {
           const val = (dataArray[i] - 128) / 128
           sum += val * val
         }
-        const rms = Math.sqrt(sum / dataArray.length) * 128
+        return Math.sqrt(sum / dataArray.length) * 128
+      }
+
+      const checkSilence = () => {
+        if (!voiceActiveRef.current || !analyserRef.current) return
+        if (mediaRecorderRef.current?.state !== 'recording') return
+
+        if (Date.now() - recordingStartTime > MAX_RECORDING_MS) {
+          if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop()
+          return
+        }
+
+        const rms = getRMS()
+
+        if (!calibrated) {
+          calibrationSamples.push(rms)
+          if (Date.now() - recordingStartTime >= 500) {
+            const avg = calibrationSamples.reduce((a, b) => a + b, 0) / calibrationSamples.length
+            SILENCE_THRESHOLD = Math.max(12, avg * 1.8)
+            calibrated = true
+          }
+          silenceRAFRef.current = requestAnimationFrame(checkSilence)
+          return
+        }
 
         if (rms < SILENCE_THRESHOLD) {
           if (silenceStart === null) silenceStart = Date.now()
           if (Date.now() - silenceStart > SILENCE_DURATION_MS) {
-            // Auto-stop after silence
-            if (mediaRecorderRef.current?.state === 'recording') {
-              mediaRecorderRef.current.stop()
-            }
+            if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop()
             return
           }
         } else {
@@ -852,22 +799,38 @@ export default function ChatPage() {
           New Chat
         </button>
 
-        {/* ── Messages area (dims when orb is active) ── */}
+        {/* ── Messages area ── */}
         <div style={{
           flex: 1, overflowY: 'auto', padding: '20px 20px 8px',
           display: 'flex', flexDirection: 'column', gap: 14,
-          transition: 'opacity 0.3s',
-          opacity: orbVisible ? 0.25 : 1,
-          pointerEvents: orbVisible ? 'none' : 'auto',
           position: 'relative',
         }}>
 
           {showOrb ? (
-            <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
-              <AiOrb isListening={false} isTyping={isTyping} />
-              <p style={{ fontSize: 13, color: 'var(--g500)', textAlign: 'center', maxWidth: 280 }}>
-                Describe your symptoms or ask a health question
-              </p>
+            <div
+              onClick={orbState !== null ? handleOrbTap : undefined}
+              style={{
+                height: '100%', display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center', gap: 20,
+                cursor: orbState !== null ? 'pointer' : 'default',
+              }}
+            >
+              <AiOrb isTyping={isTyping} orbState={orbState} />
+              {orbState !== null ? (
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{
+                    fontSize: 15, fontWeight: 600, margin: 0, letterSpacing: 0.3,
+                    color: orbState === 'speaking' ? '#7C4DFF' : '#00BCD4',
+                  }}>
+                    {orbState === 'listening' ? 'Listening…' : orbState === 'thinking' ? 'Thinking…' : 'Speaking…'}
+                  </p>
+                  <p style={{ fontSize: 11, color: 'var(--g600)', marginTop: 4 }}>Tap to stop</p>
+                </div>
+              ) : (
+                <p style={{ fontSize: 13, color: 'var(--g500)', textAlign: 'center', maxWidth: 280 }}>
+                  Describe your symptoms or ask a health question
+                </p>
+              )}
             </div>
           ) : (
             <div style={{ maxWidth: 680, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 4 }}>
@@ -1021,11 +984,6 @@ export default function ChatPage() {
             </div>
           )}
         </div>
-
-        {/* ── Voice Orb Overlay (sits above messages, below input bar) ── */}
-        {orbVisible && (
-          <VoiceOrbOverlay orbState={orbState} onTap={handleOrbTap} />
-        )}
 
         {/* ── Input Bar ── */}
         <div style={{ padding: '6px 20px 14px', flexShrink: 0, borderTop: '1px solid rgba(0,0,0,0.04)', position: 'relative', zIndex: 30 }}>
