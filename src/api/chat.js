@@ -148,6 +148,128 @@ export function unsubscribeFromSession(channel) {
 }
 
 /**
+ * Upload an image to the /chat/upload-image endpoint.
+ * Returns structured vision analysis from Gemini.
+ *
+ * @param {File} imageFile - The image file to upload
+ * @param {string|null} sessionId - Existing session ID (or null to start a new one)
+ * @returns {Promise<{
+ *   image_type: string,
+ *   description: string,
+ *   medical_context: string,
+ *   suggested_questions: string[],
+ *   urgency_flag: string,
+ *   session_id: string
+ * }>}
+ */
+export async function uploadChatImage(imageFile, sessionId = null) {
+  const formData = new FormData()
+  formData.append('image', imageFile)
+  if (sessionId) {
+    formData.append('session_id', sessionId)
+  }
+
+  const headers = {}
+  const token = await getToken()
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 60_000)
+
+  let res
+  try {
+    res = await fetch(`${CHAT_API_BASE}/chat/upload-image`, {
+      method: 'POST',
+      headers,
+      body: formData,
+      signal: controller.signal,
+    })
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('Image analysis timed out. Please try again.')
+    }
+    throw err
+  } finally {
+    clearTimeout(timeoutId)
+  }
+
+  const data = await res.json().catch(() => null)
+
+  if (!res.ok) {
+    const detail = data?.detail || `Image upload failed (${res.status})`
+    throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail))
+  }
+
+  return data
+}
+
+/**
+ * Send audio to the /chat/voice endpoint (Whisper STT → Gemini → OpenAI TTS).
+ *
+ * @param {Blob} audioBlob   - recorded audio blob (webm/mp4)
+ * @param {string|null} sessionId - existing session ID, or null for a new session
+ * @returns {Promise<{
+ *   audioUrl: string,          // object URL to play the MP3 response
+ *   transcript: string,        // user's transcribed speech
+ *   aiText: string,            // AI text response
+ *   sessionId: string,         // session ID used / created
+ * }>}
+ */
+export async function sendVoiceMessage(audioBlob, sessionId = null) {
+  const formData = new FormData()
+  formData.append('audio', audioBlob, audioBlob.type?.includes('mp4') ? 'audio.mp4' : 'audio.webm')
+  if (sessionId) {
+    formData.append('session_id', sessionId)
+  }
+
+  const headers = {}
+  const token = await getToken()
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 120_000)
+
+  let res
+  try {
+    res = await fetch(`${CHAT_API_BASE}/chat/voice`, {
+      method: 'POST',
+      headers,
+      body: formData,
+      signal: controller.signal,
+    })
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('Voice response timed out. Please try again.')
+    }
+    throw err
+  } finally {
+    clearTimeout(timeoutId)
+  }
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => null)
+    const detail = data?.detail || `Voice request failed (${res.status})`
+    throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail))
+  }
+
+  const audioArrayBuffer = await res.arrayBuffer()
+  const audioBlob2 = new Blob([audioArrayBuffer], { type: 'audio/mpeg' })
+  const audioUrl = URL.createObjectURL(audioBlob2)
+
+  const _decodeHeader = (v) => { try { return decodeURIComponent(v || '') } catch { return v || '' } }
+  return {
+    audioUrl,
+    transcript: _decodeHeader(res.headers.get('X-Transcript')),
+    aiText: _decodeHeader(res.headers.get('X-AI-Text')),
+    sessionId: res.headers.get('X-Session-Id') || sessionId || '',
+  }
+}
+
+/**
  * Restore a pre-login anonymous chat into an authenticated session.
  * Sends the message history to the backend which replays it into the ADK session
  * so the agent can continue with full context.

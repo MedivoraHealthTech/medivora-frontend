@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Send, Plus, Calendar, Video, ClipboardList, History, X } from 'lucide-react'
+import { Send, Plus, Calendar, Video, ClipboardList, History, X, Camera, Mic, MicOff, Volume2, AlertTriangle } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { sendMessage as chatSend, restorePreLoginChat } from '../api/chat'
+import { sendMessage as chatSend, restorePreLoginChat, uploadChatImage, sendVoiceMessage } from '../api/chat'
 import Logo from '../components/Logo'
+import { useBreakpoint } from '../hooks/useBreakpoint'
 
 /* ─── Triage colors ─── */
 const triageColors = {
@@ -20,17 +21,35 @@ const SPECIALTY_KEY    = 'medivora_recommended_specialty'
 /* ─── Extract specialty from medical report text ─── */
 function extractSpecialtyFromText(text) {
   if (!text) return null
-  // Handles: "🏥 **Specialty Needed**: Gastroenterology" or "Specialist Needed: gastroenterology"
-  // \*? handles optional bold markdown around "Needed"
   const m = text.match(/Special(?:ty|ist)\s+Needed\*?\*?[:\s]+([a-zA-Z_]+)/i)
   if (m) return m[1].toLowerCase().trim()
-  // Fallback: "🏥 [anything]: Gastroenterology" (the hospital emoji line)
   const m2 = text.match(/🏥[^\n:]+:\s*([a-zA-Z_]{4,30})/)
   if (m2) return m2[1].toLowerCase().trim()
   return null
 }
 
-/* ─── Orb Component ─── */
+/* ─── Strip markdown for TTS ─── */
+function stripMarkdown(text) {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/#{1,6}\s*/g, '')
+    .replace(/`{1,3}[^`]*`{1,3}/g, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/•/g, '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\n{2,}/g, '. ')
+    .replace(/\n/g, ' ')
+    .trim()
+}
+
+/* ─── Detect Hindi (Devanagari) in text ─── */
+function containsHindi(text) {
+  return /[\u0900-\u097F]/.test(text)
+}
+
+/* ─── Orb Component (existing welcome orb) ─── */
 function AiOrb({ isListening, isTyping }) {
   return (
     <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 200, height: 200 }}>
@@ -65,6 +84,137 @@ function AiOrb({ isListening, isTyping }) {
   )
 }
 
+/* ─── Voice Orb Overlay ─── */
+// orbState: 'listening' | 'thinking' | 'speaking'
+function VoiceOrbOverlay({ orbState, onTap }) {
+  const label = orbState === 'listening' ? 'Listening…'
+    : orbState === 'thinking' ? 'Thinking…'
+    : 'Speaking…'
+
+  const icon = orbState === 'speaking'
+    ? <Volume2 size={28} color="#fff" />
+    : orbState === 'listening'
+    ? <Mic size={28} color="#fff" />
+    : <Logo size={28} />
+
+  /* Inner orb animation per state */
+  const innerAnim = orbState === 'thinking'
+    ? 'orbBreathe 1.2s ease-in-out infinite'
+    : orbState === 'speaking'
+    ? 'orbBreathe 0.7s ease-in-out infinite'
+    : 'none'
+
+  /* Outer ring animation per state */
+  const outerAnim = orbState === 'thinking'
+    ? 'orbRotateFast 4s linear infinite'
+    : 'orbPulse 2.2s ease-in-out infinite'
+
+  /* Speaking wave rings */
+  const waveRings = orbState === 'speaking' ? [1, 2, 3] : []
+
+  /* Listening pulse rings */
+  const listenRings = orbState === 'listening' ? [1, 2] : []
+
+  return (
+    <div
+      onClick={onTap}
+      style={{
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 20,
+        background: 'rgba(10,12,28,0.82)',
+        backdropFilter: 'blur(6px)',
+        zIndex: 20,
+        cursor: 'pointer',
+        animation: 'voiceOrbFadeIn 0.25s ease-out',
+      }}
+    >
+      {/* Orb container */}
+      <div style={{ position: 'relative', width: 160, height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+
+        {/* Listening: slow pulse rings */}
+        {listenRings.map(i => (
+          <div key={i} style={{
+            position: 'absolute',
+            width: 160 + i * 40,
+            height: 160 + i * 40,
+            borderRadius: '50%',
+            border: `1px solid rgba(0,188,212,${0.25 - i * 0.08})`,
+            animation: `orbPulse ${2.5 + i * 0.6}s ease-in-out infinite`,
+            animationDelay: `${i * 0.4}s`,
+          }} />
+        ))}
+
+        {/* Speaking: radiating wave rings */}
+        {waveRings.map(i => (
+          <div key={i} style={{
+            position: 'absolute',
+            width: 160,
+            height: 160,
+            borderRadius: '50%',
+            border: '1.5px solid rgba(0,188,212,0.5)',
+            animation: `voiceWave 1.6s ease-out infinite`,
+            animationDelay: `${i * 0.5}s`,
+          }} />
+        ))}
+
+        {/* Thinking: rotating particle ring */}
+        {orbState === 'thinking' && (
+          <div style={{
+            position: 'absolute', width: 148, height: 148, borderRadius: '50%',
+            animation: outerAnim,
+          }}>
+            <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 6, height: 6, borderRadius: '50%', background: '#00BCD4', boxShadow: '0 0 10px #00BCD4' }} />
+            <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: 5, height: 5, borderRadius: '50%', background: '#7C4DFF', boxShadow: '0 0 8px #7C4DFF' }} />
+            <div style={{ position: 'absolute', top: '50%', left: 0, transform: 'translateY(-50%)', width: 4, height: 4, borderRadius: '50%', background: 'rgba(0,188,212,0.6)' }} />
+            <div style={{ position: 'absolute', top: '50%', right: 0, transform: 'translateY(-50%)', width: 5, height: 5, borderRadius: '50%', background: 'rgba(124,77,255,0.6)' }} />
+          </div>
+        )}
+
+        {/* Inner orb core */}
+        <div style={{
+          width: 120, height: 120, borderRadius: '50%',
+          background: orbState === 'speaking'
+            ? 'radial-gradient(ellipse at 35% 35%, rgba(124,77,255,0.35), rgba(0,188,212,0.15) 60%, rgba(20,73,181,0.08))'
+            : orbState === 'thinking'
+            ? 'radial-gradient(ellipse at 35% 35%, rgba(20,73,181,0.35), rgba(0,188,212,0.12) 60%, rgba(124,77,255,0.08))'
+            : 'radial-gradient(ellipse at 35% 35%, rgba(0,188,212,0.30), rgba(124,77,255,0.12) 60%, rgba(20,73,181,0.06))',
+          border: `1.5px solid ${orbState === 'speaking' ? 'rgba(124,77,255,0.5)' : 'rgba(0,188,212,0.5)'}`,
+          backdropFilter: 'blur(10px)',
+          boxShadow: orbState === 'speaking'
+            ? '0 0 40px 12px rgba(124,77,255,0.25), 0 0 80px 24px rgba(124,77,255,0.1)'
+            : orbState === 'thinking'
+            ? '0 0 40px 12px rgba(0,188,212,0.2), 0 0 80px 24px rgba(0,188,212,0.07)'
+            : '0 0 50px 16px rgba(0,188,212,0.3), 0 0 100px 32px rgba(0,188,212,0.1)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          animation: innerAnim,
+          position: 'relative', zIndex: 2,
+        }}>
+          {icon}
+        </div>
+      </div>
+
+      {/* Label */}
+      <div style={{ textAlign: 'center' }}>
+        <p style={{
+          fontSize: 15, fontWeight: 600,
+          color: orbState === 'speaking' ? '#C4B0FF' : '#00BCD4',
+          margin: 0, letterSpacing: 0.3,
+        }}>
+          {label}
+        </p>
+        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 4 }}>
+          Tap to stop
+        </p>
+      </div>
+    </div>
+  )
+}
+
 /* ─── Markdown-lite formatter ─── */
 function formatMessage(text) {
   return text
@@ -80,6 +230,7 @@ export default function ChatPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const lastAutoMsg = useRef(null)
+  const bp = useBreakpoint()
 
   /* ─── Build welcome message ─── */
   const buildWelcome = useCallback((name) => ({
@@ -104,14 +255,44 @@ export default function ChatPage() {
   const [error, setError] = useState(null)
   const [isRestoring, setIsRestoring] = useState(false)
   const [restoreError, setRestoreError] = useState(null)
-  const endRef  = useRef(null)
+  const endRef   = useRef(null)
   const inputRef = useRef(null)
+
+  // ── Image upload state ──────────────────────────────────────────────────
+  const [isAnalysingImage, setIsAnalysingImage] = useState(false)
+  const [imageError,       setImageError]       = useState(null)
+  const imageInputRef = useRef(null)
+
+  // ── Voice state ─────────────────────────────────────────────────────────
+  // orbState: null (hidden) | 'listening' | 'thinking' | 'speaking'
+  const [orbState,        setOrbState]        = useState(null)
+  const [voiceSupported,  setVoiceSupported]  = useState(true)
+  const [voiceError,      setVoiceError]      = useState(null)
+  const mediaRecorderRef  = useRef(null)
+  const audioChunksRef    = useRef([])
+  const audioPlayerRef    = useRef(null)  // current playing Audio element
+  const voiceActiveRef    = useRef(false) // tracks whether voice session is intentionally active
+  const orbStateRef       = useRef(null)  // mirror of orbState for callbacks
+  const silenceTimerRef   = useRef(null)  // silence-detection auto-stop timer
+  const audioContextRef   = useRef(null)
+  const analyserRef       = useRef(null)
+  const silenceRAFRef     = useRef(null)  // requestAnimationFrame id for silence detection
+
+  /* ─── Check MediaRecorder support on mount ─── */
+  useEffect(() => {
+    if (!window.MediaRecorder) {
+      setVoiceSupported(false)
+    }
+  }, [])
 
   /* ─── Show welcome message if no history ─── */
   useEffect(() => {
     if (messages.length === 0) setMessages([buildWelcome(displayName)])
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  /* ─── Keep orbStateRef in sync ─── */
+  useEffect(() => { orbStateRef.current = orbState }, [orbState])
 
   const showOrb = messages.length <= 1 && !isTyping
 
@@ -126,8 +307,102 @@ export default function ChatPage() {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isTyping])
 
-  /* ─── Send message ─── */
-  const sendMessage = async (text) => {
+  /* ─── Stop all voice activity ─── */
+  const stopVoice = useCallback(() => {
+    voiceActiveRef.current = false
+
+    // Stop silence detection
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current)
+      silenceTimerRef.current = null
+    }
+    if (silenceRAFRef.current) {
+      cancelAnimationFrame(silenceRAFRef.current)
+      silenceRAFRef.current = null
+    }
+    if (audioContextRef.current) {
+      try { audioContextRef.current.close() } catch (_) {}
+      audioContextRef.current = null
+    }
+    analyserRef.current = null
+
+    // Stop MediaRecorder
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try { mediaRecorderRef.current.stop() } catch (_) {}
+    }
+    mediaRecorderRef.current = null
+    audioChunksRef.current = []
+
+    // Stop audio playback
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.pause()
+      audioPlayerRef.current.src = ''
+      audioPlayerRef.current = null
+    }
+
+    setOrbState(null)
+  }, [])
+
+  /* ─── Play TTS audio and loop back to listening ─── */
+  const playAudioAndLoop = useCallback((audioUrl) => {
+    if (!voiceActiveRef.current) return
+    setOrbState('speaking')
+
+    const player = new Audio(audioUrl)
+    audioPlayerRef.current = player
+
+    player.onended = () => {
+      URL.revokeObjectURL(audioUrl)
+      audioPlayerRef.current = null
+      if (voiceActiveRef.current) {
+        // Loop back: start a fresh recording turn
+        startRecordingTurn()
+      }
+    }
+    player.onerror = () => {
+      URL.revokeObjectURL(audioUrl)
+      audioPlayerRef.current = null
+      if (voiceActiveRef.current) {
+        startRecordingTurn()
+      }
+    }
+
+    player.play().catch(() => {
+      if (voiceActiveRef.current) startRecordingTurn()
+    })
+  }, []) // startRecordingTurn added below via ref pattern
+
+  // Ref to break circular dependency between playAudioAndLoop and startRecordingTurn
+  const startRecordingTurnRef = useRef(null)
+  // Patch playAudioAndLoop to call via ref
+  const playAudioAndLoopStable = useCallback((audioUrl) => {
+    if (!voiceActiveRef.current) return
+    setOrbState('speaking')
+
+    const player = new Audio(audioUrl)
+    audioPlayerRef.current = player
+
+    player.onended = () => {
+      URL.revokeObjectURL(audioUrl)
+      audioPlayerRef.current = null
+      if (voiceActiveRef.current) {
+        startRecordingTurnRef.current?.()
+      }
+    }
+    player.onerror = () => {
+      URL.revokeObjectURL(audioUrl)
+      audioPlayerRef.current = null
+      if (voiceActiveRef.current) {
+        startRecordingTurnRef.current?.()
+      }
+    }
+    player.play().catch(() => {
+      if (voiceActiveRef.current) startRecordingTurnRef.current?.()
+    })
+  }, [])
+
+  /* ─── Send message (text path, unchanged) ─── */
+  const sendMessage = useCallback(async (text) => {
     const trimmed = text.trim()
     if (!trimmed) return
     if (isTyping) return
@@ -144,7 +419,6 @@ export default function ChatPage() {
       if (data.triage) setLastTriage(data.triage)
       const responseText = data.response || ''
       const isMedicalReport = data.additional_data?.is_medical_report || false
-      // Extract specialty: backend field first, then parse from response text
       const specialty = data.additional_data?.recommended_specialty
         || data.additional_data?.consultation_booked?.specialty
         || (isMedicalReport ? extractSpecialtyFromText(responseText) : null)
@@ -174,10 +448,192 @@ export default function ChatPage() {
       setIsTyping(false)
       inputRef.current?.focus()
     }
+  }, [isTyping, conversationId])
+
+  /* ─── Start a single recording turn (tap-to-stop or silence-auto-stop) ─── */
+  const startRecordingTurn = useCallback(async () => {
+    if (!voiceActiveRef.current) return
+    setOrbState('listening')
+    audioChunksRef.current = []
+
+    let stream
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+    } catch (err) {
+      setVoiceError('Microphone access denied. Please allow microphone permissions.')
+      stopVoice()
+      return
+    }
+
+    // Pick supported MIME type
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      ? 'audio/webm;codecs=opus'
+      : MediaRecorder.isTypeSupported('audio/webm')
+      ? 'audio/webm'
+      : MediaRecorder.isTypeSupported('audio/mp4')
+      ? 'audio/mp4'
+      : ''
+
+    let recorder
+    try {
+      recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+    } catch (err) {
+      setVoiceError('Could not start audio recording. Please try Chrome or Safari.')
+      stream.getTracks().forEach(t => t.stop())
+      stopVoice()
+      return
+    }
+
+    mediaRecorderRef.current = recorder
+
+    recorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data)
+    }
+
+    recorder.onstop = async () => {
+      // Stop all mic tracks to release the microphone
+      stream.getTracks().forEach(t => t.stop())
+
+      // Stop silence detection
+      if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null }
+      if (silenceRAFRef.current) { cancelAnimationFrame(silenceRAFRef.current); silenceRAFRef.current = null }
+      if (audioContextRef.current) { try { audioContextRef.current.close() } catch (_) {} audioContextRef.current = null }
+      analyserRef.current = null
+
+      if (!voiceActiveRef.current) return
+
+      const chunks = audioChunksRef.current
+      audioChunksRef.current = []
+      if (chunks.length === 0) {
+        if (voiceActiveRef.current) startRecordingTurnRef.current?.()
+        return
+      }
+
+      const blob = new Blob(chunks, { type: mimeType || 'audio/webm' })
+      if (blob.size < 1000) {
+        // Too small — likely silence only; loop back
+        if (voiceActiveRef.current) startRecordingTurnRef.current?.()
+        return
+      }
+
+      setOrbState('thinking')
+
+      try {
+        const result = await sendVoiceMessage(blob, conversationId)
+
+        // Update session ID (keep session continuity without showing text bubbles)
+        if (result.sessionId) setConversationId(result.sessionId)
+
+        // Play audio response
+        if (voiceActiveRef.current && result.audioUrl) {
+          playAudioAndLoopStable(result.audioUrl)
+        } else if (voiceActiveRef.current) {
+          startRecordingTurnRef.current?.()
+        }
+      } catch (err) {
+        setVoiceError(err.message || 'Voice request failed. Please try again.')
+        stopVoice()
+      }
+    }
+
+    recorder.onerror = () => {
+      stream.getTracks().forEach(t => t.stop())
+      if (voiceActiveRef.current) {
+        setVoiceError('Recording error. Please try again.')
+        stopVoice()
+      }
+    }
+
+    // Start recording (collect data every 250ms for progressive chunks)
+    recorder.start(250)
+
+    // ── Silence detection via AnalyserNode ──────────────────────────────
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext
+      const ctx = new AudioContext()
+      audioContextRef.current = ctx
+      const analyser = ctx.createAnalyser()
+      analyserRef.current = analyser
+      analyser.fftSize = 1024
+      const source = ctx.createMediaStreamSource(stream)
+      source.connect(analyser)
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount)
+      let silenceStart = null
+      const SILENCE_THRESHOLD = 8   // RMS below this is silence
+      const SILENCE_DURATION_MS = 1500  // 1.5s of silence auto-stops
+
+      const checkSilence = () => {
+        if (!voiceActiveRef.current || !analyserRef.current) return
+        if (mediaRecorderRef.current?.state !== 'recording') return
+
+        analyser.getByteTimeDomainData(dataArray)
+        let sum = 0
+        for (let i = 0; i < dataArray.length; i++) {
+          const val = (dataArray[i] - 128) / 128
+          sum += val * val
+        }
+        const rms = Math.sqrt(sum / dataArray.length) * 128
+
+        if (rms < SILENCE_THRESHOLD) {
+          if (silenceStart === null) silenceStart = Date.now()
+          if (Date.now() - silenceStart > SILENCE_DURATION_MS) {
+            // Auto-stop after silence
+            if (mediaRecorderRef.current?.state === 'recording') {
+              mediaRecorderRef.current.stop()
+            }
+            return
+          }
+        } else {
+          silenceStart = null
+        }
+        silenceRAFRef.current = requestAnimationFrame(checkSilence)
+      }
+      silenceRAFRef.current = requestAnimationFrame(checkSilence)
+    } catch (_) {
+      // Silence detection is optional — if it fails, user taps to stop
+    }
+  }, [conversationId, stopVoice, playAudioAndLoopStable])
+
+  // Keep startRecordingTurnRef in sync
+  useEffect(() => { startRecordingTurnRef.current = startRecordingTurn }, [startRecordingTurn])
+
+  /* ─── Start a voice session (first tap) ─── */
+  const startListening = useCallback(() => {
+    if (!window.MediaRecorder) {
+      setVoiceError('Voice input is not supported in this browser. Please use Chrome or Safari.')
+      return
+    }
+    setVoiceError(null)
+    voiceActiveRef.current = true
+    startRecordingTurn()
+  }, [startRecordingTurn])
+
+  /* ─── Mic button handler ─── */
+  const handleMicClick = () => {
+    if (orbState === 'listening') {
+      // Tap while recording — stop the recorder to trigger send (not full stop)
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.stop()
+      } else {
+        stopVoice()
+      }
+    } else if (orbState !== null) {
+      // Tap while thinking/speaking — cancel everything
+      stopVoice()
+    } else {
+      startListening()
+    }
+  }
+
+  /* ─── Orb tap handler ─── */
+  const handleOrbTap = () => {
+    stopVoice()
   }
 
   /* ─── New Chat ─── */
   const startNewChat = () => {
+    stopVoice()
     const welcome = buildWelcome(displayName)
     setMessages([welcome])
     setConversationId(null)
@@ -197,7 +653,6 @@ export default function ChatPage() {
     setRestoreError(null)
     try {
       const data = await restorePreLoginChat(pendingChatRestore.messages)
-      // Map pre-login messages to ChatPage format
       const restored = pendingChatRestore.messages.map((m, i) => ({
         id: `restored_${i}`,
         sender: m.role === 'user' ? 'user' : 'ai',
@@ -221,7 +676,63 @@ export default function ChatPage() {
     setRestoreError(null)
   }
 
-  /* ─── Auto-send from navigation state (quick symptoms or any external trigger) ─── */
+  /* ─── Image upload ─── */
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    e.target.value = ''
+
+    const ALLOWED = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']
+    if (!ALLOWED.includes(file.type)) {
+      setImageError('Please upload a JPEG, PNG, WEBP, or GIF image.')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setImageError('Image must be under 10 MB.')
+      return
+    }
+
+    setImageError(null)
+    setIsAnalysingImage(true)
+
+    const dataUrl = await new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onload = (e) => resolve(e.target.result)
+      reader.readAsDataURL(file)
+    })
+
+    const userMsgId = `img_user_${Date.now()}`
+    setMessages(prev => [...prev, {
+      id: userMsgId,
+      sender: 'user',
+      content: '',
+      image_preview: dataUrl,
+      is_image_upload: true,
+    }])
+
+    try {
+      const data = await uploadChatImage(file, conversationId)
+
+      if (data.session_id && !conversationId) setConversationId(data.session_id)
+
+      const aiMsg = {
+        id: Date.now() + 1,
+        sender: 'ai',
+        content: data.description
+          + (data.medical_context ? `\n\n${data.medical_context}` : ''),
+        is_image_analysis: true,
+      }
+      setMessages(prev => [...prev, aiMsg])
+    } catch (err) {
+      setImageError(err.message || 'Image analysis failed. Please try again.')
+      setMessages(prev => prev.filter(m => m.id !== userMsgId))
+    } finally {
+      setIsAnalysingImage(false)
+    }
+  }
+
+  /* ─── Auto-send from navigation state ─── */
   useEffect(() => {
     const msg = location.state?.autoMessage
     if (!msg || typeof msg !== 'string' || msg === lastAutoMsg.current) return
@@ -230,9 +741,28 @@ export default function ChatPage() {
     sendMessage(msg)
   }, [location.state])
 
+  /* ─── Cleanup voice on unmount ─── */
+  useEffect(() => {
+    return () => {
+      voiceActiveRef.current = false
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current)
+      if (silenceRAFRef.current) cancelAnimationFrame(silenceRAFRef.current)
+      if (audioContextRef.current) { try { audioContextRef.current.close() } catch (_) {} }
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        try { mediaRecorderRef.current.stop() } catch (_) {}
+      }
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause()
+        audioPlayerRef.current.src = ''
+      }
+    }
+  }, [])
+
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input) }
   }
+
+  const orbVisible = orbState !== null
 
   return (
     <div style={{ height: '100%', minHeight: 0, flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--dark)', fontFamily: 'var(--font)', position: 'relative' }}>
@@ -322,8 +852,15 @@ export default function ChatPage() {
           New Chat
         </button>
 
-        {/* ── Messages area ── */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 8px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {/* ── Messages area (dims when orb is active) ── */}
+        <div style={{
+          flex: 1, overflowY: 'auto', padding: '20px 20px 8px',
+          display: 'flex', flexDirection: 'column', gap: 14,
+          transition: 'opacity 0.3s',
+          opacity: orbVisible ? 0.25 : 1,
+          pointerEvents: orbVisible ? 'none' : 'auto',
+          position: 'relative',
+        }}>
 
           {showOrb ? (
             <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
@@ -335,7 +872,6 @@ export default function ChatPage() {
           ) : (
             <div style={{ maxWidth: 680, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 4 }}>
               {messages.map((msg, idx) => {
-                // If this message triggers booking but has no report, find the last report
                 const lastReport = (msg.is_book_appointment && !msg.is_medical_report)
                   ? messages.slice(0, idx).reverse().find(m => m.is_medical_report)
                   : null
@@ -352,9 +888,36 @@ export default function ChatPage() {
                   }}>
                     {msg.sender === 'ai' ? <Logo size={16} /> : <span style={{ fontSize: 12 }}>👤</span>}
                   </div>
-                  <div style={{ maxWidth: '80%' }}>
+                  <div style={{ maxWidth: bp.isMobile ? '88%' : '80%' }}>
+                    {/* ── Image upload preview bubble ── */}
+                    {msg.is_image_upload && msg.image_preview && (
+                      <div style={{
+                        borderRadius: 14, overflow: 'hidden',
+                        border: '1px solid rgba(20,73,181,0.2)',
+                        maxWidth: bp.isMobile ? 200 : 260,
+                        marginLeft: 'auto',
+                      }}>
+                        <img
+                          src={msg.image_preview}
+                          alt="Shared photo"
+                          style={{ width: '100%', display: 'block', objectFit: 'cover', maxHeight: 220 }}
+                        />
+                      </div>
+                    )}
+
+                    {/* ── Image analysis result bubble ── */}
+                    {msg.is_image_analysis && (
+                      <div style={{
+                        padding: '12px 16px', borderRadius: 18, borderBottomLeftRadius: 4,
+                        background: '#ffffff', border: '1px solid var(--g800)',
+                        fontSize: 13, lineHeight: 1.75, color: 'var(--g300)',
+                      }}>
+                        <div dangerouslySetInnerHTML={{ __html: formatMessage(msg.content) }} />
+                      </div>
+                    )}
+
                     {/* Re-show last medical report before the booking button if needed */}
-                    {lastReport && (
+                    {!msg.is_image_upload && !msg.is_image_analysis && lastReport && (
                       <div style={{
                         padding: '12px 16px', borderRadius: 18, fontSize: 13, lineHeight: 1.75,
                         background: '#f0f7ff', border: '1.5px solid rgba(25,48,170,0.18)',
@@ -367,6 +930,8 @@ export default function ChatPage() {
                         <div dangerouslySetInnerHTML={{ __html: formatMessage(lastReport.content) }} />
                       </div>
                     )}
+                    {/* Standard text bubble */}
+                    {!msg.is_image_upload && !msg.is_image_analysis && (
                     <div
                       style={{
                         padding: '12px 16px', borderRadius: 18, fontSize: 13, lineHeight: 1.75,
@@ -386,6 +951,7 @@ export default function ChatPage() {
                       )}
                       <div dangerouslySetInnerHTML={{ __html: formatMessage(msg.content) }} />
                     </div>
+                    )}
                     {msg.triage && msg.triage.level !== 'low' && (
                       <div style={{ marginTop: 5, paddingLeft: 4, fontSize: 10, color: 'var(--g500)', display: 'flex', alignItems: 'center', gap: 4 }}>
                         <span style={{ width: 5, height: 5, borderRadius: '50%', background: triageColors[msg.triage.level] }} />
@@ -396,7 +962,6 @@ export default function ChatPage() {
                       <div style={{ marginTop: 10 }}>
                         <button
                           onClick={() => {
-                            // Resolve specialty from every available source
                             const fromStorage = sessionStorage.getItem(SPECIALTY_KEY)
                             const scanSpecialty = messages
                               .filter(m => m.is_medical_report && m.content)
@@ -457,10 +1022,114 @@ export default function ChatPage() {
           )}
         </div>
 
+        {/* ── Voice Orb Overlay (sits above messages, below input bar) ── */}
+        {orbVisible && (
+          <VoiceOrbOverlay orbState={orbState} onTap={handleOrbTap} />
+        )}
+
         {/* ── Input Bar ── */}
-        <div style={{ padding: '6px 20px 14px', flexShrink: 0, borderTop: '1px solid rgba(0,0,0,0.04)' }}>
+        <div style={{ padding: '6px 20px 14px', flexShrink: 0, borderTop: '1px solid rgba(0,0,0,0.04)', position: 'relative', zIndex: 30 }}>
+
+          {/* Image upload error */}
+          {imageError && (
+            <div style={{
+              maxWidth: 680, margin: '0 auto 6px', padding: '7px 12px', borderRadius: 8,
+              background: 'rgba(211,47,47,0.07)', border: '1px solid rgba(211,47,47,0.2)',
+              display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#c62828',
+            }}>
+              <AlertTriangle size={12} />
+              {imageError}
+              <button
+                onClick={() => setImageError(null)}
+                style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#c62828', padding: 0 }}
+              >
+                <X size={12} />
+              </button>
+            </div>
+          )}
+
+          {/* Voice error */}
+          {voiceError && (
+            <div style={{
+              maxWidth: 680, margin: '0 auto 6px', padding: '7px 12px', borderRadius: 8,
+              background: 'rgba(124,77,255,0.07)', border: '1px solid rgba(124,77,255,0.2)',
+              display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#5e35b1',
+            }}>
+              <MicOff size={12} />
+              {voiceError}
+              <button
+                onClick={() => setVoiceError(null)}
+                style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#5e35b1', padding: 0 }}
+              >
+                <X size={12} />
+              </button>
+            </div>
+          )}
+
+          {/* Hidden file input for image upload */}
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+            style={{ display: 'none' }}
+            onChange={handleImageUpload}
+          />
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, maxWidth: 680, margin: '0 auto' }}>
+
+            {/* Image upload button */}
+            <button
+              onClick={() => imageInputRef.current?.click()}
+              disabled={isAnalysingImage || isTyping}
+              title="Upload a photo (wound, rash, prescription, etc.)"
+              style={{
+                width: 44, height: 44, borderRadius: '50%', border: '1.5px solid rgba(0,0,0,0.09)',
+                flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: isAnalysingImage || isTyping ? 'default' : 'pointer',
+                background: isAnalysingImage ? 'rgba(0,188,212,0.08)' : 'rgba(0,0,0,0.025)',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={e => { if (!isAnalysingImage && !isTyping) e.currentTarget.style.borderColor = 'rgba(0,188,212,0.4)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.09)' }}
+            >
+              {isAnalysingImage
+                ? <span style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(0,188,212,0.3)', borderTopColor: '#00BCD4', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} />
+                : <Camera size={16} color="var(--g500)" />
+              }
+            </button>
+
+            {/* Mic button */}
+            {voiceSupported && (
+              <button
+                onClick={handleMicClick}
+                disabled={isAnalysingImage}
+                title={orbState !== null ? 'Stop voice' : 'Speak your question'}
+                style={{
+                  width: 44, height: 44, borderRadius: '50%',
+                  border: orbState === 'listening'
+                    ? '1.5px solid rgba(0,188,212,0.7)'
+                    : orbState !== null
+                    ? '1.5px solid rgba(124,77,255,0.5)'
+                    : '1.5px solid rgba(0,0,0,0.09)',
+                  flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: isAnalysingImage ? 'default' : 'pointer',
+                  background: orbState === 'listening'
+                    ? 'rgba(0,188,212,0.12)'
+                    : orbState !== null
+                    ? 'rgba(124,77,255,0.1)'
+                    : 'rgba(0,0,0,0.025)',
+                  transition: 'all 0.2s',
+                  animation: orbState === 'listening' ? 'micActivePulse 1.8s ease-in-out infinite' : 'none',
+                }}
+                onMouseEnter={e => { if (!isAnalysingImage && orbState === null) e.currentTarget.style.borderColor = 'rgba(0,188,212,0.4)' }}
+                onMouseLeave={e => { if (orbState === null) e.currentTarget.style.borderColor = 'rgba(0,0,0,0.09)' }}
+              >
+                {orbState !== null
+                  ? <MicOff size={16} color={orbState === 'listening' ? '#00BCD4' : '#7C4DFF'} />
+                  : <Mic size={16} color="var(--g500)" />
+                }
+              </button>
+            )}
 
             {/* Text input */}
             <div style={{
@@ -476,7 +1145,8 @@ export default function ChatPage() {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Describe your symptoms or ask a health question…"
+                placeholder={isAnalysingImage ? 'Analysing your image…' : orbVisible ? 'Voice mode active — tap orb to stop' : 'Describe your symptoms or ask a health question…'}
+                disabled={isAnalysingImage || orbVisible}
                 style={{
                   flex: 1, padding: '12px 0', background: 'transparent', border: 'none',
                   outline: 'none', fontSize: 13, color: 'var(--g300)', fontFamily: 'var(--font)',
@@ -487,17 +1157,17 @@ export default function ChatPage() {
             {/* Send button */}
             <button
               onClick={() => sendMessage(input)}
-              disabled={!input.trim() || isTyping}
+              disabled={!input.trim() || isTyping || isAnalysingImage || orbVisible}
               style={{
                 width: 44, height: 44, borderRadius: '50%', border: 'none', flexShrink: 0,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: input.trim() ? 'pointer' : 'default',
-                background: input.trim() ? 'linear-gradient(135deg, var(--blue), var(--cyan))' : 'rgba(0,0,0,0.04)',
-                boxShadow: input.trim() ? '0 4px 18px rgba(0,188,212,0.25)' : 'none',
+                cursor: input.trim() && !isTyping && !isAnalysingImage && !orbVisible ? 'pointer' : 'default',
+                background: input.trim() && !isAnalysingImage && !orbVisible ? 'linear-gradient(135deg, var(--blue), var(--cyan))' : 'rgba(0,0,0,0.04)',
+                boxShadow: input.trim() && !isAnalysingImage && !orbVisible ? '0 4px 18px rgba(0,188,212,0.25)' : 'none',
                 transition: 'all 0.3s',
               }}
             >
-              <Send size={16} color={input.trim() ? '#fff' : 'var(--g700)'} />
+              <Send size={16} color={input.trim() && !isAnalysingImage && !orbVisible ? '#fff' : 'var(--g700)'} />
             </button>
           </div>
           {user && (
@@ -542,9 +1212,20 @@ export default function ChatPage() {
           50% { box-shadow: 0 0 60px 20px rgba(0,188,212,0.35), 0 0 120px 40px rgba(0,188,212,0.12); }
         }
         @keyframes orbRotate { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes orbRotateFast { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         @keyframes orbBreathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
         @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes typing { 0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1.1); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes voiceOrbFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes voiceWave {
+          0% { transform: scale(1); opacity: 0.6; }
+          100% { transform: scale(2.2); opacity: 0; }
+        }
+        @keyframes micActivePulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(0,188,212,0.4); }
+          50% { box-shadow: 0 0 0 6px rgba(0,188,212,0); }
+        }
       `}</style>
     </div>
   )
