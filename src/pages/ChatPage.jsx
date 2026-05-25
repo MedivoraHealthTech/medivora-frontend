@@ -324,6 +324,23 @@ export default function ChatPage() {
     })
   }, [])
 
+  /* ─── Play audio then end voice session (used after triage report) ─── */
+  const playAudioAndStop = useCallback((audioUrl) => {
+    setOrbState('speaking')
+
+    const player = new Audio(audioUrl)
+    audioPlayerRef.current = player
+
+    const finish = () => {
+      URL.revokeObjectURL(audioUrl)
+      audioPlayerRef.current = null
+      stopVoice()
+    }
+    player.onended = finish
+    player.onerror = finish
+    player.play().catch(finish)
+  }, [stopVoice])
+
   /* ─── Send message (text path, unchanged) ─── */
   const sendMessage = useCallback(async (text) => {
     const trimmed = text.trim()
@@ -444,12 +461,32 @@ export default function ChatPage() {
       try {
         const result = await sendVoiceMessage(blob, conversationId)
 
-        // Update session ID (keep session continuity without showing text bubbles)
         if (result.sessionId) setConversationId(result.sessionId)
 
-        // Play audio response
-        if (voiceActiveRef.current && result.audioUrl) {
-          playAudioAndLoopStable(result.audioUrl)
+        // Only surface the triage card + Book button — never show transcript or regular text bubbles
+        if (result.isMedicalReport || result.isBookAppointment) {
+          const aiMsg = {
+            id:                  `${Date.now()}-a`,
+            sender:              'ai',
+            content:             result.aiText,
+            is_medical_report:   result.isMedicalReport,
+            is_book_appointment: result.isBookAppointment,
+            triage:              result.triage,
+            specialty:           result.specialty,
+          }
+          setMessages(prev => [...prev, aiMsg])
+          if (result.specialty) sessionStorage.setItem(SPECIALTY_KEY, result.specialty)
+        }
+
+        // Play audio response — stop voice after triage report, loop otherwise
+        if (result.audioUrl) {
+          if (result.isMedicalReport) {
+            playAudioAndStop(result.audioUrl)
+          } else if (voiceActiveRef.current) {
+            playAudioAndLoopStable(result.audioUrl)
+          }
+        } else if (result.isMedicalReport) {
+          stopVoice()
         } else if (voiceActiveRef.current) {
           startRecordingTurnRef.current?.()
         }
@@ -470,37 +507,43 @@ export default function ChatPage() {
     // Start recording (collect data every 250ms for progressive chunks)
     recorder.start(250)
 
-    // ── Silence detection via AnalyserNode (adaptive noise floor) ──────────
+    // ── Silence detection via AnalyserNode (voice-band energy, adaptive floor) ─
     try {
       const AudioContext = window.AudioContext || window.webkitAudioContext
       const ctx = new AudioContext()
       audioContextRef.current = ctx
       const analyser = ctx.createAnalyser()
       analyserRef.current = analyser
-      analyser.fftSize = 1024
+      // 2048-point FFT → ~21 Hz/bin at 44.1 kHz — enough resolution to isolate voice band
+      analyser.fftSize = 2048
+      analyser.smoothingTimeConstant = 0.3
       const source = ctx.createMediaStreamSource(stream)
       source.connect(analyser)
 
-      const dataArray = new Uint8Array(analyser.frequencyBinCount)
+      const freqData = new Uint8Array(analyser.frequencyBinCount)
       let silenceStart = null
-      const SILENCE_DURATION_MS = 1800  // 1.8s of silence auto-stops
-      const MAX_RECORDING_MS = 20000    // 20s hard cap
+      const SILENCE_DURATION_MS = 2200  // 2.2s of silence auto-stops
+      const MAX_RECORDING_MS = 25000    // 25s hard cap
       const recordingStartTime = Date.now()
 
-      // Calibrate noise floor for first 500ms, then set threshold 1.8× above it.
-      // This makes silence detection work regardless of background noise level.
+      // Calibrate noise floor for first 800ms using voice-band energy only.
+      // Voice band (300–3400 Hz) excludes most fan/AC noise which lives below 300 Hz.
+      // Threshold = max(8, voiceBandNoiseFloor × 2.2) — generous multiplier so normal
+      // speech pauses don't trigger false silence.
       let calibrated = false
       let calibrationSamples = []
-      let SILENCE_THRESHOLD = 12  // fallback if calibration window not reached
+      let SILENCE_THRESHOLD = 8  // fallback floor
 
-      const getRMS = () => {
-        analyser.getByteTimeDomainData(dataArray)
+      const getVoiceBandEnergy = () => {
+        analyser.getByteFrequencyData(freqData)
+        const sampleRate = ctx.sampleRate
+        const binHz = sampleRate / analyser.fftSize
+        // Voice fundamental + harmonics: 300 Hz – 3400 Hz
+        const loIdx = Math.floor(300 / binHz)
+        const hiIdx = Math.min(Math.ceil(3400 / binHz), freqData.length - 1)
         let sum = 0
-        for (let i = 0; i < dataArray.length; i++) {
-          const val = (dataArray[i] - 128) / 128
-          sum += val * val
-        }
-        return Math.sqrt(sum / dataArray.length) * 128
+        for (let i = loIdx; i <= hiIdx; i++) sum += freqData[i]
+        return sum / (hiIdx - loIdx + 1)  // average energy in voice band (0–255 scale)
       }
 
       const checkSilence = () => {
@@ -512,20 +555,20 @@ export default function ChatPage() {
           return
         }
 
-        const rms = getRMS()
+        const energy = getVoiceBandEnergy()
 
         if (!calibrated) {
-          calibrationSamples.push(rms)
-          if (Date.now() - recordingStartTime >= 500) {
+          calibrationSamples.push(energy)
+          if (Date.now() - recordingStartTime >= 800) {
             const avg = calibrationSamples.reduce((a, b) => a + b, 0) / calibrationSamples.length
-            SILENCE_THRESHOLD = Math.max(12, avg * 1.8)
+            SILENCE_THRESHOLD = Math.max(8, avg * 2.2)
             calibrated = true
           }
           silenceRAFRef.current = requestAnimationFrame(checkSilence)
           return
         }
 
-        if (rms < SILENCE_THRESHOLD) {
+        if (energy < SILENCE_THRESHOLD) {
           if (silenceStart === null) silenceStart = Date.now()
           if (Date.now() - silenceStart > SILENCE_DURATION_MS) {
             if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop()

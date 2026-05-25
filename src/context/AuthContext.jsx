@@ -112,25 +112,25 @@ export function AuthProvider({ children }) {
     return data
   }
 
-  // ─── Phone OTP — send (backend → MSG91) ──────────────────────────────────
+  // ─── Phone OTP — send (Supabase native phone auth) ───────────────────────
   // phone must be in E.164 format, e.g. "+919876543210"
 
+  // ─── Phone OTP — send (proxied via backend to avoid browser CORS on Supabase) ──
+
   async function sendPhoneOtp(phone) {
-    const res = await fetch(`${API_BASE}/auth/send-otp`, {
+    const res = await fetch(`${API_BASE}/auth/send-patient-otp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone }),
     })
     const data = await res.json().catch(() => ({}))
     if (!res.ok) throw new Error(data?.detail || 'Failed to send OTP')
-    return data // { message, phone, otp_for_testing? in dev mode }
   }
 
-  // ─── Phone OTP — verify (backend custom JWT) ─────────────────────────────
-  // Mirrors the doctor JWT pattern — stores token in localStorage, no Supabase session.
+  // ─── Phone OTP — verify (proxied via backend; sets Supabase session client-side) ──
 
   async function verifyPhoneOtp(phone, token) {
-    const res = await fetch(`${API_BASE}/auth/verify-otp`, {
+    const res = await fetch(`${API_BASE}/auth/verify-patient-otp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone, otp: token }),
@@ -138,22 +138,18 @@ export function AuthProvider({ children }) {
     const data = await res.json().catch(() => ({}))
     if (!res.ok) throw new Error(data?.detail || 'Invalid or expired OTP')
 
-    const jwt = data.token
-    const info = {
-      id:        data.user_id,
-      full_name: data.full_name || '',
-      phone,
-      role:      'patient',
-    }
-    localStorage.setItem(PATIENT_TOKEN_KEY, jwt)
-    localStorage.setItem(PATIENT_USER_KEY,  JSON.stringify(info))
-    setPatientToken(jwt)
-    setPatientUser(info)
-    setInitialized(true)
+    // Establish Supabase session client-side from returned tokens
+    const { error: sessErr } = await supabase.auth.setSession({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+    })
+    if (sessErr) throw new Error(sessErr.message || 'Failed to establish session')
 
-    const pending = loadPreLoginChat()
-    if (pending) setPendingChatRestore(pending)
-
+    // Clear any stale patient JWT from the old MSG91 flow
+    localStorage.removeItem(PATIENT_TOKEN_KEY)
+    localStorage.removeItem(PATIENT_USER_KEY)
+    setPatientToken(null)
+    setPatientUser(null)
     return data
   }
 

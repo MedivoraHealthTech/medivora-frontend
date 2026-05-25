@@ -261,11 +261,18 @@ export async function sendVoiceMessage(audioBlob, sessionId = null) {
   const audioUrl = URL.createObjectURL(audioBlob2)
 
   const _decodeHeader = (v) => { try { return decodeURIComponent(v || '') } catch { return v || '' } }
+  const _parseTriage = (v) => {
+    try { return v ? JSON.parse(decodeURIComponent(v)) : null } catch { return null }
+  }
   return {
     audioUrl,
-    transcript: _decodeHeader(res.headers.get('X-Transcript')),
-    aiText: _decodeHeader(res.headers.get('X-AI-Text')),
-    sessionId: res.headers.get('X-Session-Id') || sessionId || '',
+    transcript:        _decodeHeader(res.headers.get('X-Transcript')),
+    aiText:            _decodeHeader(res.headers.get('X-AI-Text')),
+    sessionId:         res.headers.get('X-Session-Id') || sessionId || '',
+    isMedicalReport:   res.headers.get('X-Is-Medical-Report') === 'true',
+    isBookAppointment: res.headers.get('X-Is-Book-Appointment') === 'true',
+    triage:            _parseTriage(res.headers.get('X-Triage')),
+    specialty:         res.headers.get('X-Specialty') || null,
   }
 }
 
