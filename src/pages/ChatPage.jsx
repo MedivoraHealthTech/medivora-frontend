@@ -146,6 +146,70 @@ function formatMessage(text) {
     .replace(/• /g, '&nbsp;&nbsp;• ')
 }
 
+/* Render the structured triage card as formatted HTML.
+   Works whether newlines are present (text chat) or stripped (voice header). */
+function formatTriageCard(text) {
+  if (!text) return ''
+
+  // Decode %0A from voice headers, normalise line endings
+  let t = text.replace(/%0A/g, '\n').replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+
+  // If no newlines survived, inject them before known section markers
+  if (!t.includes('\n')) {
+    const sectionMarkers = ['📋', '👤 PATIENT', '⚕️ SEVERITY', '🩺 CLINICAL', '💊 TREATMENT',
+      'Provisional —', 'No medicines should', '⚕️ This is a preliminary']
+    sectionMarkers.forEach(m => {
+      t = t.replace(new RegExp(m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), '\n\n' + m)
+    })
+    const fieldLabels = ['Name:', 'Age:', 'Gender:', 'Case Reference:', 'Assessment Date:',
+      'Condition:', 'Specialist:', 'Also consider:', 'AI Triage:', 'Doctor Recommended:', 'Approval ID:']
+    fieldLabels.forEach(f => { t = t.replace(new RegExp(f, 'g'), '\n' + f) })
+  }
+
+  const lines = t.split('\n').map(l => l.trim())
+
+  // Split routing block (before 📋) from the card body
+  const cardIdx = lines.findIndex(l => l.startsWith('📋'))
+  const routingLines = cardIdx > 0 ? lines.slice(0, cardIdx).filter(Boolean) : []
+  const cardLines   = cardIdx >= 0 ? lines.slice(cardIdx) : lines
+
+  let html = ''
+
+  // Routing banner (NEXT STEP / EMERGENCY block)
+  if (routingLines.length) {
+    html += `<div style="background:rgba(25,48,170,0.07);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;line-height:1.65;">${
+      routingLines.join('<br/>')
+    }</div>`
+  }
+
+  for (const line of cardLines) {
+    if (!line || line === '---' || /^═+$/.test(line)) continue
+
+    if (line.startsWith('📋')) {
+      html += `<div style="font-size:13px;font-weight:700;color:#1930AA;margin-bottom:2px;">${line}</div>`
+    } else if (line.startsWith('Provisional')) {
+      html += `<div style="font-size:10px;color:#999;font-style:italic;margin-bottom:10px;">${line}</div>`
+    } else if (/^(👤|⚕️ SEVERITY|🩺|💊)/.test(line)) {
+      html += `<div style="font-size:11px;font-weight:700;color:#1930AA;margin:10px 0 5px;padding-top:8px;border-top:1px solid rgba(25,48,170,0.08);">${line}</div>`
+    } else if (/^(🟢|🟡|🔴|🆘)/.test(line)) {
+      html += `<div style="font-size:12px;font-weight:600;margin:2px 0;">${line}</div>`
+    } else if (/^(Name|Age|Gender|Case Reference|Assessment Date|Condition|Specialist|Also consider|AI Triage|Doctor Recommended|Approval ID):/.test(line)) {
+      const ci = line.indexOf(':')
+      html += `<div style="font-size:12px;margin:2px 0;"><span style="color:#777;">${line.slice(0, ci)}:</span> <span style="color:#222;">${line.slice(ci + 1).trim()}</span></div>`
+    } else if (line.startsWith('No medicines')) {
+      html += `<div style="font-size:11px;color:#c0392b;font-weight:600;margin-top:10px;">${line}</div>`
+    } else if (line.startsWith('⚕️ This is')) {
+      html += `<div style="font-size:10px;color:#999;font-style:italic;margin-top:6px;line-height:1.5;">${line}</div>`
+    } else if (line.startsWith('_Just a reminder') || line.startsWith('Just a reminder')) {
+      html += `<div style="font-size:10px;color:#aaa;font-style:italic;margin-top:8px;">${line.replace(/_/g, '')}</div>`
+    } else {
+      html += `<div style="font-size:12px;color:#444;margin:2px 0;line-height:1.55;">${line}</div>`
+    }
+  }
+
+  return html
+}
+
 
 /* ══════════════════════════════ MAIN PAGE ══════════════════════════════ */
 export default function ChatPage() {
@@ -933,7 +997,7 @@ export default function ChatPage() {
                           <ClipboardList size={14} color="#1930AA" />
                           <span style={{ fontSize: 11, fontWeight: 700, color: '#1930AA', textTransform: 'uppercase', letterSpacing: 0.5 }}>Medical Triage</span>
                         </div>
-                        <div dangerouslySetInnerHTML={{ __html: formatMessage(lastReport.content) }} />
+                        <div dangerouslySetInnerHTML={{ __html: formatTriageCard(lastReport.content) }} />
                       </div>
                     )}
                     {/* Standard text bubble */}
@@ -955,7 +1019,7 @@ export default function ChatPage() {
                           <span style={{ fontSize: 11, fontWeight: 700, color: '#1930AA', textTransform: 'uppercase', letterSpacing: 0.5 }}>Medical Triage</span>
                         </div>
                       )}
-                      <div dangerouslySetInnerHTML={{ __html: formatMessage(msg.content) }} />
+                      <div dangerouslySetInnerHTML={{ __html: msg.is_medical_report ? formatTriageCard(msg.content) : formatMessage(msg.content) }} />
                     </div>
                     )}
                     {msg.triage && msg.triage.level !== 'low' && (
