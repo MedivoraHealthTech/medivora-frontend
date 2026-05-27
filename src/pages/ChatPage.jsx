@@ -330,6 +330,21 @@ export default function ChatPage() {
     setOrbState(null)
   }, [])
 
+  /* ─── Speak a waiting message via browser TTS while AI is processing ─── */
+  const speakWaiting = useCallback((msg) => {
+    if (!window.speechSynthesis) return
+    window.speechSynthesis.cancel()
+    const utter = new SpeechSynthesisUtterance(msg)
+    utter.rate  = 0.9
+    utter.pitch = 1.05
+    // Prefer a natural English voice if available
+    const voices = window.speechSynthesis.getVoices()
+    const preferred = voices.find(v => v.lang.startsWith('en') && v.localService)
+      || voices.find(v => v.lang.startsWith('en'))
+    if (preferred) utter.voice = preferred
+    window.speechSynthesis.speak(utter)
+  }, [])
+
   /* ─── Play TTS audio and loop back to listening ─── */
   const playAudioAndLoop = useCallback((audioUrl) => {
     if (!voiceActiveRef.current) return
@@ -417,8 +432,15 @@ export default function ChatPage() {
     setInput('')
     setIsTyping(true)
 
+    // After 5s of silence, speak a waiting message — assessment takes ~11s, quick turns ~3s
+    const waitTimer = setTimeout(() => {
+      speakWaiting("I'm preparing your medical assessment right now. This usually takes around 10 to 15 seconds — thank you so much for your patience.")
+    }, 5000)
+
     try {
       const data = await chatSend(trimmed, conversationId)
+      clearTimeout(waitTimer)
+      window.speechSynthesis?.cancel()
       if (data.session_id) setConversationId(data.session_id)
       if (data.triage) setLastTriage(data.triage)
       const responseText = data.response || ''
@@ -442,6 +464,8 @@ export default function ChatPage() {
       }
       setMessages(prev => [...prev, aiMsg])
     } catch (err) {
+      clearTimeout(waitTimer)
+      window.speechSynthesis?.cancel()
       setError('Connection issue. Please try again.')
       setMessages(prev => [...prev, {
         id: Date.now() + 1,
@@ -452,7 +476,7 @@ export default function ChatPage() {
       setIsTyping(false)
       inputRef.current?.focus()
     }
-  }, [isTyping, conversationId])
+  }, [isTyping, conversationId, speakWaiting])
 
   /* ─── Start a single recording turn (tap-to-stop or silence-auto-stop) ─── */
   const startRecordingTurn = useCallback(async () => {
@@ -522,8 +546,15 @@ export default function ChatPage() {
 
       setOrbState('thinking')
 
+      // After 5s of "thinking" silence, speak a warm waiting message
+      const voiceWaitTimer = setTimeout(() => {
+        speakWaiting("I'm looking into this carefully for you — your medical assessment will be ready in just a few seconds. Hang tight.")
+      }, 5000)
+
       try {
         const result = await sendVoiceMessage(blob, conversationId)
+        clearTimeout(voiceWaitTimer)
+        window.speechSynthesis?.cancel()
 
         if (result.sessionId) setConversationId(result.sessionId)
 
@@ -555,6 +586,8 @@ export default function ChatPage() {
           startRecordingTurnRef.current?.()
         }
       } catch (err) {
+        clearTimeout(voiceWaitTimer)
+        window.speechSynthesis?.cancel()
         setVoiceError(err.message || 'Voice request failed. Please try again.')
         stopVoice()
       }
