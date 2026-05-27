@@ -151,7 +151,11 @@ function formatMessage(text) {
 function formatTriageCard(text) {
   if (!text) return ''
 
-  // Decode %0A from voice headers, normalise line endings
+  // Decode all percent-encoded chars (Devanagari, emoji, etc.) from _safe_header
+  try { text = decodeURIComponent(text) } catch (_) {}
+
+  // Normalise line endings (%0A was already decoded above, but keep the explicit
+  // replace as a fallback for any partial-encoding edge cases)
   let t = text.replace(/%0A/g, '\n').replace(/\r\n/g, '\n').replace(/\r/g, '\n')
 
   // If no newlines survived, inject them before known section markers
@@ -330,19 +334,27 @@ export default function ChatPage() {
     setOrbState(null)
   }, [])
 
-  /* ─── Speak a waiting message via browser TTS while AI is processing ─── */
-  const speakWaiting = useCallback((msg) => {
-    if (!window.speechSynthesis) return
-    window.speechSynthesis.cancel()
-    const utter = new SpeechSynthesisUtterance(msg)
-    utter.rate  = 0.9
-    utter.pitch = 1.05
-    // Prefer a natural English voice if available
-    const voices = window.speechSynthesis.getVoices()
-    const preferred = voices.find(v => v.lang.startsWith('en') && v.localService)
-      || voices.find(v => v.lang.startsWith('en'))
-    if (preferred) utter.voice = preferred
-    window.speechSynthesis.speak(utter)
+  /* ─── Speak a waiting message using the same TTS pipeline as AI responses ─── */
+  const waitingPlayerRef = useRef(null)
+
+  const speakWaiting = useCallback(async () => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE || ''}/chat/waiting-audio`)
+      if (!res.ok) return
+      const blob = await res.blob()
+      const url  = URL.createObjectURL(blob)
+      const player = new Audio(url)
+      waitingPlayerRef.current = player
+      player.onended = () => { URL.revokeObjectURL(url); waitingPlayerRef.current = null }
+      player.play().catch(() => {})
+    } catch (_) {}
+  }, [])
+
+  const stopWaiting = useCallback(() => {
+    if (waitingPlayerRef.current) {
+      waitingPlayerRef.current.pause()
+      waitingPlayerRef.current = null
+    }
   }, [])
 
   /* ─── Play TTS audio and loop back to listening ─── */
@@ -433,14 +445,12 @@ export default function ChatPage() {
     setIsTyping(true)
 
     // After 5s of silence, speak a waiting message — assessment takes ~11s, quick turns ~3s
-    const waitTimer = setTimeout(() => {
-      speakWaiting("I'm preparing your medical assessment right now. This usually takes around 10 to 15 seconds — thank you so much for your patience.")
-    }, 5000)
+    const waitTimer = setTimeout(() => { speakWaiting() }, 5000)
 
     try {
       const data = await chatSend(trimmed, conversationId)
       clearTimeout(waitTimer)
-      window.speechSynthesis?.cancel()
+      stopWaiting()
       if (data.session_id) setConversationId(data.session_id)
       if (data.triage) setLastTriage(data.triage)
       const responseText = data.response || ''
@@ -465,7 +475,7 @@ export default function ChatPage() {
       setMessages(prev => [...prev, aiMsg])
     } catch (err) {
       clearTimeout(waitTimer)
-      window.speechSynthesis?.cancel()
+      stopWaiting()
       setError('Connection issue. Please try again.')
       setMessages(prev => [...prev, {
         id: Date.now() + 1,
@@ -476,7 +486,7 @@ export default function ChatPage() {
       setIsTyping(false)
       inputRef.current?.focus()
     }
-  }, [isTyping, conversationId, speakWaiting])
+  }, [isTyping, conversationId, speakWaiting, stopWaiting])
 
   /* ─── Start a single recording turn (tap-to-stop or silence-auto-stop) ─── */
   const startRecordingTurn = useCallback(async () => {
@@ -547,14 +557,12 @@ export default function ChatPage() {
       setOrbState('thinking')
 
       // After 5s of "thinking" silence, speak a warm waiting message
-      const voiceWaitTimer = setTimeout(() => {
-        speakWaiting("I'm looking into this carefully for you — your medical assessment will be ready in just a few seconds. Hang tight.")
-      }, 5000)
+      const voiceWaitTimer = setTimeout(() => { speakWaiting() }, 5000)
 
       try {
         const result = await sendVoiceMessage(blob, conversationId)
         clearTimeout(voiceWaitTimer)
-        window.speechSynthesis?.cancel()
+        stopWaiting()
 
         if (result.sessionId) setConversationId(result.sessionId)
 
@@ -587,7 +595,7 @@ export default function ChatPage() {
         }
       } catch (err) {
         clearTimeout(voiceWaitTimer)
-        window.speechSynthesis?.cancel()
+        stopWaiting()
         setVoiceError(err.message || 'Voice request failed. Please try again.')
         stopVoice()
       }
