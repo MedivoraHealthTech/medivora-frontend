@@ -108,28 +108,6 @@ export default function AppLayout() {
   /* ── Returning user detection ── */
   const [isReturningUser, setIsReturningUser] = useState(() => sessionStorage.getItem(RETURNING_KEY) === 'true')
 
-  useEffect(() => {
-    if (isReturningUser) return // already know — skip fetch
-    ;(async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        const token = session?.access_token
-        if (!token) return
-        const [cRes, pRes] = await Promise.all([
-          fetch(`${API_BASE}/consultation/my`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${API_BASE}/my/prescriptions`,{ headers: { Authorization: `Bearer ${token}` } }),
-        ])
-        const cData = cRes.ok ? await cRes.json() : {}
-        const pData = pRes.ok ? await pRes.json() : {}
-        const hasActivity = (cData.sessions?.length > 0) || (pData.prescriptions?.length > 0)
-        if (hasActivity) {
-          sessionStorage.setItem(RETURNING_KEY, 'true')
-          setIsReturningUser(true)
-        }
-      } catch { /* ignore */ }
-    })()
-  }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
-
   /* ── If a pre-login chat is pending restore, send the user to /chat ── */
   useEffect(() => {
     const hasPaymentError = new URLSearchParams(location.search).has('payment_error')
@@ -140,10 +118,20 @@ export default function AppLayout() {
 
   /* ── Redirect returning users away from /chat to /dashboard (initial load only) ── */
   /* Skip if there is a pre-login chat waiting to be restored — user must land on /chat */
+  /* Skip if the user navigated to /chat intentionally within the app (location.key changes on in-app navigation) */
+  const initialLocationKey = useRef(location.key)
   const didInitialRedirect = useRef(false)
   useEffect(() => {
     if (didInitialRedirect.current) return
-    if (isReturningUser && location.pathname === '/chat' && !pendingChatRestore) {
+    // location.key changes on every in-app navigate() call.
+    // If it matches the key captured at mount, the user typed the URL directly (direct load/refresh).
+    // If it differs, the user navigated here intentionally — do not redirect.
+    if (
+      isReturningUser &&
+      location.pathname === '/chat' &&
+      !pendingChatRestore &&
+      location.key === initialLocationKey.current
+    ) {
       didInitialRedirect.current = true
       navigate('/dashboard', { replace: true })
     }
@@ -187,11 +175,14 @@ export default function AppLayout() {
     }
   }
 
+  const notifStartedRef = useRef(false)
   useEffect(() => {
+    if (!user || notifStartedRef.current) return
+    notifStartedRef.current = true
     fetchNotifications()
     const interval = setInterval(fetchNotifications, 30000)
-    return () => clearInterval(interval)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    return () => { clearInterval(interval); notifStartedRef.current = false }
+  }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const markRead = async (id) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
@@ -219,42 +210,44 @@ export default function AppLayout() {
     } catch { /* ignore */ }
   }
 
-  /* ── Recent consultations ── */
+  /* ── Sidebar data: recent consultations + recommended doctors ── */
+  /* All sidebar data loaded in ONE effect to avoid duplicate API calls.     */
+  /* useRef gate ensures it only runs once even if `user` fires multiple     */
+  /* times (getSession + onAuthStateChange both update user state).          */
   const [recentConsults, setRecentConsults] = useState([])
-
-  useEffect(() => {
-    async function loadConsults() {
-      try {
-        const token = await getFreshToken()
-        if (!token) return
-        const res = await fetch(`${API_BASE}/consultation/my`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        if (!res.ok) return
-        const data = await res.json()
-        setRecentConsults((data.sessions || []).slice(0, 3))
-      } catch { /* ignore */ }
-    }
-    loadConsults()
-  }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  /* ── Recommended doctors ── */
   const [recommendedDoctors, setRecommendedDoctors] = useState([])
+  const sidebarFetchedRef = useRef(false)
 
   useEffect(() => {
-    async function loadDoctors() {
+    // Reset gate when user logs out
+    if (!user) { sidebarFetchedRef.current = false; return }
+    if (sidebarFetchedRef.current) return
+    sidebarFetchedRef.current = true
+
+    ;(async () => {
       try {
         const token = await getFreshToken()
         if (!token) return
-        const res = await fetch(`${API_BASE}/doctors`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        if (!res.ok) return
-        const data = await res.json()
-        setRecommendedDoctors((data.doctors || []).slice(0, 3))
+        const headers = { Authorization: `Bearer ${token}` }
+        const [cRes, dRes] = await Promise.all([
+          fetch(`${API_BASE}/consultation/my`, { headers }),
+          fetch(`${API_BASE}/doctors`,          { headers }),
+        ])
+        if (cRes.ok) {
+          const cData = await cRes.json()
+          const sessions = cData.sessions || []
+          setRecentConsults(sessions.slice(0, 3))
+          if (!isReturningUser && sessions.length > 0) {
+            sessionStorage.setItem(RETURNING_KEY, 'true')
+            setIsReturningUser(true)
+          }
+        }
+        if (dRes.ok) {
+          const dData = await dRes.json()
+          setRecommendedDoctors((dData.doctors || []).slice(0, 3))
+        }
       } catch { /* ignore */ }
-    }
-    loadDoctors()
+    })()
   }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const initials = displayName.charAt(0).toUpperCase()

@@ -4,8 +4,11 @@ import { loadPreLoginChat, clearPreLoginChat } from '../utils/preLoginChat'
 
 const AuthContext = createContext(null)
 
-const DOCTOR_TOKEN_KEY = 'medivora_doctor_token'
-const DOCTOR_USER_KEY  = 'medivora_doctor_user'
+const DOCTOR_TOKEN_KEY  = 'medivora_doctor_token'
+const DOCTOR_USER_KEY   = 'medivora_doctor_user'
+const PATIENT_TOKEN_KEY = 'medivora_patient_token'
+const PATIENT_USER_KEY  = 'medivora_patient_user'
+const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
 
 function parseDoctorToken(token) {
   try {
@@ -19,10 +22,11 @@ function parseDoctorToken(token) {
 export function AuthProvider({ children }) {
   const [session, setSession]         = useState(null)   // Supabase session object
   const [user, setUser]               = useState(null)   // Supabase user object
-  // If a doctor JWT is already in localStorage we can skip the Supabase spinner
-  const hasDoctorJwt = !!localStorage.getItem(DOCTOR_TOKEN_KEY)
-  const [loading, setLoading]         = useState(!hasDoctorJwt)
-  const [initialized, setInitialized] = useState(hasDoctorJwt)
+  // Skip Supabase spinner if a custom JWT (doctor or patient) is already stored
+  const hasDoctorJwt  = !!localStorage.getItem(DOCTOR_TOKEN_KEY)
+  const hasPatientJwt = !!localStorage.getItem(PATIENT_TOKEN_KEY)
+  const [loading, setLoading]         = useState(!hasDoctorJwt && !hasPatientJwt)
+  const [initialized, setInitialized] = useState(hasDoctorJwt || hasPatientJwt)
 
   // Doctor JWT from custom backend auth (persisted in localStorage)
   const [doctorToken, setDoctorToken] = useState(() => localStorage.getItem(DOCTOR_TOKEN_KEY) || null)
@@ -30,11 +34,19 @@ export function AuthProvider({ children }) {
     try { return JSON.parse(localStorage.getItem(DOCTOR_USER_KEY) || 'null') } catch { return null }
   })
 
+  // Patient JWT from custom backend auth via MSG91 OTP (replaces Supabase phone OTP)
+  const [patientToken, setPatientToken] = useState(() => localStorage.getItem(PATIENT_TOKEN_KEY) || null)
+  const [patientUser,  setPatientUser]  = useState(() => {
+    try { return JSON.parse(localStorage.getItem(PATIENT_USER_KEY) || 'null') } catch { return null }
+  })
+
   const [pendingChatRestore, setPendingChatRestore] = useState(null)
 
-  const isAuthenticated = !!session || !!doctorToken
+  const isAuthenticated = !!session || !!doctorToken || !!patientToken
   const role = doctorToken
     ? 'doctor'
+    : patientToken
+    ? 'patient'
     : (user?.user_metadata?.role || 'patient')
   const isDoctor  = role === 'doctor'
   const isPatient = isAuthenticated && role === 'patient'
@@ -100,69 +112,84 @@ export function AuthProvider({ children }) {
     return data
   }
 
-  // ─── Phone OTP — send (Supabase) ─────────────────────────────────────────
+  // ─── Phone OTP — send (Supabase native phone auth) ───────────────────────
   // phone must be in E.164 format, e.g. "+919876543210"
 
+  // ─── Phone OTP — send (proxied via backend to avoid browser CORS on Supabase) ──
+
   async function sendPhoneOtp(phone) {
-    const { error } = await supabase.auth.signInWithOtp({ phone })
-    if (error) throw new Error(error.message)
+    const res = await fetch(`${API_BASE}/auth/send-patient-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data?.detail || 'Failed to send OTP')
   }
 
-  // ─── Phone OTP — verify (Supabase) ───────────────────────────────────────
-  // Immediately syncs session state to avoid race condition on navigation.
+  // ─── Phone OTP — verify (proxied via backend; sets Supabase session client-side) ──
 
   async function verifyPhoneOtp(phone, token) {
-    const { data, error } = await supabase.auth.verifyOtp({ phone, token, type: 'sms' })
-    if (error) throw new Error(error.message)
-    // Fix: set session synchronously so ProtectedRoute sees isAuthenticated=true
-    // before navigate('/chat') causes a re-render.
-    if (data.session) {
-      setSession(data.session)
-      setUser(data.user)
-      const pending = loadPreLoginChat()
-      if (pending) setPendingChatRestore(pending)
-    }
+    const res = await fetch(`${API_BASE}/auth/verify-patient-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, otp: token }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data?.detail || 'Invalid or expired OTP')
+
+    // Establish Supabase session client-side from returned tokens
+    const { error: sessErr } = await supabase.auth.setSession({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+    })
+    if (sessErr) throw new Error(sessErr.message || 'Failed to establish session')
+
+    // Clear any stale patient JWT from the old MSG91 flow
+    localStorage.removeItem(PATIENT_TOKEN_KEY)
+    localStorage.removeItem(PATIENT_USER_KEY)
+    setPatientToken(null)
+    setPatientUser(null)
     return data
   }
 
-  // ─── Doctor OTP — send (via Supabase, same as patient) ──────────────────
+  // ─── Doctor OTP — send (backend → MSG91) ────────────────────────────────
 
   async function sendDoctorOtp(phone) {
-    const { error } = await supabase.auth.signInWithOtp({ phone })
-    if (error) throw new Error(error.message)
-    // Return empty object — no dev OTP exposed (Supabase sends real SMS)
-    return {}
+    const res = await fetch(`${API_BASE}/auth/send-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data?.detail || 'Failed to send OTP')
+    return data
   }
 
-  // ─── Doctor OTP — verify ─────────────────────────────────────────────────
-  // Verify via Supabase, then exchange the Supabase session for a doctor JWT.
+  // ─── Doctor OTP — verify (backend custom JWT) ────────────────────────────
+  // Uses the same /auth/verify-otp endpoint as patients.
+  // Rejects if the verified account is not a doctor.
 
   async function verifyDoctorOtp(phone, otp) {
-    // Step 1: verify OTP with Supabase to prove phone ownership
-    const { data, error } = await supabase.auth.verifyOtp({ phone, token: otp, type: 'sms' })
-    if (error) throw new Error(error.message)
-    if (!data.session) throw new Error('Verification failed. Please try again.')
-
-    // Step 2: exchange Supabase token for a doctor JWT
-    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-    const res = await fetch(`${API_BASE}/doctors/login-via-supabase`, {
+    const res = await fetch(`${API_BASE}/auth/verify-otp`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${data.session.access_token}` },
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, otp }),
     })
-    const result = await res.json().catch(() => null)
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data?.detail || 'Invalid or expired OTP')
 
-    // Step 3: sign out from Supabase — doctors use custom JWT, not Supabase session
-    await supabase.auth.signOut()
+    if (data.user_type !== 'doctor') {
+      throw new Error('This phone number is not registered as a doctor account.')
+    }
 
-    if (!res.ok) throw new Error(result?.detail || 'Doctor login failed')
-
-    const token = result.token
+    const token = data.token
     const payload = parseDoctorToken(token)
     const doctorInfo = {
-      id:        result.doctor?.id || payload?.sub,
-      full_name: result.doctor?.name || result.doctor?.full_name || payload?.name || 'Doctor',
-      email:     result.doctor?.email || payload?.email || '',
-      phone:     result.doctor?.phone || phone,
+      id:        data.user_id || payload?.sub,
+      full_name: data.full_name || payload?.name || 'Doctor',
+      email:     payload?.email || '',
+      phone,
       role:      'doctor',
     }
     localStorage.setItem(DOCTOR_TOKEN_KEY, token)
@@ -213,11 +240,16 @@ export function AuthProvider({ children }) {
     sessionStorage.removeItem('medivora_chat_session')
     clearPreLoginChat()
     setPendingChatRestore(null)
-    // Clear doctor JWT if present
+    // Clear doctor JWT
     localStorage.removeItem(DOCTOR_TOKEN_KEY)
     localStorage.removeItem(DOCTOR_USER_KEY)
     setDoctorToken(null)
     setDoctorUser(null)
+    // Clear patient JWT
+    localStorage.removeItem(PATIENT_TOKEN_KEY)
+    localStorage.removeItem(PATIENT_USER_KEY)
+    setPatientToken(null)
+    setPatientUser(null)
     await supabase.auth.signOut()
   }
 
@@ -226,10 +258,11 @@ export function AuthProvider({ children }) {
     clearPreLoginChat()
   }
 
-  // ─── Get auth token (works for both Supabase + doctor JWT) ───────────────
+  // ─── Get auth token (doctor JWT → patient JWT → Supabase session) ────────
 
   function getToken() {
-    if (doctorToken) return doctorToken
+    if (doctorToken)  return doctorToken
+    if (patientToken) return patientToken
     return session?.access_token || null
   }
 
@@ -241,13 +274,14 @@ export function AuthProvider({ children }) {
   const _metaFullName  = (_metaFirstName + ' ' + _metaLastName).trim()
   const displayName =
     doctorUser?.full_name ||
+    patientUser?.full_name ||
     _metaFullName ||
     user?.user_metadata?.full_name ||
     user?.user_metadata?.name ||
     user?.email?.split('@')[0] ||
     'User'
 
-  const currentUser = doctorUser || user
+  const currentUser = doctorUser || patientUser || user
 
   // ─── Context ─────────────────────────────────────────────────────────────
 
@@ -264,6 +298,8 @@ export function AuthProvider({ children }) {
       displayName,
       doctorToken,
       doctorUser,
+      patientToken,
+      patientUser,
       login,
       signup,
       sendPhoneOtp,
