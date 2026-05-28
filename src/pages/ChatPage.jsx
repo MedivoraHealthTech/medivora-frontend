@@ -28,6 +28,34 @@ function extractSpecialtyFromText(text) {
   return null
 }
 
+/* ─── Keyword → specialty inference (fires right panel before AI responds) ─── */
+const KEYWORD_SPECIALTY_MAP = {
+  dermatology:    ['rash', 'rashes', 'skin', 'itch', 'itchy', 'acne', 'eczema', 'hive', 'hives', 'bump', 'pimple', 'blister', 'lesion', 'psoriasis', 'fungal', 'nail', 'hair loss', 'dandruff', 'allergy'],
+  cardiology:     ['chest pain', 'chest', 'heart', 'bp', 'blood pressure', 'palpitation', 'heartbeat', 'cardiac', 'angina', 'irregular heartbeat', 'hypertension'],
+  psychiatry:     ['anxiety', 'depress', 'stress', 'mental', 'panic', 'mood', 'sleep', 'insomnia', 'suicid', 'phobia', 'ocd', 'trauma', 'ptsd', 'schizophren', 'bipolar', 'loneliness', 'overthink'],
+  orthopedics:    ['back pain', 'back ache', 'backache', 'knee', 'joint pain', 'joint', 'bone', 'fracture', 'sprain', 'ligament', 'arthrit', 'spine', 'shoulder pain', 'shoulder', 'hip pain', 'hip', 'buttock', 'thigh pain', 'thigh', 'leg pain', 'arm pain', 'wrist pain', 'wrist', 'elbow pain', 'elbow', 'ankle pain', 'ankle', 'neck pain', 'neck stiff', 'stiff neck', 'muscle pain', 'muscle ache', 'cramp', 'sciatica', 'disc', 'tendon', 'swollen joint', 'body pain'],
+  gynecology:     ['period', 'pregnancy', 'pregnant', 'menstrual', 'ovary', 'pcos', 'pcod', 'uterus', 'vaginal', 'cervical', 'breast', 'fertility', 'menopause', 'discharge', 'missed period', 'irregular period'],
+  neurology:      ['headache', 'migraine', 'dizziness', 'dizzy', 'seizure', 'nerve', 'numbness', 'tingling', 'stroke', 'paralysis', 'tremor', 'memory', 'vertigo', 'fainting', 'blurred vision', 'confusion'],
+  endocrinology:  ['diabetes', 'thyroid', 'blood sugar', 'insulin', 'hormone', 'weight gain', 'weight loss', 'fatigue', 'pituitary', 'adrenal', 'polycystic', 'hba1c', 'glucose', 'sweat', 'excessive thirst'],
+  pulmonology:    ['breathing', 'breathless', 'cough', 'asthma', 'lung', 'wheez', 'shortness of breath', 'respiratory', 'bronchitis', 'pneumonia', 'tb ', 'tuberculosis', 'oxygen', 'sputum'],
+  pediatrics:     ['child', 'baby', 'infant', 'kid', 'toddler', 'newborn', 'my son', 'my daughter', 'my child', 'years old', 'month old'],
+  ent:            ['ear', 'throat', 'nose', 'sinus', 'tonsil', 'hearing', 'nasal', 'runny nose', 'snoring', 'blocked nose', 'earache', 'sore throat', 'voice', 'hoarse', 'smell', 'taste'],
+  general_physician: ['fever', 'cold', 'flu', 'weakness', 'viral', 'infection', 'body ache', 'vomit', 'nausea', 'diarrhea', 'constipation', 'stomach', 'abdomen', 'urine', 'urination', 'burning urination', 'appetite', 'jaundice', 'liver', 'kidney', 'acidity', 'acid reflux', 'heartburn', 'gastric', 'gastritis', 'indigestion', 'bloating', 'gas', 'belch', 'burp', 'stomach acid', 'burning sensation', 'loose motion', 'motions', 'food poison', 'dehydrat'],
+}
+
+function inferSpecialtyFromText(text) {
+  if (!text) return null
+  const lower = text.toLowerCase()
+  // Check multi-word phrases first (longer matches take priority)
+  const sorted = Object.entries(KEYWORD_SPECIALTY_MAP).flatMap(([sp, kws]) =>
+    kws.map(k => ({ sp, k }))
+  ).sort((a, b) => b.k.length - a.k.length)
+  for (const { sp, k } of sorted) {
+    if (lower.includes(k)) return sp
+  }
+  return null
+}
+
 /* ─── Strip markdown for TTS ─── */
 function stripMarkdown(text) {
   return text
@@ -294,6 +322,12 @@ export default function ChatPage() {
     } catch (_) {}
   }, [messages, conversationId, lastSpecialty])
 
+  /* ─── Notify AppLayout right pane when specialty is identified ─── */
+  useEffect(() => {
+    if (!lastSpecialty) return
+    window.dispatchEvent(new CustomEvent('medivora:specialty-changed', { detail: { specialty: lastSpecialty } }))
+  }, [lastSpecialty])
+
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isTyping])
@@ -444,6 +478,12 @@ export default function ChatPage() {
     setInput('')
     setIsTyping(true)
 
+    // Infer specialty from user message and update right panel immediately (before AI responds)
+    const earlySpecialty = inferSpecialtyFromText(trimmed)
+    if (earlySpecialty) {
+      window.dispatchEvent(new CustomEvent('medivora:specialty-changed', { detail: { specialty: earlySpecialty } }))
+    }
+
     // After 5s of silence, speak a waiting message — assessment takes ~11s, quick turns ~3s
     const waitTimer = setTimeout(() => { speakWaiting() }, 5000)
 
@@ -565,6 +605,13 @@ export default function ChatPage() {
         stopWaiting()
 
         if (result.sessionId) setConversationId(result.sessionId)
+
+        // Infer specialty from transcript (early update) or AI-determined specialty (definitive)
+        const voiceEarlySpecialty = inferSpecialtyFromText(result.transcript)
+        const voiceSpecialty = result.specialty || voiceEarlySpecialty
+        if (voiceSpecialty) {
+          window.dispatchEvent(new CustomEvent('medivora:specialty-changed', { detail: { specialty: voiceSpecialty } }))
+        }
 
         // Only surface the triage card + Book button — never show transcript or regular text bubbles
         if (result.isMedicalReport || result.isBookAppointment) {
@@ -1279,7 +1326,10 @@ export default function ChatPage() {
           {user && (
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 8, flexWrap: 'wrap', maxWidth: 680, margin: '8px auto 0' }}>
               <button
-                onClick={() => navigate('/doctors')}
+                onClick={() => {
+                  const sp = lastSpecialty || sessionStorage.getItem(SPECIALTY_KEY)
+                  navigate('/doctors', sp ? { state: { specialty: sp } } : undefined)
+                }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px',
                   borderRadius: 20, border: '1px solid rgba(0,175,239,0.3)', cursor: 'pointer',
