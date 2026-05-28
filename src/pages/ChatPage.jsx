@@ -294,6 +294,12 @@ export default function ChatPage() {
     } catch (_) {}
   }, [messages, conversationId, lastSpecialty])
 
+  /* ─── Notify AppLayout right pane when specialty is identified ─── */
+  useEffect(() => {
+    if (!lastSpecialty) return
+    window.dispatchEvent(new CustomEvent('medivora:specialty-changed', { detail: { specialty: lastSpecialty } }))
+  }, [lastSpecialty])
+
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isTyping])
