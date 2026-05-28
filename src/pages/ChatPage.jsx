@@ -40,7 +40,7 @@ const KEYWORD_SPECIALTY_MAP = {
   pulmonology:    ['breathing', 'breathless', 'cough', 'asthma', 'lung', 'wheez', 'shortness of breath', 'respiratory', 'bronchitis', 'pneumonia', 'tb ', 'tuberculosis', 'oxygen', 'sputum'],
   pediatrics:     ['child', 'baby', 'infant', 'kid', 'toddler', 'newborn', 'my son', 'my daughter', 'my child', 'years old', 'month old'],
   ent:            ['ear', 'throat', 'nose', 'sinus', 'tonsil', 'hearing', 'nasal', 'runny nose', 'snoring', 'blocked nose', 'earache', 'sore throat', 'voice', 'hoarse', 'smell', 'taste'],
-  general_physician: ['fever', 'cold', 'flu', 'weakness', 'viral', 'infection', 'body ache', 'vomit', 'nausea', 'diarrhea', 'constipation', 'stomach', 'abdomen', 'urine', 'urination', 'burning urination', 'appetite', 'jaundice', 'liver', 'kidney'],
+  general_physician: ['fever', 'cold', 'flu', 'weakness', 'viral', 'infection', 'body ache', 'vomit', 'nausea', 'diarrhea', 'constipation', 'stomach', 'abdomen', 'urine', 'urination', 'burning urination', 'appetite', 'jaundice', 'liver', 'kidney', 'acidity', 'acid reflux', 'heartburn', 'gastric', 'gastritis', 'indigestion', 'bloating', 'gas', 'belch', 'burp', 'stomach acid', 'burning sensation', 'loose motion', 'motions', 'food poison', 'dehydrat'],
 }
 
 function inferSpecialtyFromText(text) {
