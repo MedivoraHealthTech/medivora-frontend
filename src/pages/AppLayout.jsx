@@ -231,6 +231,20 @@ const SPECIALTY_CONTENT = {
       { title: 'Nose Bleeding First Aid', channel: 'YouTube Health', duration: '3:00', url: 'https://www.youtube.com/results?search_query=nose+bleed+how+to+stop+first+aid' },
     ],
   },
+  gastroenterology: {
+    articles: [
+      { title: 'Digestive Diseases Overview', source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/digestivediseases.html' },
+      { title: 'Acid Reflux & GERD', source: 'MedlinePlus', tag: 'Guide', url: 'https://medlineplus.gov/gerd.html' },
+      { title: 'Irritable Bowel Syndrome (IBS)', source: 'NHS UK', tag: 'Guide', url: 'https://www.nhs.uk/conditions/irritable-bowel-syndrome-ibs/' },
+      { title: 'Stomach Ulcers', source: 'NHS UK', tag: 'Article', url: 'https://www.nhs.uk/conditions/stomach-ulcer/' },
+    ],
+    videos: [
+      { title: 'Acid Reflux & GERD Explained', channel: 'YouTube Health', duration: '7:00', url: 'https://www.youtube.com/results?search_query=acid+reflux+GERD+explained+gastroenterologist' },
+      { title: 'IBS Management Tips', channel: 'YouTube Health', duration: '6:00', url: 'https://www.youtube.com/results?search_query=IBS+irritable+bowel+syndrome+management' },
+      { title: 'Foods That Help Digestion', channel: 'YouTube Health', duration: '8:00', url: 'https://www.youtube.com/results?search_query=foods+that+help+digestion+gut+health' },
+      { title: 'Stomach Pain Causes & Relief', channel: 'YouTube Health', duration: '5:00', url: 'https://www.youtube.com/results?search_query=stomach+pain+causes+relief+doctor' },
+    ],
+  },
   sexology: {
     articles: [
       { title: 'Sexual Health Overview', source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/sexualhealth.html' },
@@ -267,7 +281,8 @@ function resolveContentKey(specialty) {
   if (SPECIALTY_CONTENT[s]) return s
   for (const key of Object.keys(SPECIALTY_CONTENT)) {
     if (key === 'default') continue
-    if (s.includes(key) || key.includes(s)) return key
+    // Guard: key must be > 3 chars to prevent 'ent' matching 'gastroenterology'
+    if (key.length > 3 && (s.includes(key) || key.includes(s))) return key
   }
   return 'default'
 }
