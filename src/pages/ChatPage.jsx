@@ -1279,7 +1279,10 @@ export default function ChatPage() {
           {user && (
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 8, flexWrap: 'wrap', maxWidth: 680, margin: '8px auto 0' }}>
               <button
-                onClick={() => navigate('/doctors')}
+                onClick={() => {
+                  const sp = lastSpecialty || sessionStorage.getItem(SPECIALTY_KEY)
+                  navigate('/doctors', sp ? { state: { specialty: sp } } : undefined)
+                }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px',
                   borderRadius: 20, border: '1px solid rgba(0,175,239,0.3)', cursor: 'pointer',

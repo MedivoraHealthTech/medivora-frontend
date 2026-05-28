@@ -116,26 +116,6 @@ export default function AppLayout() {
     }
   }, [pendingChatRestore]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* ── Redirect returning users away from /chat to /dashboard (initial load only) ── */
-  /* Skip if there is a pre-login chat waiting to be restored — user must land on /chat */
-  /* Skip if the user navigated to /chat intentionally within the app (location.key changes on in-app navigation) */
-  const initialLocationKey = useRef(location.key)
-  const didInitialRedirect = useRef(false)
-  useEffect(() => {
-    if (didInitialRedirect.current) return
-    // location.key changes on every in-app navigate() call.
-    // If it matches the key captured at mount, the user typed the URL directly (direct load/refresh).
-    // If it differs, the user navigated here intentionally — do not redirect.
-    if (
-      isReturningUser &&
-      location.pathname === '/chat' &&
-      !pendingChatRestore &&
-      location.key === initialLocationKey.current
-    ) {
-      didInitialRedirect.current = true
-      navigate('/dashboard', { replace: true })
-    }
-  }, [isReturningUser, pendingChatRestore]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── Dark mode ── */
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true')
