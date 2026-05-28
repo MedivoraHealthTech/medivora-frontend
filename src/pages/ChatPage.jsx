@@ -606,6 +606,12 @@ export default function ChatPage() {
 
         if (result.sessionId) setConversationId(result.sessionId)
 
+        // Infer specialty from transcript and update right panel early
+        const voiceEarlySpecialty = inferSpecialtyFromText(result.transcript)
+        if (voiceEarlySpecialty) {
+          window.dispatchEvent(new CustomEvent('medivora:specialty-changed', { detail: { specialty: voiceEarlySpecialty } }))
+        }
+
         // Only surface the triage card + Book button — never show transcript or regular text bubbles
         if (result.isMedicalReport || result.isBookAppointment) {
           const aiMsg = {
