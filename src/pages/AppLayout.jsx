@@ -12,6 +12,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { supabase } from './supabase'
 import Logo from '../components/Logo'
+import { formatSpecialty } from '../utils/labels'
 
 /* ─── Nav Items ─── */
 const navItems = [
@@ -735,8 +736,8 @@ export default function AppLayout() {
             <p style={sectionLabel('var(--cyan)')}>
               <UserCheck size={11} />Recommended Doctors
               {rightPaneSpecialty && !rightPaneLoading && (
-                <span style={{ marginLeft: 'auto', fontSize: 9, padding: '2px 6px', borderRadius: 4, background: 'rgba(0,188,212,0.12)', color: 'var(--cyan)', fontWeight: 700, textTransform: 'none', letterSpacing: 0 }}>
-                  {rightPaneSpecialty.replace(/_/g, ' ')}
+                <span style={{ marginLeft: 6, fontSize: 9, padding: '2px 6px', borderRadius: 4, background: 'rgba(0,188,212,0.12)', color: 'var(--cyan)', fontWeight: 700, textTransform: 'none', letterSpacing: 0, maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  {formatSpecialty(rightPaneSpecialty)}
                 </span>
               )}
             </p>
@@ -753,7 +754,7 @@ export default function AppLayout() {
                       <p style={{ fontSize: 11, color: 'var(--g300)', fontWeight: 700, margin: 0 }}>{[d.first_name, d.last_name].filter(Boolean).join(' ')}</p>
                       {d.rating > 0 && <span style={{ fontSize: 10, color: '#E08000', fontWeight: 700 }}>★ {Number(d.rating).toFixed(1)}</span>}
                     </div>
-                    <p style={{ fontSize: 10, color: 'var(--cyan)', margin: 0, fontWeight: 600 }}>{d.specialization}</p>
+                    <p style={{ fontSize: 10, color: 'var(--cyan)', margin: 0, fontWeight: 600 }}>{formatSpecialty(d.specialization)}</p>
                     {d.experience_years > 0 && (
                       <p style={{ fontSize: 9, color: 'var(--g500)', margin: '3px 0 0' }}>{d.experience_years} yrs exp</p>
                     )}
