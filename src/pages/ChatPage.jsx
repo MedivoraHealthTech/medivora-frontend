@@ -30,24 +30,28 @@ function extractSpecialtyFromText(text) {
 
 /* ─── Keyword → specialty inference (fires right panel before AI responds) ─── */
 const KEYWORD_SPECIALTY_MAP = {
-  dermatology:    ['rash', 'rashes', 'skin', 'itch', 'itchy', 'acne', 'eczema', 'hive', 'hives', 'bump', 'pimple', 'blister', 'lesion'],
-  cardiology:     ['chest pain', 'heart', 'bp', 'blood pressure', 'palpitation', 'heartbeat', 'cardiac', 'angina'],
-  psychiatry:     ['anxiety', 'depress', 'stress', 'mental', 'panic', 'mood', 'sleep', 'insomnia', 'suicid', 'phobia', 'ocd'],
-  orthopedics:    ['back pain', 'knee', 'joint', 'bone', 'fracture', 'sprain', 'ligament', 'arthrit', 'spine', 'shoulder pain', 'hip pain'],
-  gynecology:     ['period', 'pregnancy', 'pregnant', 'menstrual', 'ovary', 'pcos', 'pcod', 'uterus', 'vaginal', 'cervical', 'breast pain'],
-  neurology:      ['headache', 'migraine', 'dizziness', 'dizzy', 'seizure', 'nerve', 'numbness', 'tingling', 'stroke', 'paralysis'],
-  endocrinology:  ['diabetes', 'thyroid', 'blood sugar', 'insulin', 'hormone', 'weight gain', 'weight loss', 'fatigue'],
-  pulmonology:    ['breathing', 'breathless', 'cough', 'asthma', 'lung', 'wheez', 'shortness of breath', 'respiratory'],
-  pediatrics:     ['child', 'baby', 'infant', 'kid', 'toddler', 'newborn', 'my son', 'my daughter'],
-  ent:            ['ear', 'throat', 'nose', 'sinus', 'tonsil', 'hearing', 'nasal', 'runny nose', 'snoring'],
-  general_physician: ['fever', 'cold', 'flu', 'weakness', 'viral', 'infection', 'body ache', 'vomit', 'nausea', 'diarrhea', 'constipation'],
+  dermatology:    ['rash', 'rashes', 'skin', 'itch', 'itchy', 'acne', 'eczema', 'hive', 'hives', 'bump', 'pimple', 'blister', 'lesion', 'psoriasis', 'fungal', 'nail', 'hair loss', 'dandruff', 'allergy'],
+  cardiology:     ['chest pain', 'chest', 'heart', 'bp', 'blood pressure', 'palpitation', 'heartbeat', 'cardiac', 'angina', 'irregular heartbeat', 'hypertension'],
+  psychiatry:     ['anxiety', 'depress', 'stress', 'mental', 'panic', 'mood', 'sleep', 'insomnia', 'suicid', 'phobia', 'ocd', 'trauma', 'ptsd', 'schizophren', 'bipolar', 'loneliness', 'overthink'],
+  orthopedics:    ['back pain', 'back ache', 'backache', 'knee', 'joint pain', 'joint', 'bone', 'fracture', 'sprain', 'ligament', 'arthrit', 'spine', 'shoulder pain', 'shoulder', 'hip pain', 'hip', 'buttock', 'thigh pain', 'thigh', 'leg pain', 'arm pain', 'wrist pain', 'wrist', 'elbow pain', 'elbow', 'ankle pain', 'ankle', 'neck pain', 'neck stiff', 'stiff neck', 'muscle pain', 'muscle ache', 'cramp', 'sciatica', 'disc', 'tendon', 'swollen joint', 'body pain'],
+  gynecology:     ['period', 'pregnancy', 'pregnant', 'menstrual', 'ovary', 'pcos', 'pcod', 'uterus', 'vaginal', 'cervical', 'breast', 'fertility', 'menopause', 'discharge', 'missed period', 'irregular period'],
+  neurology:      ['headache', 'migraine', 'dizziness', 'dizzy', 'seizure', 'nerve', 'numbness', 'tingling', 'stroke', 'paralysis', 'tremor', 'memory', 'vertigo', 'fainting', 'blurred vision', 'confusion'],
+  endocrinology:  ['diabetes', 'thyroid', 'blood sugar', 'insulin', 'hormone', 'weight gain', 'weight loss', 'fatigue', 'pituitary', 'adrenal', 'polycystic', 'hba1c', 'glucose', 'sweat', 'excessive thirst'],
+  pulmonology:    ['breathing', 'breathless', 'cough', 'asthma', 'lung', 'wheez', 'shortness of breath', 'respiratory', 'bronchitis', 'pneumonia', 'tb ', 'tuberculosis', 'oxygen', 'sputum'],
+  pediatrics:     ['child', 'baby', 'infant', 'kid', 'toddler', 'newborn', 'my son', 'my daughter', 'my child', 'years old', 'month old'],
+  ent:            ['ear', 'throat', 'nose', 'sinus', 'tonsil', 'hearing', 'nasal', 'runny nose', 'snoring', 'blocked nose', 'earache', 'sore throat', 'voice', 'hoarse', 'smell', 'taste'],
+  general_physician: ['fever', 'cold', 'flu', 'weakness', 'viral', 'infection', 'body ache', 'vomit', 'nausea', 'diarrhea', 'constipation', 'stomach', 'abdomen', 'urine', 'urination', 'burning urination', 'appetite', 'jaundice', 'liver', 'kidney'],
 }
 
 function inferSpecialtyFromText(text) {
   if (!text) return null
   const lower = text.toLowerCase()
-  for (const [specialty, keywords] of Object.entries(KEYWORD_SPECIALTY_MAP)) {
-    if (keywords.some(k => lower.includes(k))) return specialty
+  // Check multi-word phrases first (longer matches take priority)
+  const sorted = Object.entries(KEYWORD_SPECIALTY_MAP).flatMap(([sp, kws]) =>
+    kws.map(k => ({ sp, k }))
+  ).sort((a, b) => b.k.length - a.k.length)
+  for (const { sp, k } of sorted) {
+    if (lower.includes(k)) return sp
   }
   return null
 }
