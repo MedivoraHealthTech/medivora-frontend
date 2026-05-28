@@ -28,6 +28,30 @@ function extractSpecialtyFromText(text) {
   return null
 }
 
+/* ─── Keyword → specialty inference (fires right panel before AI responds) ─── */
+const KEYWORD_SPECIALTY_MAP = {
+  dermatology:    ['rash', 'rashes', 'skin', 'itch', 'itchy', 'acne', 'eczema', 'hive', 'hives', 'bump', 'pimple', 'blister', 'lesion'],
+  cardiology:     ['chest pain', 'heart', 'bp', 'blood pressure', 'palpitation', 'heartbeat', 'cardiac', 'angina'],
+  psychiatry:     ['anxiety', 'depress', 'stress', 'mental', 'panic', 'mood', 'sleep', 'insomnia', 'suicid', 'phobia', 'ocd'],
+  orthopedics:    ['back pain', 'knee', 'joint', 'bone', 'fracture', 'sprain', 'ligament', 'arthrit', 'spine', 'shoulder pain', 'hip pain'],
+  gynecology:     ['period', 'pregnancy', 'pregnant', 'menstrual', 'ovary', 'pcos', 'pcod', 'uterus', 'vaginal', 'cervical', 'breast pain'],
+  neurology:      ['headache', 'migraine', 'dizziness', 'dizzy', 'seizure', 'nerve', 'numbness', 'tingling', 'stroke', 'paralysis'],
+  endocrinology:  ['diabetes', 'thyroid', 'blood sugar', 'insulin', 'hormone', 'weight gain', 'weight loss', 'fatigue'],
+  pulmonology:    ['breathing', 'breathless', 'cough', 'asthma', 'lung', 'wheez', 'shortness of breath', 'respiratory'],
+  pediatrics:     ['child', 'baby', 'infant', 'kid', 'toddler', 'newborn', 'my son', 'my daughter'],
+  ent:            ['ear', 'throat', 'nose', 'sinus', 'tonsil', 'hearing', 'nasal', 'runny nose', 'snoring'],
+  general_physician: ['fever', 'cold', 'flu', 'weakness', 'viral', 'infection', 'body ache', 'vomit', 'nausea', 'diarrhea', 'constipation'],
+}
+
+function inferSpecialtyFromText(text) {
+  if (!text) return null
+  const lower = text.toLowerCase()
+  for (const [specialty, keywords] of Object.entries(KEYWORD_SPECIALTY_MAP)) {
+    if (keywords.some(k => lower.includes(k))) return specialty
+  }
+  return null
+}
+
 /* ─── Strip markdown for TTS ─── */
 function stripMarkdown(text) {
   return text
@@ -449,6 +473,12 @@ export default function ChatPage() {
     setMessages(prev => [...prev, userMsg])
     setInput('')
     setIsTyping(true)
+
+    // Infer specialty from user message and update right panel immediately (before AI responds)
+    const earlySpecialty = inferSpecialtyFromText(trimmed)
+    if (earlySpecialty) {
+      window.dispatchEvent(new CustomEvent('medivora:specialty-changed', { detail: { specialty: earlySpecialty } }))
+    }
 
     // After 5s of silence, speak a waiting message — assessment takes ~11s, quick turns ~3s
     const waitTimer = setTimeout(() => { speakWaiting() }, 5000)
