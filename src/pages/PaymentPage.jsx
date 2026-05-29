@@ -1,20 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { CheckCircle, ArrowLeft, Video, Stethoscope, Calendar, ShieldCheck, ClipboardList } from 'lucide-react'
-import { supabase } from './supabase'
 import MedicalInfoModal from '../components/MedicalInfoModal'
 import TimeSlotPicker from '../components/TimeSlotPicker'
 import { useBreakpoint } from '../hooks/useBreakpoint'
+import { getAuthToken } from '../utils/getToken'
 
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
 const IS_DEV   = import.meta.env.VITE_DEV_PAYMENT === 'true'
-
-async function getAuthToken() {
-  try {
-    const { data: { session } } = await supabase.auth.getSession()
-    return session?.access_token || null
-  } catch { return null }
-}
 
 function stripDr(name = '') { return name.replace(/^Dr\.?\s*/i, '').trim() }
 

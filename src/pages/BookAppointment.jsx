@@ -2,20 +2,12 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, Star, MapPin, Clock, IndianRupee, Stethoscope, Video, CreditCard, Building2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { supabase } from './supabase'
 import { useBreakpoint } from '../hooks/useBreakpoint'
 import { formatSpecialty } from '../utils/labels'
+import { getAuthToken } from '../utils/getToken'
 
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
 const IS_DEV   = import.meta.env.VITE_DEV_PAYMENT === 'true'
-
-/* ─── Auth token helper ─── */
-async function getAuthToken() {
-  try {
-    const { data: { session } } = await supabase.auth.getSession()
-    return session?.access_token || null
-  } catch { return null }
-}
 
 /* ─── Strip leading "Dr." prefix ─── */
 function stripDr(name = '') { return name.replace(/^Dr\.?\s*/i, '').trim() }

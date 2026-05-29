@@ -1,16 +1,9 @@
 import { useState, useEffect } from 'react'
 import { X, Clock, ChevronLeft, ChevronRight, Calendar, Video, Building2 } from 'lucide-react'
-import { supabase } from '../pages/supabase'
 import { useBreakpoint } from '../hooks/useBreakpoint'
+import { getAuthToken } from '../utils/getToken'
 
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
-
-async function getAuthToken() {
-  try {
-    const { data: { session } } = await supabase.auth.getSession()
-    return session?.access_token || null
-  } catch { return null }
-}
 
 function formatDate(isoDate) {
   const d = new Date(isoDate + 'T00:00:00')

@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Search, MapPin, Star, RefreshCw, Stethoscope } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { supabase } from './supabase'
 import ComingSoonModal from '../components/ComingSoonModal'
 import { useBreakpoint } from '../hooks/useBreakpoint'
 import { formatSpecialty } from '../utils/labels'
+import { getAuthToken } from '../utils/getToken'
 
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
 
@@ -34,8 +34,8 @@ function initials(name) {
 
 async function apiFetchDoctors() {
   try {
-    const { data: { session } } = await supabase.auth.getSession()
-    const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}
+    const token = await getAuthToken()
+    const headers = token ? { Authorization: `Bearer ${token}` } : {}
     const res = await fetch(`${API_BASE}/doctors`, { headers })
     if (!res.ok) throw new Error(`${res.status}`)
     const json = await res.json()

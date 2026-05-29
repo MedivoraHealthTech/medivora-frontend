@@ -10,9 +10,9 @@ import {
   FlaskConical, ShoppingBag, ShoppingCart,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { supabase } from './supabase'
 import Logo from '../components/Logo'
 import { formatSpecialty } from '../utils/labels'
+import { getAuthToken } from '../utils/getToken'
 
 /* ─── Nav Items ─── */
 const navItems = [
@@ -342,14 +342,7 @@ export default function AppLayout() {
   const unreadCount = notifications.filter(n => !n.is_read).length
 
   // Always get a fresh token — avoids stale closure in setInterval
-  const getFreshToken = async () => {
-    // Doctor JWT from localStorage
-    const drToken = localStorage.getItem('medivora_doctor_token')
-    if (drToken) return drToken
-    // Supabase — getSession() always returns the current (auto-refreshed) token
-    const { data: { session } } = await supabase.auth.getSession()
-    return session?.access_token || null
-  }
+  const getFreshToken = getAuthToken
 
   const fetchNotifications = async () => {
     try {
