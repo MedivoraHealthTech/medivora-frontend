@@ -152,44 +152,41 @@ export function AuthProvider({ children }) {
     return data
   }
 
-  // ─── Doctor OTP — send (via Supabase, same as patient) ──────────────────
+  // ─── Doctor OTP — send (via Medivora backend → MSG91) ───────────────────
 
   async function sendDoctorOtp(phone) {
-    const { error } = await supabase.auth.signInWithOtp({ phone })
-    if (error) throw new Error(error.message)
-    // Return empty object — no dev OTP exposed (Supabase sends real SMS)
-    return {}
+    const res = await fetch(`${API_BASE}/auth/send-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone }),
+    })
+    const data = await res.json().catch(() => null)
+    if (!res.ok) throw new Error(data?.detail || 'Failed to send OTP')
+    return data
   }
 
-  // ─── Doctor OTP — verify ─────────────────────────────────────────────────
-  // Verify via Supabase, then exchange the Supabase session for a doctor JWT.
+  // ─── Doctor OTP — verify (via Medivora backend) ──────────────────────────
 
   async function verifyDoctorOtp(phone, otp) {
-    // Step 1: verify OTP with Supabase to prove phone ownership
-    const { data, error } = await supabase.auth.verifyOtp({ phone, token: otp, type: 'sms' })
-    if (error) throw new Error(error.message)
-    if (!data.session) throw new Error('Verification failed. Please try again.')
-
-    // Step 2: exchange Supabase token for a doctor JWT
-    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-    const res = await fetch(`${API_BASE}/doctors/login-via-supabase`, {
+    const res = await fetch(`${API_BASE}/auth/verify-otp`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${data.session.access_token}` },
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, otp }),
     })
-    const result = await res.json().catch(() => null)
+    const data = await res.json().catch(() => null)
+    if (!res.ok) throw new Error(data?.detail || 'Invalid or expired OTP')
 
-    // Step 3: sign out from Supabase — doctors use custom JWT, not Supabase session
-    await supabase.auth.signOut()
+    if (data.user_type !== 'doctor') {
+      throw new Error('No doctor account found for this phone number. Please contact admin.')
+    }
 
-    if (!res.ok) throw new Error(result?.detail || 'Doctor login failed')
-
-    const token = result.token
+    const token = data.token
     const payload = parseDoctorToken(token)
     const doctorInfo = {
-      id:        result.doctor?.id || payload?.sub,
-      full_name: result.doctor?.name || result.doctor?.full_name || payload?.name || 'Doctor',
-      email:     result.doctor?.email || payload?.email || '',
-      phone:     result.doctor?.phone || phone,
+      id:        data.user_id || payload?.sub,
+      full_name: data.full_name || payload?.name || 'Doctor',
+      email:     payload?.email || '',
+      phone,
       role:      'doctor',
     }
     localStorage.setItem(DOCTOR_TOKEN_KEY, token)
