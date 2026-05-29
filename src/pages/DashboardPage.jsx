@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useBreakpoint } from '../hooks/useBreakpoint'
 import {
@@ -49,9 +49,11 @@ export default function DashboardPage() {
   const [consultations, setConsultations] = useState([])
   const [prescriptions, setPrescriptions] = useState([])
   const [loading, setLoading] = useState(true)
+  const fetchedRef = useRef(false)
 
   useEffect(() => {
-    if (!initialized) return
+    if (!initialized || fetchedRef.current) return
+    fetchedRef.current = true
     ;(async () => {
       try {
         const token   = session?.access_token || await getToken()

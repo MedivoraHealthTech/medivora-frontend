@@ -8,7 +8,7 @@ const DOCTOR_TOKEN_KEY  = 'medivora_doctor_token'
 const DOCTOR_USER_KEY   = 'medivora_doctor_user'
 const PATIENT_TOKEN_KEY = 'medivora_patient_token'
 const PATIENT_USER_KEY  = 'medivora_patient_user'
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
 
 function parseDoctorToken(token) {
   try {
@@ -34,7 +34,7 @@ export function AuthProvider({ children }) {
     try { return JSON.parse(localStorage.getItem(DOCTOR_USER_KEY) || 'null') } catch { return null }
   })
 
-  // Patient JWT from MSG91 OTP auth (persisted in localStorage)
+  // Patient JWT from custom backend auth via MSG91 OTP (replaces Supabase phone OTP)
   const [patientToken, setPatientToken] = useState(() => localStorage.getItem(PATIENT_TOKEN_KEY) || null)
   const [patientUser,  setPatientUser]  = useState(() => {
     try { return JSON.parse(localStorage.getItem(PATIENT_USER_KEY) || 'null') } catch { return null }
@@ -112,8 +112,10 @@ export function AuthProvider({ children }) {
     return data
   }
 
-  // ─── Phone OTP — send (MSG91 via backend proxy) ──────────────────────────
+  // ─── Phone OTP — send (MSG91 via backend) ───────────────────────────────
   // phone must be in E.164 format, e.g. "+919876543210"
+
+  // ─── Phone OTP — send (proxied via backend to avoid browser CORS on Supabase) ──
 
   async function sendPhoneOtp(phone) {
     const res = await fetch(`${API_BASE}/auth/send-patient-otp`, {
@@ -125,7 +127,7 @@ export function AuthProvider({ children }) {
     if (!res.ok) throw new Error(data?.detail || 'Failed to send OTP')
   }
 
-  // ─── Phone OTP — verify (MSG91 via backend proxy) ────────────────────────
+  // ─── Phone OTP — verify (MSG91 via backend) ─────────────────────────────
   // Backend validates OTP, creates patient profile if new, returns custom JWT.
 
   async function verifyPhoneOtp(phone, otp) {
@@ -160,12 +162,14 @@ export function AuthProvider({ children }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone }),
     })
-    const data = await res.json().catch(() => null)
+    const data = await res.json().catch(() => ({}))
     if (!res.ok) throw new Error(data?.detail || 'Failed to send OTP')
     return data
   }
 
-  // ─── Doctor OTP — verify (via Medivora backend) ──────────────────────────
+  // ─── Doctor OTP — verify (backend custom JWT) ───────────────────────────
+  // Uses the same /auth/verify-otp endpoint as patients.
+  // Rejects if the verified account is not a doctor.
 
   async function verifyDoctorOtp(phone, otp) {
     const res = await fetch(`${API_BASE}/auth/verify-otp`, {
@@ -173,7 +177,7 @@ export function AuthProvider({ children }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone, otp }),
     })
-    const data = await res.json().catch(() => null)
+    const data = await res.json().catch(() => ({}))
     if (!res.ok) throw new Error(data?.detail || 'Invalid or expired OTP')
 
     if (data.user_type !== 'doctor') {
@@ -237,12 +241,12 @@ export function AuthProvider({ children }) {
     sessionStorage.removeItem('medivora_chat_session')
     clearPreLoginChat()
     setPendingChatRestore(null)
-    // Clear doctor JWT if present
+    // Clear doctor JWT
     localStorage.removeItem(DOCTOR_TOKEN_KEY)
     localStorage.removeItem(DOCTOR_USER_KEY)
     setDoctorToken(null)
     setDoctorUser(null)
-    // Clear patient JWT if present
+    // Clear patient JWT
     localStorage.removeItem(PATIENT_TOKEN_KEY)
     localStorage.removeItem(PATIENT_USER_KEY)
     setPatientToken(null)
@@ -255,7 +259,7 @@ export function AuthProvider({ children }) {
     clearPreLoginChat()
   }
 
-  // ─── Get auth token (works for both Supabase + doctor JWT) ───────────────
+  // ─── Get auth token (doctor JWT → patient JWT → Supabase session) ────────
 
   function getToken() {
     if (doctorToken)  return doctorToken

@@ -216,10 +216,6 @@ export default function LoginPage() {
             </form>
           )}
 
-          {/* <p style={{ textAlign: 'center', fontSize: 13, color: '#666666', marginTop: 24 }}>
-            Don&apos;t have an account?{' '}
-            <Link to="/signup" style={{ color: '#00AFEF', fontWeight: 600 }}>Sign up free</Link>
-          </p> */}
           <p style={{ textAlign: 'center', fontSize: 13, color: '#666666', marginTop: 10 }}>
             Are you a doctor?{' '}
             <Link to="/doctor/login" style={{ color: '#1930AA', fontWeight: 600 }}>Doctor login →</Link>
