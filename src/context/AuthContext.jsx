@@ -112,7 +112,7 @@ export function AuthProvider({ children }) {
     return data
   }
 
-  // ─── Phone OTP — send (Supabase native phone auth) ───────────────────────
+  // ─── Phone OTP — send (MSG91 via backend) ───────────────────────────────
   // phone must be in E.164 format, e.g. "+919876543210"
 
   // ─── Phone OTP — send (proxied via backend to avoid browser CORS on Supabase) ──
@@ -127,33 +127,34 @@ export function AuthProvider({ children }) {
     if (!res.ok) throw new Error(data?.detail || 'Failed to send OTP')
   }
 
-  // ─── Phone OTP — verify (proxied via backend; sets Supabase session client-side) ──
+  // ─── Phone OTP — verify (MSG91 via backend) ─────────────────────────────
+  // Backend validates OTP, creates patient profile if new, returns custom JWT.
 
-  async function verifyPhoneOtp(phone, token) {
+  async function verifyPhoneOtp(phone, otp) {
     const res = await fetch(`${API_BASE}/auth/verify-patient-otp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, otp: token }),
+      body: JSON.stringify({ phone, otp }),
     })
     const data = await res.json().catch(() => ({}))
     if (!res.ok) throw new Error(data?.detail || 'Invalid or expired OTP')
-
-    // Establish Supabase session client-side from returned tokens
-    const { error: sessErr } = await supabase.auth.setSession({
-      access_token: data.access_token,
-      refresh_token: data.refresh_token,
-    })
-    if (sessErr) throw new Error(sessErr.message || 'Failed to establish session')
-
-    // Clear any stale patient JWT from the old MSG91 flow
-    localStorage.removeItem(PATIENT_TOKEN_KEY)
-    localStorage.removeItem(PATIENT_USER_KEY)
-    setPatientToken(null)
-    setPatientUser(null)
+    const patientInfo = {
+      id:        data.user_id,
+      full_name: data.full_name || '',
+      phone,
+      role:      'patient',
+      is_new_user: data.is_new_user,
+    }
+    localStorage.setItem(PATIENT_TOKEN_KEY, data.token)
+    localStorage.setItem(PATIENT_USER_KEY,  JSON.stringify(patientInfo))
+    setPatientToken(data.token)
+    setPatientUser(patientInfo)
+    const pending = loadPreLoginChat()
+    if (pending) setPendingChatRestore(pending)
     return data
   }
 
-  // ─── Doctor OTP — send (backend → MSG91) ────────────────────────────────
+  // ─── Doctor OTP — send (via Medivora backend → MSG91) ───────────────────
 
   async function sendDoctorOtp(phone) {
     const res = await fetch(`${API_BASE}/auth/send-otp`, {
@@ -166,7 +167,7 @@ export function AuthProvider({ children }) {
     return data
   }
 
-  // ─── Doctor OTP — verify (backend custom JWT) ────────────────────────────
+  // ─── Doctor OTP — verify (backend custom JWT) ───────────────────────────
   // Uses the same /auth/verify-otp endpoint as patients.
   // Rejects if the verified account is not a doctor.
 
@@ -180,7 +181,7 @@ export function AuthProvider({ children }) {
     if (!res.ok) throw new Error(data?.detail || 'Invalid or expired OTP')
 
     if (data.user_type !== 'doctor') {
-      throw new Error('This phone number is not registered as a doctor account.')
+      throw new Error('No doctor account found for this phone number. Please contact admin.')
     }
 
     const token = data.token
