@@ -1,18 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Search, Pill, Download, RefreshCw, FlaskConical, CheckCircle } from 'lucide-react'
-import { supabase } from './supabase'
 import { useBreakpoint } from '../hooks/useBreakpoint'
 import { formatPrescriptionStatus } from '../utils/labels'
+import { getAuthToken as getToken } from '../utils/getToken'
 
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
 const STATUS_TABS = ['All', 'Approved', 'Pending', 'Expired']
-
-async function getToken() {
-  try {
-    const { data: { session } } = await supabase.auth.getSession()
-    return session?.access_token || null
-  } catch { return null }
-}
 
 async function apiFetchPrescriptions() {
   const token = await getToken()

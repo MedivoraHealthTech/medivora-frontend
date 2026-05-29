@@ -1,21 +1,9 @@
 // Chat API helpers — connects to the Medivora backend chat agent (api.py)
 // The chat endpoint uses multipart form data (not JSON).
 
-import { supabase } from '../pages/supabase'
+import { getAuthToken as getToken } from '../utils/getToken'
 
 const CHAT_API_BASE = import.meta.env.VITE_CHAT_API_URL || import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
-
-/**
- * Get the Supabase access token from the current session (if logged in).
- */
-async function getToken() {
-  try {
-    const { data: { session } } = await supabase.auth.getSession()
-    return session?.access_token || null
-  } catch {
-    return null
-  }
-}
 
 // Timeout for AI responses — the multi-agent pipeline can take 60-90 s on complex queries.
 // Give it 120 s before surfacing a friendly timeout error to the user.

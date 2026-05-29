@@ -1,17 +1,10 @@
 import { useState, useEffect } from 'react'
 import { X, Heart, User, Phone, Stethoscope, Leaf } from 'lucide-react'
-import { supabase } from '../pages/supabase'
+import { getAuthUser } from '../utils/getToken'
 
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
-
-async function getAuthUser() {
-  try {
-    const { data: { session } } = await supabase.auth.getSession()
-    return session ? { token: session.access_token, userId: session.user.id } : null
-  } catch { return null }
-}
 
 function SectionHeader({ icon: Icon, label }) {
   return (
