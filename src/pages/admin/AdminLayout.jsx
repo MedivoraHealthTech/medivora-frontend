@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Stethoscope, FlaskConical,
-  ShoppingBag, LogOut, Shield, Menu, X, ClipboardList,
+  ShoppingBag, LogOut, Shield, Menu, X, ClipboardList, ListPlus,
 } from 'lucide-react'
 import Logo from '../../components/Logo'
 
@@ -11,6 +11,7 @@ const NAV = [
   { path: '/admin/patients',   label: 'Patients',    icon: Users },
   { path: '/admin/doctors',    label: 'Doctors',     icon: Stethoscope },
   { path: '/admin/requests',   label: 'Requests',    icon: ClipboardList },
+  { path: '/admin/waitlist',   label: 'Waitlist',    icon: ListPlus },
   { path: '/admin/labs',       label: 'Labs',        icon: FlaskConical,  soon: true },
   { path: '/admin/pharmacies', label: 'Pharmacies',  icon: ShoppingBag,   soon: true },
 ]
