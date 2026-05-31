@@ -3,10 +3,12 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Logo from './Logo'
 import { useBreakpoint } from '../hooks/useBreakpoint'
+import WaitlistModal from './WaitlistModal'
 
 export default function Navbar() {
-  const [scrolled, setScrolled] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [scrolled, setScrolled]           = useState(false)
+  const [menuOpen, setMenuOpen]           = useState(false)
+  const [showWaitlist, setShowWaitlist]   = useState(false)
   const { isAuthenticated, user, logout, displayName } = useAuth()
   const navigate = useNavigate()
   const { isMobile } = useBreakpoint()
@@ -106,6 +108,18 @@ export default function Navbar() {
               </>
             ) : (
               <>
+                <button
+                  onClick={() => setShowWaitlist(true)}
+                  style={{
+                    fontSize: 13, fontWeight: 600, color: '#1930AA', background: 'none',
+                    border: '1.5px solid rgba(25,48,170,0.25)', borderRadius: 50,
+                    padding: '7px 16px', cursor: 'pointer', transition: 'border-color 0.2s',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = '#1930AA'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(25,48,170,0.25)'}
+                >
+                  Join Waitlist
+                </button>
                 <Link to="/login" style={{
                   fontSize: 14, fontWeight: 500, color: '#333333', textDecoration: 'none',
                   transition: 'color 0.2s',
@@ -192,6 +206,16 @@ export default function Navbar() {
               </>
             ) : (
               <>
+                <button
+                  onClick={() => { setShowWaitlist(true); setMenuOpen(false) }}
+                  style={{
+                    padding: '12px 20px', borderRadius: 50, fontSize: 14, fontWeight: 600,
+                    border: '1.5px solid rgba(25,48,170,0.3)', background: 'transparent',
+                    color: '#1930AA', cursor: 'pointer', textAlign: 'center',
+                  }}
+                >
+                  Join Waitlist
+                </button>
                 <Link to="/login" onClick={() => setMenuOpen(false)} style={{
                   padding: '12px 20px', borderRadius: 50, fontSize: 14, fontWeight: 600,
                   border: '1px solid rgba(0,0,0,0.12)', color: '#333333',
@@ -211,6 +235,8 @@ export default function Navbar() {
           </div>
         </div>
       )}
+
+      {showWaitlist && <WaitlistModal onClose={() => setShowWaitlist(false)} />}
     </nav>
   )
 }
