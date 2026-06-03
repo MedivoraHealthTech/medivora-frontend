@@ -131,11 +131,24 @@ export function AuthProvider({ children }) {
   // Backend validates OTP, creates patient profile if new, returns custom JWT.
 
   async function verifyPhoneOtp(phone, otp) {
-    const res = await fetch(`${API_BASE}/auth/verify-patient-otp`, {
+    // Try patient-otp first; if backend returns 404 (doctor-only profile),
+    // fall back to the dual-otp endpoint which handles both roles.
+    let res = await fetch(`${API_BASE}/auth/verify-patient-otp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone, otp }),
     })
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}))
+      // 400 = wrong OTP — surface immediately, don't retry
+      if (res.status === 400) throw new Error(errData?.detail || 'Invalid or expired OTP')
+      // Any other failure (e.g. doctor profile) — try the dual endpoint
+      res = await fetch(`${API_BASE}/auth/verify-dual-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, otp }),
+      })
+    }
     const data = await res.json().catch(() => ({}))
     if (!res.ok) throw new Error(data?.detail || 'Invalid or expired OTP')
     const patientInfo = {
