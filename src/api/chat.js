@@ -1,21 +1,9 @@
 // Chat API helpers — connects to the Medivora backend chat agent (api.py)
 // The chat endpoint uses multipart form data (not JSON).
 
-import { supabase } from '../pages/supabase'
+import { getAuthToken as getToken } from '../utils/getToken'
 
 const CHAT_API_BASE = import.meta.env.VITE_CHAT_API_URL || import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
-
-/**
- * Get the Supabase access token from the current session (if logged in).
- */
-async function getToken() {
-  try {
-    const { data: { session } } = await supabase.auth.getSession()
-    return session?.access_token || null
-  } catch {
-    return null
-  }
-}
 
 // Timeout for AI responses — the multi-agent pipeline can take 60-90 s on complex queries.
 // Give it 120 s before surfacing a friendly timeout error to the user.
@@ -145,6 +133,135 @@ export function subscribeToSession(sessionId, onNewMessage) {
  */
 export function unsubscribeFromSession(channel) {
   // no-op
+}
+
+/**
+ * Upload an image to the /chat/upload-image endpoint.
+ * Returns structured vision analysis from Gemini.
+ *
+ * @param {File} imageFile - The image file to upload
+ * @param {string|null} sessionId - Existing session ID (or null to start a new one)
+ * @returns {Promise<{
+ *   image_type: string,
+ *   description: string,
+ *   medical_context: string,
+ *   suggested_questions: string[],
+ *   urgency_flag: string,
+ *   session_id: string
+ * }>}
+ */
+export async function uploadChatImage(imageFile, sessionId = null) {
+  const formData = new FormData()
+  formData.append('image', imageFile)
+  if (sessionId) {
+    formData.append('session_id', sessionId)
+  }
+
+  const headers = {}
+  const token = await getToken()
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 60_000)
+
+  let res
+  try {
+    res = await fetch(`${CHAT_API_BASE}/chat/upload-image`, {
+      method: 'POST',
+      headers,
+      body: formData,
+      signal: controller.signal,
+    })
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('Image analysis timed out. Please try again.')
+    }
+    throw err
+  } finally {
+    clearTimeout(timeoutId)
+  }
+
+  const data = await res.json().catch(() => null)
+
+  if (!res.ok) {
+    const detail = data?.detail || `Image upload failed (${res.status})`
+    throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail))
+  }
+
+  return data
+}
+
+/**
+ * Send audio to the /chat/voice endpoint (Whisper STT → Gemini → OpenAI TTS).
+ *
+ * @param {Blob} audioBlob   - recorded audio blob (webm/mp4)
+ * @param {string|null} sessionId - existing session ID, or null for a new session
+ * @returns {Promise<{
+ *   audioUrl: string,          // object URL to play the MP3 response
+ *   transcript: string,        // user's transcribed speech
+ *   aiText: string,            // AI text response
+ *   sessionId: string,         // session ID used / created
+ * }>}
+ */
+export async function sendVoiceMessage(audioBlob, sessionId = null) {
+  const formData = new FormData()
+  formData.append('audio', audioBlob, audioBlob.type?.includes('mp4') ? 'audio.mp4' : 'audio.webm')
+  if (sessionId) {
+    formData.append('session_id', sessionId)
+  }
+
+  const headers = {}
+  const token = await getToken()
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 120_000)
+
+  let res
+  try {
+    res = await fetch(`${CHAT_API_BASE}/chat/voice`, {
+      method: 'POST',
+      headers,
+      body: formData,
+      signal: controller.signal,
+    })
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('Voice response timed out. Please try again.')
+    }
+    throw err
+  } finally {
+    clearTimeout(timeoutId)
+  }
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => null)
+    const detail = data?.detail || `Voice request failed (${res.status})`
+    throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail))
+  }
+
+  const audioArrayBuffer = await res.arrayBuffer()
+  const audioBlob2 = new Blob([audioArrayBuffer], { type: 'audio/mpeg' })
+  const audioUrl = URL.createObjectURL(audioBlob2)
+
+  const _decodeHeader = (v) => { try { return decodeURIComponent(v || '') } catch { return v || '' } }
+  const _parseTriage = (v) => {
+    try { return v ? JSON.parse(decodeURIComponent(v)) : null } catch { return null }
+  }
+  return {
+    audioUrl,
+    transcript:        _decodeHeader(res.headers.get('X-Transcript')),
+    aiText:            _decodeHeader(res.headers.get('X-AI-Text')),
+    sessionId:         res.headers.get('X-Session-Id') || sessionId || '',
+    isMedicalReport:   res.headers.get('X-Is-Medical-Report') === 'true',
+    isBookAppointment: res.headers.get('X-Is-Book-Appointment') === 'true',
+    triage:            _parseTriage(res.headers.get('X-Triage')),
+    specialty:         res.headers.get('X-Specialty') || null,
+  }
 }
 
 /**

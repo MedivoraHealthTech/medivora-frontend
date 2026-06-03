@@ -10,8 +10,9 @@ import {
   FlaskConical, ShoppingBag, ShoppingCart,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { supabase } from './supabase'
 import Logo from '../components/Logo'
+import { formatSpecialty } from '../utils/labels'
+import { getAuthToken } from '../utils/getToken'
 
 /* ─── Nav Items ─── */
 const navItems = [
@@ -75,27 +76,237 @@ const notifIcon = (type) => {
   return <Info size={14} color='var(--cyan)' />
 }
 
-/* ─── Right pane (context / recommendations) ─── */
-const articles = [
-  { title: 'Understanding Chronic Headaches', source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/headache.html' },
-  { title: 'When to See a Doctor for Pain', source: 'WHO', tag: 'Guide', url: 'https://www.who.int/news-room/fact-sheets/detail/musculoskeletal-conditions' },
-  { title: 'Heart Disease Prevention Tips', source: 'Mayo Clinic', tag: 'Article', url: 'https://www.mayoclinic.org/diseases-conditions/heart-disease/in-depth/heart-disease-prevention/art-20046502' },
-  { title: 'Mental Health: Anxiety & Stress', source: 'NHS UK', tag: 'Guide', url: 'https://www.nhs.uk/mental-health/feelings-symptoms-behaviours/feelings-and-symptoms/anxiety-fear-panic/' },
-]
+/* ─── Specialty-aware right-pane content ─── */
+const SPECIALTY_CONTENT = {
+  default: {
+    articles: [
+      { title: 'Understanding Chronic Headaches', source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/headache.html' },
+      { title: 'When to See a Doctor for Pain', source: 'WHO', tag: 'Guide', url: 'https://www.who.int/news-room/fact-sheets/detail/musculoskeletal-conditions' },
+      { title: 'Heart Disease Prevention Tips', source: 'Mayo Clinic', tag: 'Article', url: 'https://www.mayoclinic.org/diseases-conditions/heart-disease/in-depth/heart-disease-prevention/art-20046502' },
+      { title: 'Mental Health: Anxiety & Stress', source: 'NHS UK', tag: 'Guide', url: 'https://www.nhs.uk/mental-health/feelings-symptoms-behaviours/feelings-and-symptoms/anxiety-fear-panic/' },
+    ],
+    videos: [
+      { title: 'Migraine Relief Exercises', channel: 'Bob & Brad', duration: '10:36', url: 'https://www.youtube.com/watch?v=mortZm5BeUs' },
+      { title: 'Stress Management 101', channel: 'Psych2Go', duration: '12:05', url: 'https://www.youtube.com/watch?v=hnpQrMqDoqE' },
+      { title: 'How to Lower Blood Pressure', channel: 'Cleveland Clinic', duration: '3:18', url: 'https://www.youtube.com/watch?v=7i29Dx77JD8' },
+      { title: 'Yoga for Beginners – Full Body', channel: 'Yoga With Adriene', duration: '31:00', url: 'https://www.youtube.com/watch?v=v7AYKMP6rOE' },
+    ],
+  },
+  cardiology: {
+    articles: [
+      { title: 'Heart Diseases Overview', source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/heartdiseases.html' },
+      { title: 'High Blood Pressure', source: 'NHS UK', tag: 'Guide', url: 'https://www.nhs.uk/conditions/high-blood-pressure-hypertension/' },
+      { title: 'Heart Attack Symptoms & Causes', source: 'Mayo Clinic', tag: 'Article', url: 'https://www.mayoclinic.org/diseases-conditions/heart-attack/symptoms-causes/syc-20373106' },
+      { title: 'Cardiovascular Disease', source: 'WHO', tag: 'Guide', url: 'https://www.who.int/news-room/fact-sheets/detail/cardiovascular-diseases-(cvds)' },
+    ],
+    videos: [
+      { title: 'How to Lower Blood Pressure', channel: 'Cleveland Clinic', duration: '3:18', url: 'https://www.youtube.com/watch?v=7i29Dx77JD8' },
+      { title: 'Heart Disease Explained', channel: 'YouTube Health', duration: '8:00', url: 'https://www.youtube.com/results?search_query=heart+disease+explained+medical' },
+      { title: 'Warning Signs of a Heart Attack', channel: 'YouTube Health', duration: '5:00', url: 'https://www.youtube.com/results?search_query=heart+attack+warning+signs+doctor' },
+      { title: 'Exercises for Heart Health', channel: 'YouTube Health', duration: '10:00', url: 'https://www.youtube.com/results?search_query=exercises+for+heart+health+cardiology' },
+    ],
+  },
+  gynecology: {
+    articles: [
+      { title: "Women's Health", source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/womenshealth.html' },
+      { title: 'Period Problems', source: 'NHS UK', tag: 'Guide', url: 'https://www.nhs.uk/conditions/periods/irregular-periods/' },
+      { title: 'Pregnancy Overview', source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/pregnancy.html' },
+      { title: 'PCOS: What You Should Know', source: 'NHS UK', tag: 'Guide', url: 'https://www.nhs.uk/conditions/polycystic-ovary-syndrome-pcos/' },
+    ],
+    videos: [
+      { title: "Women's Health Q&A", channel: 'YouTube Health', duration: '7:00', url: 'https://www.youtube.com/results?search_query=womens+health+gynecology+explained' },
+      { title: 'PCOS Explained by Doctors', channel: 'YouTube Health', duration: '6:00', url: 'https://www.youtube.com/results?search_query=PCOS+explained+doctor' },
+      { title: 'Menstrual Health Guide', channel: 'YouTube Health', duration: '5:30', url: 'https://www.youtube.com/results?search_query=menstrual+health+guide+medical' },
+      { title: 'Pregnancy Health Tips', channel: 'YouTube Health', duration: '8:00', url: 'https://www.youtube.com/results?search_query=pregnancy+health+tips+doctor' },
+    ],
+  },
+  psychiatry: {
+    articles: [
+      { title: 'Anxiety Disorders', source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/anxiety.html' },
+      { title: 'Depression Overview', source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/depression.html' },
+      { title: 'Mental Health Support', source: 'NHS UK', tag: 'Guide', url: 'https://www.nhs.uk/mental-health/' },
+      { title: 'Stress & Your Health', source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/stress.html' },
+    ],
+    videos: [
+      { title: 'Stress Management 101', channel: 'Psych2Go', duration: '12:05', url: 'https://www.youtube.com/watch?v=hnpQrMqDoqE' },
+      { title: 'Understanding Anxiety', channel: 'YouTube Health', duration: '7:00', url: 'https://www.youtube.com/results?search_query=understanding+anxiety+disorder+explained' },
+      { title: 'How to Manage Depression', channel: 'YouTube Health', duration: '9:00', url: 'https://www.youtube.com/results?search_query=managing+depression+mental+health+tips' },
+      { title: 'Mindfulness for Mental Health', channel: 'YouTube Health', duration: '10:00', url: 'https://www.youtube.com/results?search_query=mindfulness+meditation+mental+health' },
+    ],
+  },
+  dermatology: {
+    articles: [
+      { title: 'Skin Conditions Overview', source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/skinconditions.html' },
+      { title: 'Acne: Causes & Treatment', source: 'NHS UK', tag: 'Guide', url: 'https://www.nhs.uk/conditions/acne/' },
+      { title: 'Eczema (Atopic Dermatitis)', source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/eczema.html' },
+      { title: 'Skin Infections', source: 'MedlinePlus', tag: 'Guide', url: 'https://medlineplus.gov/skininfections.html' },
+    ],
+    videos: [
+      { title: 'Acne Treatment by Dermatologist', channel: 'YouTube Health', duration: '8:00', url: 'https://www.youtube.com/results?search_query=acne+treatment+dermatologist+tips' },
+      { title: 'Eczema Explained', channel: 'YouTube Health', duration: '5:00', url: 'https://www.youtube.com/results?search_query=eczema+treatment+explained+doctor' },
+      { title: 'Skincare Routine for Healthy Skin', channel: 'YouTube Health', duration: '7:00', url: 'https://www.youtube.com/results?search_query=skincare+routine+dermatologist+recommended' },
+      { title: 'Common Skin Rashes Guide', channel: 'YouTube Health', duration: '6:00', url: 'https://www.youtube.com/results?search_query=skin+rash+causes+treatment+doctor' },
+    ],
+  },
+  orthopedics: {
+    articles: [
+      { title: 'Back Pain', source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/backpain.html' },
+      { title: 'Joint Disorders', source: 'MedlinePlus', tag: 'Guide', url: 'https://medlineplus.gov/jointdisorders.html' },
+      { title: 'Back Pain: Treatment Options', source: 'NHS UK', tag: 'Guide', url: 'https://www.nhs.uk/conditions/back-pain/' },
+      { title: 'Bone Diseases', source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/bonediseases.html' },
+    ],
+    videos: [
+      { title: 'Back Pain Relief Exercises', channel: 'Bob & Brad', duration: '10:36', url: 'https://www.youtube.com/watch?v=mortZm5BeUs' },
+      { title: 'Knee Pain Exercises', channel: 'YouTube Health', duration: '8:00', url: 'https://www.youtube.com/results?search_query=knee+pain+exercises+physiotherapy' },
+      { title: 'Posture Correction Guide', channel: 'YouTube Health', duration: '7:00', url: 'https://www.youtube.com/results?search_query=posture+correction+back+pain+relief' },
+      { title: 'Joint Pain Management', channel: 'YouTube Health', duration: '9:00', url: 'https://www.youtube.com/results?search_query=joint+pain+management+orthopedic' },
+    ],
+  },
+  neurology: {
+    articles: [
+      { title: 'Headache Overview', source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/headache.html' },
+      { title: 'Migraine: Symptoms & Treatment', source: 'NHS UK', tag: 'Guide', url: 'https://www.nhs.uk/conditions/migraine/' },
+      { title: 'Stroke Overview', source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/stroke.html' },
+      { title: 'Neurological Diseases', source: 'MedlinePlus', tag: 'Guide', url: 'https://medlineplus.gov/neurologicdiseases.html' },
+    ],
+    videos: [
+      { title: 'Migraine Relief Exercises', channel: 'Bob & Brad', duration: '10:36', url: 'https://www.youtube.com/watch?v=mortZm5BeUs' },
+      { title: 'Headache Types Explained', channel: 'YouTube Health', duration: '6:00', url: 'https://www.youtube.com/results?search_query=types+of+headaches+explained+neurologist' },
+      { title: 'Stroke Warning Signs (FAST)', channel: 'YouTube Health', duration: '4:00', url: 'https://www.youtube.com/results?search_query=stroke+warning+signs+FAST+method' },
+      { title: 'Epilepsy & Seizure First Aid', channel: 'YouTube Health', duration: '7:00', url: 'https://www.youtube.com/results?search_query=epilepsy+seizure+first+aid+management' },
+    ],
+  },
+  endocrinology: {
+    articles: [
+      { title: 'Diabetes Mellitus', source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/diabetes.html' },
+      { title: 'Thyroid Diseases', source: 'MedlinePlus', tag: 'Guide', url: 'https://medlineplus.gov/thyroiddiseases.html' },
+      { title: 'Type 2 Diabetes', source: 'NHS UK', tag: 'Guide', url: 'https://www.nhs.uk/conditions/type-2-diabetes/' },
+      { title: 'Hormonal Disorders', source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/hormones.html' },
+    ],
+    videos: [
+      { title: 'Diabetes Management Guide', channel: 'YouTube Health', duration: '9:00', url: 'https://www.youtube.com/results?search_query=diabetes+management+blood+sugar+tips' },
+      { title: 'Thyroid Disease Explained', channel: 'YouTube Health', duration: '7:00', url: 'https://www.youtube.com/results?search_query=thyroid+disease+hypothyroid+hyperthyroid' },
+      { title: 'Insulin Resistance Explained', channel: 'YouTube Health', duration: '8:00', url: 'https://www.youtube.com/results?search_query=insulin+resistance+explained+doctor' },
+      { title: 'Diet for Diabetics', channel: 'YouTube Health', duration: '10:00', url: 'https://www.youtube.com/results?search_query=best+diet+for+diabetes+type+2' },
+    ],
+  },
+  pulmonology: {
+    articles: [
+      { title: 'Asthma', source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/asthma.html' },
+      { title: 'COPD Overview', source: 'MedlinePlus', tag: 'Guide', url: 'https://medlineplus.gov/copd.html' },
+      { title: 'Breathing Problems', source: 'NHS UK', tag: 'Guide', url: 'https://www.nhs.uk/conditions/shortness-of-breath/' },
+      { title: 'Lung Diseases', source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/lungdiseases.html' },
+    ],
+    videos: [
+      { title: 'Asthma Management Tips', channel: 'YouTube Health', duration: '6:00', url: 'https://www.youtube.com/results?search_query=asthma+management+tips+inhaler+use' },
+      { title: 'Breathing Exercises for Lungs', channel: 'YouTube Health', duration: '8:00', url: 'https://www.youtube.com/results?search_query=breathing+exercises+lung+health' },
+      { title: 'COPD Living Guide', channel: 'YouTube Health', duration: '7:00', url: 'https://www.youtube.com/results?search_query=COPD+living+management+guide' },
+      { title: 'Chest Infection Treatment', channel: 'YouTube Health', duration: '5:00', url: 'https://www.youtube.com/results?search_query=chest+infection+treatment+recovery' },
+    ],
+  },
+  pediatrics: {
+    articles: [
+      { title: "Children's Health", source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/childrenshealth.html' },
+      { title: 'Child Development', source: 'MedlinePlus', tag: 'Guide', url: 'https://medlineplus.gov/childdevelopment.html' },
+      { title: 'Fever in Children', source: 'NHS UK', tag: 'Guide', url: 'https://www.nhs.uk/conditions/fever-in-children/' },
+      { title: 'Childhood Vaccines', source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/childrensvaccines.html' },
+    ],
+    videos: [
+      { title: 'Fever in Children: When to Worry', channel: 'YouTube Health', duration: '5:00', url: 'https://www.youtube.com/results?search_query=fever+in+children+when+to+see+doctor' },
+      { title: 'Child Nutrition Guide', channel: 'YouTube Health', duration: '8:00', url: 'https://www.youtube.com/results?search_query=child+nutrition+healthy+diet+kids' },
+      { title: 'Childhood Vaccination Explained', channel: 'YouTube Health', duration: '6:00', url: 'https://www.youtube.com/results?search_query=childhood+vaccination+importance+schedule' },
+      { title: "Baby's First Year Health Tips", channel: 'YouTube Health', duration: '10:00', url: 'https://www.youtube.com/results?search_query=baby+first+year+health+tips+pediatrician' },
+    ],
+  },
+  ent: {
+    articles: [
+      { title: 'Ear Infections', source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/earinfections.html' },
+      { title: 'Sinusitis', source: 'NHS UK', tag: 'Guide', url: 'https://www.nhs.uk/conditions/sinusitis-sinus-infection/' },
+      { title: 'Tonsillitis', source: 'NHS UK', tag: 'Guide', url: 'https://www.nhs.uk/conditions/tonsillitis/' },
+      { title: 'Hearing Loss', source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/hearingloss.html' },
+    ],
+    videos: [
+      { title: 'Ear Infection Treatment', channel: 'YouTube Health', duration: '5:00', url: 'https://www.youtube.com/results?search_query=ear+infection+treatment+home+remedies' },
+      { title: 'Sinus Relief Methods', channel: 'YouTube Health', duration: '6:00', url: 'https://www.youtube.com/results?search_query=sinus+congestion+relief+methods' },
+      { title: 'Sore Throat Remedies', channel: 'YouTube Health', duration: '4:00', url: 'https://www.youtube.com/results?search_query=sore+throat+remedies+ENT+doctor' },
+      { title: 'Nose Bleeding First Aid', channel: 'YouTube Health', duration: '3:00', url: 'https://www.youtube.com/results?search_query=nose+bleed+how+to+stop+first+aid' },
+    ],
+  },
+  gastroenterology: {
+    articles: [
+      { title: 'Digestive Diseases Overview', source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/digestivediseases.html' },
+      { title: 'Acid Reflux & GERD', source: 'MedlinePlus', tag: 'Guide', url: 'https://medlineplus.gov/gerd.html' },
+      { title: 'Irritable Bowel Syndrome (IBS)', source: 'NHS UK', tag: 'Guide', url: 'https://www.nhs.uk/conditions/irritable-bowel-syndrome-ibs/' },
+      { title: 'Stomach Ulcers', source: 'NHS UK', tag: 'Article', url: 'https://www.nhs.uk/conditions/stomach-ulcer/' },
+    ],
+    videos: [
+      { title: 'Acid Reflux & GERD Explained', channel: 'YouTube Health', duration: '7:00', url: 'https://www.youtube.com/results?search_query=acid+reflux+GERD+explained+gastroenterologist' },
+      { title: 'IBS Management Tips', channel: 'YouTube Health', duration: '6:00', url: 'https://www.youtube.com/results?search_query=IBS+irritable+bowel+syndrome+management' },
+      { title: 'Foods That Help Digestion', channel: 'YouTube Health', duration: '8:00', url: 'https://www.youtube.com/results?search_query=foods+that+help+digestion+gut+health' },
+      { title: 'Stomach Pain Causes & Relief', channel: 'YouTube Health', duration: '5:00', url: 'https://www.youtube.com/results?search_query=stomach+pain+causes+relief+doctor' },
+    ],
+  },
+  sexology: {
+    articles: [
+      { title: 'Sexual Health Overview', source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/sexualhealth.html' },
+      { title: 'Sexual Health Services', source: 'NHS UK', tag: 'Guide', url: 'https://www.nhs.uk/live-well/sexual-health/' },
+      { title: 'Erectile Dysfunction', source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/erectiledysfunction.html' },
+      { title: 'STD Overview', source: 'MedlinePlus', tag: 'Guide', url: 'https://medlineplus.gov/sexuallytransmitteddiseases.html' },
+    ],
+    videos: [
+      { title: 'Sexual Health Education', channel: 'YouTube Health', duration: '7:00', url: 'https://www.youtube.com/results?search_query=sexual+health+education+medical' },
+      { title: 'Reproductive Health Guide', channel: 'YouTube Health', duration: '8:00', url: 'https://www.youtube.com/results?search_query=reproductive+health+guide+doctor' },
+      { title: 'STI Prevention & Testing', channel: 'YouTube Health', duration: '5:00', url: 'https://www.youtube.com/results?search_query=STI+prevention+testing+sexual+health' },
+      { title: 'Hormonal Health for Men', channel: 'YouTube Health', duration: '6:00', url: 'https://www.youtube.com/results?search_query=male+hormonal+health+testosterone+doctor' },
+    ],
+  },
+  general_physician: {
+    articles: [
+      { title: 'Annual Health Checkup Guide', source: 'MedlinePlus', tag: 'Guide', url: 'https://medlineplus.gov/healthcheckup.html' },
+      { title: 'Common Cold', source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/commoncold.html' },
+      { title: 'Fever Overview', source: 'NHS UK', tag: 'Guide', url: 'https://www.nhs.uk/conditions/fever/' },
+      { title: 'Preventive Health Care', source: 'MedlinePlus', tag: 'Article', url: 'https://medlineplus.gov/preventivecare.html' },
+    ],
+    videos: [
+      { title: 'When to See a Doctor', channel: 'YouTube Health', duration: '5:00', url: 'https://www.youtube.com/results?search_query=when+should+you+see+a+doctor+symptoms' },
+      { title: 'Managing Fever at Home', channel: 'YouTube Health', duration: '4:00', url: 'https://www.youtube.com/results?search_query=fever+management+home+remedies+doctor' },
+      { title: 'Cold & Flu Recovery Tips', channel: 'YouTube Health', duration: '6:00', url: 'https://www.youtube.com/results?search_query=cold+flu+recovery+tips+doctor' },
+      { title: 'Preventive Health Checkups', channel: 'YouTube Health', duration: '7:00', url: 'https://www.youtube.com/results?search_query=preventive+health+checkup+importance' },
+    ],
+  },
+}
 
-const videos = [
-  { title: 'Migraine Relief Exercises', channel: 'Bob & Brad', duration: '10:36', url: 'https://www.youtube.com/watch?v=mortZm5BeUs' },
-  { title: 'Stress Management 101', channel: 'Psych2Go', duration: '12:05', url: 'https://www.youtube.com/watch?v=hnpQrMqDoqE' },
-  { title: 'How to Lower Blood Pressure', channel: 'Cleveland Clinic', duration: '3:18', url: 'https://www.youtube.com/watch?v=7i29Dx77JD8' },
-  { title: 'Yoga for Beginners – Full Body', channel: 'Yoga With Adriene', duration: '31:00', url: 'https://www.youtube.com/watch?v=v7AYKMP6rOE' },
-]
-
-const tests = [
-  { name: 'Complete Blood Count', urgency: 'routine' },
-  { name: 'MRI Brain Scan', urgency: 'recommended' },
-]
+function resolveContentKey(specialty) {
+  if (!specialty) return 'default'
+  const s = specialty.toLowerCase().replace(/[\s-]/g, '_')
+  if (SPECIALTY_CONTENT[s]) return s
+  for (const key of Object.keys(SPECIALTY_CONTENT)) {
+    if (key === 'default') continue
+    // Guard: key must be > 3 chars to prevent 'ent' matching 'gastroenterology'
+    if (key.length > 3 && (s.includes(key) || key.includes(s))) return key
+  }
+  return 'default'
+}
 
 const RETURNING_KEY = 'medivora_returning_user'
+
+/* ─── Skeleton loader for right pane sections ─── */
+function RightPaneSkeleton({ n = 3, darkMode }) {
+  const bg = darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)'
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {Array.from({ length: n }).map((_, i) => (
+        <div key={i} style={{
+          borderRadius: 10, padding: '10px', border: `1px solid ${darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+          background: darkMode ? '#1e2530' : '#fff',
+        }}>
+          <div style={{ height: 10, borderRadius: 6, background: bg, marginBottom: 8, animation: 'rp-pulse 1.4s ease-in-out infinite', animationDelay: `${i * 0.15}s` }} />
+          <div style={{ height: 8, borderRadius: 6, background: bg, width: '60%', animation: 'rp-pulse 1.4s ease-in-out infinite', animationDelay: `${i * 0.15 + 0.1}s` }} />
+        </div>
+      ))}
+    </div>
+  )
+}
 
 /* ══════════════════════════════════════════════════════ */
 export default function AppLayout() {
@@ -108,28 +319,6 @@ export default function AppLayout() {
   /* ── Returning user detection ── */
   const [isReturningUser, setIsReturningUser] = useState(() => sessionStorage.getItem(RETURNING_KEY) === 'true')
 
-  useEffect(() => {
-    if (isReturningUser) return // already know — skip fetch
-    ;(async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        const token = session?.access_token
-        if (!token) return
-        const [cRes, pRes] = await Promise.all([
-          fetch(`${API_BASE}/consultation/my`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${API_BASE}/my/prescriptions`,{ headers: { Authorization: `Bearer ${token}` } }),
-        ])
-        const cData = cRes.ok ? await cRes.json() : {}
-        const pData = pRes.ok ? await pRes.json() : {}
-        const hasActivity = (cData.sessions?.length > 0) || (pData.prescriptions?.length > 0)
-        if (hasActivity) {
-          sessionStorage.setItem(RETURNING_KEY, 'true')
-          setIsReturningUser(true)
-        }
-      } catch { /* ignore */ }
-    })()
-  }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
-
   /* ── If a pre-login chat is pending restore, send the user to /chat ── */
   useEffect(() => {
     const hasPaymentError = new URLSearchParams(location.search).has('payment_error')
@@ -138,16 +327,6 @@ export default function AppLayout() {
     }
   }, [pendingChatRestore]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* ── Redirect returning users away from /chat to /dashboard (initial load only) ── */
-  /* Skip if there is a pre-login chat waiting to be restored — user must land on /chat */
-  const didInitialRedirect = useRef(false)
-  useEffect(() => {
-    if (didInitialRedirect.current) return
-    if (isReturningUser && location.pathname === '/chat' && !pendingChatRestore) {
-      didInitialRedirect.current = true
-      navigate('/dashboard', { replace: true })
-    }
-  }, [isReturningUser, pendingChatRestore]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── Dark mode ── */
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true')
@@ -163,14 +342,7 @@ export default function AppLayout() {
   const unreadCount = notifications.filter(n => !n.is_read).length
 
   // Always get a fresh token — avoids stale closure in setInterval
-  const getFreshToken = async () => {
-    // Doctor JWT from localStorage
-    const drToken = localStorage.getItem('medivora_doctor_token')
-    if (drToken) return drToken
-    // Supabase — getSession() always returns the current (auto-refreshed) token
-    const { data: { session } } = await supabase.auth.getSession()
-    return session?.access_token || null
-  }
+  const getFreshToken = getAuthToken
 
   const fetchNotifications = async () => {
     try {
@@ -187,11 +359,14 @@ export default function AppLayout() {
     }
   }
 
+  const notifStartedRef = useRef(false)
   useEffect(() => {
+    if (!user || notifStartedRef.current) return
+    notifStartedRef.current = true
     fetchNotifications()
     const interval = setInterval(fetchNotifications, 30000)
-    return () => clearInterval(interval)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    return () => { clearInterval(interval); notifStartedRef.current = false }
+  }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const markRead = async (id) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
@@ -219,43 +394,84 @@ export default function AppLayout() {
     } catch { /* ignore */ }
   }
 
-  /* ── Recent consultations ── */
+  /* ── Sidebar data: recent consultations + recommended doctors ── */
+  /* All sidebar data loaded in ONE effect to avoid duplicate API calls.     */
+  /* useRef gate ensures it only runs once even if `user` fires multiple     */
+  /* times (getSession + onAuthStateChange both update user state).          */
   const [recentConsults, setRecentConsults] = useState([])
-
-  useEffect(() => {
-    async function loadConsults() {
-      try {
-        const token = await getFreshToken()
-        if (!token) return
-        const res = await fetch(`${API_BASE}/consultation/my`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        if (!res.ok) return
-        const data = await res.json()
-        setRecentConsults((data.sessions || []).slice(0, 3))
-      } catch { /* ignore */ }
-    }
-    loadConsults()
-  }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  /* ── Recommended doctors ── */
   const [recommendedDoctors, setRecommendedDoctors] = useState([])
+  const sidebarFetchedRef = useRef(false)
+
+  // ── Dynamic right-pane content driven by chat specialty ────────────────
+  const [rightPaneLoading,  setRightPaneLoading]  = useState(false)
+  const [rightPaneSpecialty, setRightPaneSpecialty] = useState(() =>
+    sessionStorage.getItem('medivora_recommended_specialty') || null
+  )
+  const rightContent = SPECIALTY_CONTENT[resolveContentKey(rightPaneSpecialty)] || SPECIALTY_CONTENT.default
 
   useEffect(() => {
-    async function loadDoctors() {
+    // Reset gate when user logs out
+    if (!user) { sidebarFetchedRef.current = false; return }
+    if (sidebarFetchedRef.current) return
+    sidebarFetchedRef.current = true
+
+    ;(async () => {
       try {
         const token = await getFreshToken()
         if (!token) return
-        const res = await fetch(`${API_BASE}/doctors`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        if (!res.ok) return
-        const data = await res.json()
-        setRecommendedDoctors((data.doctors || []).slice(0, 3))
+        const headers = { Authorization: `Bearer ${token}` }
+        const [cRes, dRes] = await Promise.all([
+          fetch(`${API_BASE}/consultation/my`, { headers }),
+          fetch(`${API_BASE}/doctors`,          { headers }),
+        ])
+        if (cRes.ok) {
+          const cData = await cRes.json()
+          const sessions = cData.sessions || []
+          setRecentConsults(sessions.slice(0, 3))
+          if (!isReturningUser && sessions.length > 0) {
+            sessionStorage.setItem(RETURNING_KEY, 'true')
+            setIsReturningUser(true)
+          }
+        }
+        if (dRes.ok) {
+          const dData = await dRes.json()
+          setRecommendedDoctors((dData.doctors || []).slice(0, 3))
+        }
       } catch { /* ignore */ }
-    }
-    loadDoctors()
+    })()
   }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Listen for specialty changes dispatched by ChatPage ───────────────
+  useEffect(() => {
+    const handler = async (e) => {
+      const specialty = e.detail?.specialty
+      if (!specialty || specialty === rightPaneSpecialty) return
+
+      setRightPaneLoading(true)
+      setRightPaneSpecialty(specialty)
+
+      // Re-fetch doctors filtered by specialty
+      try {
+        const token   = await getFreshToken()
+        const headers = token ? { Authorization: `Bearer ${token}` } : {}
+        const res     = await fetch(
+          `${API_BASE}/doctors?specialty=${encodeURIComponent(specialty)}`, { headers }
+        )
+        if (res.ok) {
+          const data = await res.json()
+          if ((data.doctors || []).length > 0) {
+            setRecommendedDoctors((data.doctors || []).slice(0, 3))
+          }
+        }
+      } catch { /* keep existing list */ }
+
+      // Brief delay so the loader is visible even for fast updates
+      setTimeout(() => setRightPaneLoading(false), 600)
+    }
+
+    window.addEventListener('medivora:specialty-changed', handler)
+    return () => window.removeEventListener('medivora:specialty-changed', handler)
+  }, [rightPaneSpecialty]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const initials = displayName.charAt(0).toUpperCase()
 
@@ -508,28 +724,37 @@ export default function AppLayout() {
           </div>
           */}
 
-          {/* Recommended Doctors */}
+          {/* Recommended Doctors — updates when chat specialty changes */}
           <div>
-            <p style={sectionLabel('var(--cyan)')}><UserCheck size={11} />Recommended Doctors</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {recommendedDoctors.length === 0 ? (
-                <p style={{ fontSize: 11, color: 'var(--g500)', margin: 0 }}>No doctors available</p>
-              ) : recommendedDoctors.map((d, i) => (
-                <div key={d.id || i} style={{ ...rightPaneCard, cursor: 'pointer' }} onClick={() => navigate('/doctors')}
-                  onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(0,188,212,0.35)'}
-                  onMouseLeave={e => e.currentTarget.style.borderColor = darkMode ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.07)'}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
-                    <p style={{ fontSize: 11, color: 'var(--g300)', fontWeight: 700, margin: 0 }}>{[d.first_name, d.last_name].filter(Boolean).join(' ')}</p>
-                    {d.rating > 0 && <span style={{ fontSize: 10, color: '#E08000', fontWeight: 700 }}>★ {Number(d.rating).toFixed(1)}</span>}
+            <p style={sectionLabel('var(--cyan)')}>
+              <UserCheck size={11} />Recommended Doctors
+              {rightPaneSpecialty && !rightPaneLoading && (
+                <span style={{ marginLeft: 6, fontSize: 9, padding: '2px 6px', borderRadius: 4, background: 'rgba(0,188,212,0.12)', color: 'var(--cyan)', fontWeight: 700, textTransform: 'none', letterSpacing: 0, maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  {formatSpecialty(rightPaneSpecialty)}
+                </span>
+              )}
+            </p>
+            {rightPaneLoading ? <RightPaneSkeleton n={3} darkMode={darkMode} /> : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {recommendedDoctors.length === 0 ? (
+                  <p style={{ fontSize: 11, color: 'var(--g500)', margin: 0 }}>No doctors available</p>
+                ) : recommendedDoctors.map((d, i) => (
+                  <div key={d.id || i} style={{ ...rightPaneCard, cursor: 'pointer' }} onClick={() => navigate('/doctors', rightPaneSpecialty ? { state: { specialty: rightPaneSpecialty } } : undefined)}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(0,188,212,0.35)'}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = darkMode ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.07)'}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                      <p style={{ fontSize: 11, color: 'var(--g300)', fontWeight: 700, margin: 0 }}>{[d.first_name, d.last_name].filter(Boolean).join(' ')}</p>
+                      {d.rating > 0 && <span style={{ fontSize: 10, color: '#E08000', fontWeight: 700 }}>★ {Number(d.rating).toFixed(1)}</span>}
+                    </div>
+                    <p style={{ fontSize: 10, color: 'var(--cyan)', margin: 0, fontWeight: 600 }}>{formatSpecialty(d.specialization)}</p>
+                    {d.experience_years > 0 && (
+                      <p style={{ fontSize: 9, color: 'var(--g500)', margin: '3px 0 0' }}>{d.experience_years} yrs exp</p>
+                    )}
                   </div>
-                  <p style={{ fontSize: 10, color: 'var(--cyan)', margin: 0, fontWeight: 600 }}>{d.specialization}</p>
-                  {d.experience_years > 0 && (
-                    <p style={{ fontSize: 9, color: 'var(--g500)', margin: '3px 0 0' }}>{d.experience_years} yrs exp</p>
-                  )}
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Suggested Tests — commented out — not yet functional
@@ -560,46 +785,50 @@ export default function AppLayout() {
           </div>
           */}
 
-          {/* Health Articles */}
+          {/* Health Articles — dynamic per specialty */}
           <div>
             <p style={sectionLabel('var(--cyan)')}><FileText size={11} />Health Articles</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {articles.map((a, i) => (
-                <div key={i} style={{ ...rightPaneCard, cursor: 'pointer' }}
-                  onClick={() => window.open(a.url, '_blank', 'noopener,noreferrer')}
-                  onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(0,188,212,0.35)'}
-                  onMouseLeave={e => e.currentTarget.style.borderColor = darkMode ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.07)'}
-                >
-                  <p style={{ fontSize: 11, color: 'var(--g300)', fontWeight: 600, marginBottom: 5, lineHeight: 1.4 }}>{a.title}</p>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 9, color: 'var(--g500)' }}>{a.source}</span>
-                    <span style={{ fontSize: 9, padding: '2px 7px', borderRadius: 4, fontWeight: 700, background: 'rgba(0,188,212,0.12)', color: 'var(--cyan)' }}>{a.tag}</span>
+            {rightPaneLoading ? <RightPaneSkeleton n={4} darkMode={darkMode} /> : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {rightContent.articles.map((a, i) => (
+                  <div key={i} style={{ ...rightPaneCard, cursor: 'pointer' }}
+                    onClick={() => window.open(a.url, '_blank', 'noopener,noreferrer')}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(0,188,212,0.35)'}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = darkMode ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.07)'}
+                  >
+                    <p style={{ fontSize: 11, color: 'var(--g300)', fontWeight: 600, marginBottom: 5, lineHeight: 1.4 }}>{a.title}</p>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 9, color: 'var(--g500)' }}>{a.source}</span>
+                      <span style={{ fontSize: 9, padding: '2px 7px', borderRadius: 4, fontWeight: 700, background: 'rgba(0,188,212,0.12)', color: 'var(--cyan)' }}>{a.tag}</span>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Medical Videos */}
+          {/* Medical Videos — dynamic per specialty */}
           <div>
             <p style={sectionLabel('#7C3AED')}><Play size={11} />Medical Videos</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {videos.map((v, i) => (
-                <div key={i} style={{ ...rightPaneCard, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
-                  onClick={() => window.open(v.url, '_blank', 'noopener,noreferrer')}
-                  onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(124,58,237,0.35)'}
-                  onMouseLeave={e => e.currentTarget.style.borderColor = darkMode ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.07)'}
-                >
-                  <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg, rgba(124,58,237,0.15), rgba(124,58,237,0.25))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Play size={12} color='#7C3AED' fill='#7C3AED' />
+            {rightPaneLoading ? <RightPaneSkeleton n={4} darkMode={darkMode} /> : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {rightContent.videos.map((v, i) => (
+                  <div key={i} style={{ ...rightPaneCard, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
+                    onClick={() => window.open(v.url, '_blank', 'noopener,noreferrer')}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(124,58,237,0.35)'}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = darkMode ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.07)'}
+                  >
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg, rgba(124,58,237,0.15), rgba(124,58,237,0.25))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Play size={12} color='#7C3AED' fill='#7C3AED' />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: 11, color: 'var(--g300)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: 0 }}>{v.title}</p>
+                      <p style={{ fontSize: 9, color: 'var(--g500)', margin: '2px 0 0' }}>{v.channel} · {v.duration}</p>
+                    </div>
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 11, color: 'var(--g300)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: 0 }}>{v.title}</p>
-                    <p style={{ fontSize: 9, color: 'var(--g500)', margin: '2px 0 0' }}>{v.channel} · {v.duration}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
         </aside>
@@ -811,6 +1040,7 @@ export default function AppLayout() {
 
       <style>{`
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        @keyframes rp-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
         @keyframes ctbSlideUp { from { opacity: 0; transform: translateY(20px) scale(0.92); } to { opacity: 1; transform: translateY(0) scale(1); } }
         @media (max-width: 1023px) { .hide-mobile { display: none !important; } }
       `}</style>

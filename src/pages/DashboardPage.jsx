@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useBreakpoint } from '../hooks/useBreakpoint'
 import {
@@ -6,17 +6,10 @@ import {
   Heart, Clock, FileText, Calendar,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { supabase } from './supabase'
 import { formatSpecialty } from '../utils/labels'
+import { getAuthToken } from '../utils/getToken'
 
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
-
-async function getToken() {
-  try {
-    const { data: { session } } = await supabase.auth.getSession()
-    return session?.access_token || null
-  } catch { return null }
-}
 
 function greeting(name) {
   const h = new Date().getHours()
@@ -49,12 +42,14 @@ export default function DashboardPage() {
   const [consultations, setConsultations] = useState([])
   const [prescriptions, setPrescriptions] = useState([])
   const [loading, setLoading] = useState(true)
+  const fetchedRef = useRef(false)
 
   useEffect(() => {
-    if (!initialized) return
+    if (!initialized || fetchedRef.current) return
+    fetchedRef.current = true
     ;(async () => {
       try {
-        const token   = session?.access_token || await getToken()
+        const token   = await getAuthToken()
         const headers = token ? { Authorization: `Bearer ${token}` } : {}
         const [cRes, pRes] = await Promise.all([
           fetch(`${API_BASE}/consultation/my`, { headers }),

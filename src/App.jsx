@@ -35,6 +35,7 @@ import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminPatients from './pages/admin/AdminPatients'
 import AdminDoctors from './pages/admin/AdminDoctors'
 import AdminRequests from './pages/admin/AdminRequests'
+import AdminWaitlist from './pages/admin/AdminWaitlist'
 import PharmacyLoginPage from './pages/pharmacy/PharmacyLoginPage'
 import PharmacyLayout from './pages/pharmacy/PharmacyLayout'
 import PharmacyOrders from './pages/pharmacy/PharmacyOrders'
@@ -56,6 +57,7 @@ export default function App() {
         <Route path="patients" element={<AdminPatients />} />
         <Route path="doctors" element={<AdminDoctors />} />
         <Route path="requests" element={<AdminRequests />} />
+        <Route path="waitlist" element={<AdminWaitlist />} />
       </Route>
 
       {/* Patient routes */}

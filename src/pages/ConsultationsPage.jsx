@@ -5,10 +5,10 @@ import {
   AlertCircle, RefreshCw, X, FileText, Stethoscope, User,
   ChevronRight, ClipboardList, CreditCard, IndianRupee, Calendar, CalendarPlus,
 } from 'lucide-react'
-import { supabase } from './supabase'
 import { useBreakpoint } from '../hooks/useBreakpoint'
 import { formatSpecialty, formatConsultationType, formatConsultationStatus } from '../utils/labels'
 import TimeSlotPicker from '../components/TimeSlotPicker'
+import { getAuthToken } from '../utils/getToken'
 
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
 
@@ -424,16 +424,13 @@ export default function ConsultationsPage() {
   const [now, setNow]                   = useState(Date.now())
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.access_token) setAuthToken(session.access_token)
-    })
+    getAuthToken().then(t => { if (t) setAuthToken(t) })
   }, [])
 
   async function fetchConsultations() {
     setLoadingData(true); setError('')
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const token = session?.access_token
+      const token = await getAuthToken()
       if (!token) { setConsultations([]); return }
 
       const res = await fetch(`${API_BASE}/consultation/my`, {
@@ -454,8 +451,7 @@ export default function ConsultationsPage() {
   async function handleSelectSlot(slot) {
     if (!slotTarget) return
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const token = session?.access_token
+      const token = await getAuthToken()
       const form = new FormData()
       form.append('scheduled_at', new Date(`${slot.date}T${slot.time}:00`).toISOString())
       if (slot.consultationType) form.append('consultation_type', slot.consultationType)
@@ -476,8 +472,7 @@ export default function ConsultationsPage() {
   async function handlePatientReschedule(slot) {
     if (!rescheduleTarget) return
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const token = session?.access_token
+      const token = await getAuthToken()
       const form = new FormData()
       form.append('scheduled_at', new Date(`${slot.date}T${slot.time}:00`).toISOString())
       if (slot.consultationType) form.append('consultation_type', slot.consultationType)

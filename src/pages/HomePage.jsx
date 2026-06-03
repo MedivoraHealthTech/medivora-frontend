@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import Logo from '../components/Logo'
 import ComingSoonModal from '../components/ComingSoonModal'
+import WaitlistModal from '../components/WaitlistModal'
 import { useBreakpoint } from '../hooks/useBreakpoint'
 import { sendMessage as sendChatMessage } from '../api/chat'
 import { apiFetch } from '../api/client'
@@ -188,6 +189,13 @@ const styles = `
     text-decoration:none; display:inline-block; white-space:nowrap;
   }
   .lp-nav-cta:hover { background:#1930AA; color:#fff; }
+  .lp-nav-waitlist-btn {
+    font-size:13px; font-weight:600; color:#1930AA;
+    background:transparent; border:1.5px solid rgba(25,48,170,0.3);
+    border-radius:100px; padding:8px 16px; cursor:pointer;
+    transition:border-color .2s, background .2s; white-space:nowrap;
+  }
+  .lp-nav-waitlist-btn:hover { border-color:#1930AA; background:rgba(25,48,170,0.05); }
   /* keep old outline class in case referenced elsewhere */
   .lp-nav-btn-outline { display:none; }
 
@@ -1110,7 +1118,10 @@ export default function HomePage() {
     return () => cancelAnimationFrame(raf)
   }, [])
 
-  // Waitlist popup state
+  // Patient waitlist modal (navbar button)
+  const [showPatientWaitlist, setShowPatientWaitlist] = useState(false)
+
+  // Doctor waitlist popup state
   const [waitlistOpen, setWaitlistOpen]     = useState(false)
   const [waitlistName, setWaitlistName]     = useState('')
   const [waitlistPhone, setWaitlistPhone]   = useState('')
@@ -1225,6 +1236,12 @@ export default function HomePage() {
             <Link to="/doctor/login" className="lp-nav-link">For Doctors</Link>
           </div>
           <div className="lp-nav-auth">
+            <button
+              onClick={() => setShowPatientWaitlist(true)}
+              className="lp-nav-waitlist-btn"
+            >
+              Join Waitlist
+            </button>
             <Link to="/login" className="lp-nav-signin">Sign In</Link>
             <Link to="/signup" className="lp-nav-cta">Get Started</Link>
           </div>
@@ -1674,6 +1691,7 @@ export default function HomePage() {
       </footer>
 
       {comingSoon && <ComingSoonModal feature={comingSoon} onClose={() => setComingSoon(null)} />}
+      {showPatientWaitlist && <WaitlistModal onClose={() => setShowPatientWaitlist(false)} />}
 
       {/* ── CHAT POPUP ── */}
       {chatOpen && (

@@ -4,9 +4,9 @@ import {
   ArrowLeft, Stethoscope, MapPin, Star, Clock, Briefcase,
   BadgeCheck, Activity, IndianRupee, RefreshCw, Video,
 } from 'lucide-react'
-import { supabase } from './supabase'
 import { useBreakpoint } from '../hooks/useBreakpoint'
 import { formatSpecialty } from '../utils/labels'
+import { getAuthToken } from '../utils/getToken'
 
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CHAT_API_URL || 'http://localhost:8000'
 
@@ -56,8 +56,8 @@ export default function DoctorPublicProfile() {
     async function load() {
       setLoading(true); setError(null)
       try {
-        const { data: { session } } = await supabase.auth.getSession()
-        const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}
+        const token = await getAuthToken()
+        const headers = token ? { Authorization: `Bearer ${token}` } : {}
         const res = await fetch(`${API_BASE}/doctors/${id}`, { headers })
         if (res.status === 404) { setError('Doctor not found.'); return }
         if (!res.ok) throw new Error(`${res.status}`)
