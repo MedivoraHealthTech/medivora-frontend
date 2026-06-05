@@ -240,6 +240,18 @@ export default function DoctorLayout() {
               </button>
             )
           })}
+          <button
+            onClick={handleLogout}
+            style={{
+              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+              justifyContent: 'center', gap: 4, border: 'none', cursor: 'pointer',
+              background: 'transparent', fontFamily: 'var(--font)',
+              color: 'var(--err)', borderTop: '2px solid transparent',
+            }}
+          >
+            <LogOut size={20} color='var(--err)' strokeWidth={1.8} />
+            <span style={{ fontSize: 9, fontWeight: 500 }}>Logout</span>
+          </button>
         </nav>
       )}
 
