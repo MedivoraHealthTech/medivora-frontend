@@ -2,13 +2,40 @@ import { useState, useEffect } from 'react'
 import {
   UserCircle, Save, Edit3, Activity, Phone, MapPin, DollarSign,
   Award, BookOpen, CheckCircle, AlertCircle, AlertTriangle, X,
-  Clock, Plus, Trash2, Video, Building2, Send,
+  Clock, Plus, Trash2, Video, Building2, Send, Lock,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { doctorAPI, profileAPI } from '../../api/client'
 import { useBreakpoint } from '../../hooks/useBreakpoint'
 import { formatSpecialty } from '../../utils/labels'
+
+// ── Profile completion config ────────────────────────────────────────────────
+const REQUIRED_FIELDS = [
+  { key: 'first_name',        label: 'First Name' },
+  { key: 'last_name',         label: 'Last Name' },
+  { key: 'nmc_number',        label: 'NMC / License Number' },
+  { key: 'experience_years',  label: 'Years of Experience' },
+  { key: 'clinic_name',       label: 'Clinic / Hospital Name' },
+  { key: 'consultation_fee',  label: 'Consultation Fee' },
+  { key: 'specialties',       label: 'Specialization (at least one)' },
+  { key: 'qualification',     label: 'Medical College / Qualification' },
+]
+
+function computeCompletion(firstName, lastName, nmc, expYears, clinicName, fee, specialties, medCollege) {
+  const checks = [
+    !!firstName?.trim(),
+    !!lastName?.trim(),
+    !!nmc?.trim(),
+    expYears !== '' && expYears != null,
+    !!clinicName?.trim(),
+    fee !== '' && fee != null,
+    Array.isArray(specialties) ? specialties.length > 0 : false,
+    !!medCollege?.trim(),
+  ]
+  const done = checks.filter(Boolean).length
+  return { done, total: checks.length, pct: Math.round((done / checks.length) * 100), checks }
+}
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
@@ -50,6 +77,9 @@ export default function DoctorProfile() {
   const [deleting,        setDeleting]        = useState(false)
   const [deleteError,     setDeleteError]     = useState('')
 
+  // Join request status (for submit CTA)
+  const [joinRequest,  setJoinRequest]  = useState(null)   // { status, review_note } | null
+
   // Editable fields
   const [firstName,    setFirstName]    = useState('')
   const [lastName,     setLastName]     = useState('')
@@ -61,29 +91,43 @@ export default function DoctorProfile() {
   const [status,       setStatus]       = useState('available')
   const [expYears,     setExpYears]     = useState('')
   const [nmc,          setNmc]          = useState('')
+  const [medCollege,   setMedCollege]   = useState('')
   const [specialties,  setSpecialties]  = useState([])
   const [slots,        setSlots]        = useState([])
 
   useEffect(() => {
     async function load() {
       try {
-        const data = await doctorAPI.getProfile(getToken())
-        setProfile(data)
-        setFirstName(data.first_name || '')
-        setLastName(data.last_name || '')
-        setEmail(data.email || '')
-        setClinicName(data.clinic_name  || '')
-        setClinicAddr(data.clinic_address || '')
-        setClinicPhone(data.clinic_phone || '')
-        setFee(data.consultation_fee != null ? String(data.consultation_fee) : '')
-        setStatus(data.available_status || 'available')
-        setExpYears(data.experience_years != null ? String(data.experience_years) : '')
-        setNmc(data.nmc_number || '')
-        setSpecialties(Array.isArray(data.specialties) ? data.specialties : [])
-        const savedSlots = Array.isArray(data.available_slots) && data.available_slots.length > 0
-          ? data.available_slots
-          : DEFAULT_SLOTS
-        setSlots(savedSlots)
+        const token = getToken()
+        const [data, jrData] = await Promise.allSettled([
+          doctorAPI.getProfile(token),
+          doctorAPI.getJoinRequest(token),
+        ])
+        if (data.status === 'fulfilled') {
+          const d = data.value
+          setProfile(d)
+          setFirstName(d.first_name || '')
+          setLastName(d.last_name || '')
+          setEmail(d.email || '')
+          setClinicName(d.clinic_name  || '')
+          setClinicAddr(d.clinic_address || '')
+          setClinicPhone(d.clinic_phone || '')
+          setFee(d.consultation_fee != null ? String(d.consultation_fee) : '')
+          setStatus(d.available_status || 'available')
+          setExpYears(d.experience_years != null ? String(d.experience_years) : '')
+          setNmc(d.nmc_number || '')
+          setMedCollege(d.medical_college || '')
+          setSpecialties(Array.isArray(d.specialties) ? d.specialties : [])
+          const savedSlots = Array.isArray(d.available_slots) && d.available_slots.length > 0
+            ? d.available_slots
+            : DEFAULT_SLOTS
+          setSlots(savedSlots)
+        } else {
+          setError('Could not load profile.')
+        }
+        if (jrData.status === 'fulfilled') {
+          setJoinRequest(jrData.value.join_request || null)
+        }
       } catch (e) {
         setError('Could not load profile. ' + (e.message || ''))
       } finally {
@@ -125,6 +169,7 @@ export default function DoctorProfile() {
         available_status: status,
         experience_years: expYears,
         nmc_number:       nmc,
+        medical_college:  medCollege,
         specialties:      specialties.join(','),
         available_slots:  JSON.stringify(slots),
       }, getToken())
@@ -147,9 +192,11 @@ export default function DoctorProfile() {
     try {
       await doctorAPI.submitApproval(getToken())
       setApprovalSubmitted(true)
+      setJoinRequest(prev => ({ ...(prev || {}), status: 'submitted', review_note: null }))
     } catch (err) {
-      if (err.message?.includes('409') || err.message?.toLowerCase().includes('pending')) {
-        setApprovalSubmitted(true) // already submitted
+      if (err.message?.includes('409') || err.message?.toLowerCase().includes('submitted') || err.message?.toLowerCase().includes('under_review')) {
+        setApprovalSubmitted(true)
+        setJoinRequest(prev => ({ ...(prev || {}), status: 'submitted' }))
       } else {
         setApprovalError(err.message || 'Failed to submit approval request.')
       }
@@ -189,54 +236,131 @@ export default function DoctorProfile() {
         <p style={{ fontSize: 13, color: 'var(--g500)', margin: 0 }}>Update your professional details, availability, and clinic information.</p>
       </div>
 
-      {/* Approval banner — shown only when account is inactive (pending approval) */}
-      {profile?.available_status === 'inactive' && (
-        <div style={{
-          padding: '16px 20px', borderRadius: 14, marginBottom: 20,
-          background: approvalSubmitted ? 'rgba(0,200,83,0.07)' : 'rgba(255,152,0,0.07)',
-          border: `1.5px solid ${approvalSubmitted ? 'rgba(0,200,83,0.2)' : 'rgba(255,152,0,0.25)'}`,
-        }}>
-          {approvalSubmitted ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <CheckCircle size={18} color="#00C853" />
+      {/* ── Profile Completion Tracker + Approval CTA ── */}
+      {(() => {
+        const completion = computeCompletion(firstName, lastName, nmc, expYears, clinicName, fee, specialties, medCollege)
+        const pct = completion.pct
+        const isComplete = pct === 100
+        const jrStatus = joinRequest?.status || null
+        // Show tracker when not yet fully approved
+        const showTracker = profile?.available_status !== 'available'
+        if (!showTracker) return null
+
+        const canSubmit = isComplete && (!jrStatus || jrStatus === 'draft' || jrStatus === 'changes_requested')
+        const alreadyInReview = jrStatus === 'submitted' || jrStatus === 'under_review'
+        const isApproved = jrStatus === 'approved'
+
+        return (
+          <div style={{ borderRadius: 14, background: 'var(--pw)', border: '1px solid rgba(0,0,0,0.06)', padding: '18px 20px', marginBottom: 20 }}>
+            {/* Header row */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
               <div>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#00a852' }}>Approval Request Submitted</p>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--g300)' }}>Profile Completion</p>
                 <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--g500)' }}>
-                  Our admin team will review your profile and activate your account. You'll be able to accept consultations once approved.
+                  Complete all required fields to submit for approval
                 </p>
               </div>
+              <span style={{
+                fontSize: 22, fontWeight: 800,
+                color: pct === 100 ? 'var(--ok)' : pct >= 60 ? 'var(--warn)' : 'var(--err)',
+              }}>
+                {pct}%
+              </span>
             </div>
-          ) : (
-            <>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
-                <AlertCircle size={18} color="#FF9800" style={{ flexShrink: 0, marginTop: 1 }} />
+
+            {/* Progress bar */}
+            <div style={{ height: 8, borderRadius: 8, background: 'rgba(0,0,0,0.07)', marginBottom: 16, overflow: 'hidden' }}>
+              <div style={{
+                height: '100%', borderRadius: 8, transition: 'width 0.4s ease',
+                width: `${pct}%`,
+                background: pct === 100
+                  ? 'linear-gradient(90deg, #00C853, #00E676)'
+                  : pct >= 60
+                    ? 'linear-gradient(90deg, #FF9800, #FFB300)'
+                    : 'linear-gradient(90deg, #f44336, #FF7043)',
+              }} />
+            </div>
+
+            {/* Field checklist */}
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '6px 16px', marginBottom: 18 }}>
+              {REQUIRED_FIELDS.map((f, i) => {
+                const done = completion.checks[i]
+                return (
+                  <div key={f.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: done ? 'var(--g400)' : 'var(--g600)' }}>
+                    {done
+                      ? <CheckCircle size={13} color="var(--ok)" />
+                      : <AlertCircle size={13} color="rgba(0,0,0,0.25)" />
+                    }
+                    <span style={{ textDecoration: done ? 'none' : 'none' }}>{f.label}</span>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Status-aware CTA */}
+            {approvalSubmitted || alreadyInReview ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <CheckCircle size={16} color="var(--ok)" />
                 <div>
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#e65100' }}>Account Pending Approval</p>
-                  <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--g500)' }}>
-                    Fill in your professional details below, then submit for admin approval. You'll be able to accept patient bookings once approved.
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--ok)' }}>Application Submitted</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--g500)' }}>
+                    Our admin team is reviewing your profile. You'll be notified once approved.
                   </p>
                 </div>
               </div>
-              {approvalError && (
-                <p style={{ margin: '0 0 10px', fontSize: 12, color: '#d93a00' }}>{approvalError}</p>
-              )}
-              <button
-                onClick={handleSubmitApproval}
-                disabled={submittingApproval}
-                style={{
+            ) : jrStatus === 'rejected' ? (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <AlertTriangle size={15} color="var(--err)" />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--err)' }}>Application Rejected</span>
+                </div>
+                {joinRequest?.review_note && (
+                  <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--g500)' }}>Reason: {joinRequest.review_note}</p>
+                )}
+                <button onClick={handleSubmitApproval} disabled={!isComplete || submittingApproval} style={{
                   display: 'inline-flex', alignItems: 'center', gap: 7,
                   padding: '10px 20px', borderRadius: 10, border: 'none',
-                  background: submittingApproval ? 'rgba(255,152,0,0.3)' : '#FF9800',
-                  color: '#fff', cursor: submittingApproval ? 'wait' : 'pointer',
+                  background: isComplete && !submittingApproval ? '#1930AA' : 'rgba(25,48,170,0.3)',
+                  color: '#fff', cursor: isComplete && !submittingApproval ? 'pointer' : 'not-allowed',
                   fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700,
-                }}
-              >
-                <Send size={14} /> {submittingApproval ? 'Submitting…' : 'Submit for Approval'}
-              </button>
-            </>
-          )}
-        </div>
-      )}
+                }}>
+                  <Send size={14} /> {submittingApproval ? 'Submitting…' : 'Resubmit for Approval'}
+                </button>
+                {!isComplete && <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--g500)' }}>Complete all required fields first.</p>}
+              </div>
+            ) : (
+              <div>
+                {approvalError && (
+                  <p style={{ margin: '0 0 10px', fontSize: 12, color: '#d93a00' }}>{approvalError}</p>
+                )}
+                <button
+                  onClick={handleSubmitApproval}
+                  disabled={!canSubmit || submittingApproval}
+                  title={!isComplete ? 'Complete all required fields first' : ''}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 7,
+                    padding: '11px 22px', borderRadius: 10, border: 'none',
+                    background: canSubmit && !submittingApproval
+                      ? 'linear-gradient(135deg, #1930AA, #00AFEF)'
+                      : 'rgba(0,0,0,0.08)',
+                    color: canSubmit ? '#fff' : 'var(--g500)',
+                    cursor: canSubmit && !submittingApproval ? 'pointer' : 'not-allowed',
+                    fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, transition: 'all 0.2s',
+                  }}
+                >
+                  {canSubmit ? <Send size={14} /> : <Lock size={14} />}
+                  {submittingApproval ? 'Submitting…' : 'Submit for Approval'}
+                </button>
+                {!isComplete && (
+                  <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--g500)' }}>
+                    {completion.total - completion.done} field{completion.total - completion.done !== 1 ? 's' : ''} remaining before you can submit.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Avatar + basic info */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 20, padding: '20px 24px', borderRadius: 14, background: 'var(--pw)', border: '1px solid rgba(0,0,0,0.06)', marginBottom: 20 }}>
@@ -412,6 +536,10 @@ export default function DoctorProfile() {
             <div>
               <label style={fieldLabel}>Years of Experience</label>
               <input type="number" min="0" max="60" value={expYears} onChange={e => setExpYears(e.target.value)} placeholder="e.g. 8" style={fieldInput} />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={fieldLabel}>Medical College / Qualification</label>
+              <input value={medCollege} onChange={e => setMedCollege(e.target.value)} placeholder="e.g. AIIMS Delhi, MBBS" style={fieldInput} />
             </div>
           </div>
         </section>

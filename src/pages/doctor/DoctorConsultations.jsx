@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   CalendarDays, Clock, CheckCircle, XCircle, Video,
   User, ChevronDown, ChevronUp, Calendar, AlertTriangle, X,
-  FileText, Plus, Trash2, Loader, FlaskConical,
+  FileText, Plus, Trash2, Loader, FlaskConical, Lock,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { doctorAPI } from '../../api/client'
@@ -52,9 +52,12 @@ const EMPTY_MEDICINE = () => ({
 const EMPTY_TEST = () => ({ test_name: '', reason: '', priority: 'routine' })
 
 export default function DoctorConsultations() {
-  const { getToken } = useAuth()
+  const { getToken, doctorUser } = useAuth()
   const navigate = useNavigate()
   const { isMobile, isTablet } = useBreakpoint()
+
+  // Whether this doctor can take actions (approve, join, schedule) — requires approval
+  const isApproved = doctorUser?.available_status === 'available'
 
   const [consultations, setConsultations] = useState([])
   const [loading,       setLoading]       = useState(true)
@@ -276,6 +279,24 @@ export default function DoctorConsultations() {
         <p style={{ fontSize: 13, color: 'var(--g500)', margin: 0 }}>Manage patient consultation requests and scheduled sessions.</p>
       </div>
 
+      {/* Approval gate notice — consultations are viewable but actions are locked */}
+      {!isApproved && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', borderRadius: 12, background: 'rgba(251,191,36,0.07)', border: '1.5px solid rgba(251,191,36,0.25)', marginBottom: 20 }}>
+          <Lock size={15} color="#d97706" style={{ flexShrink: 0 }} />
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--g400)', lineHeight: 1.5 }}>
+            Consultation actions (accepting, scheduling, joining) are locked until your account is approved.
+            You can still view requests here.
+          </p>
+          <button onClick={() => navigate('/doctor/profile')} style={{
+            flexShrink: 0, padding: '6px 16px', borderRadius: 8, border: '1.5px solid rgba(251,191,36,0.4)',
+            background: 'transparent', color: '#d97706', cursor: 'pointer',
+            fontFamily: 'var(--font)', fontSize: 12, fontWeight: 700,
+          }}>
+            Get Approved
+          </button>
+        </div>
+      )}
+
       {error && (
         <div style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(255,61,0,0.07)', border: '1px solid rgba(255,61,0,0.18)', color: '#d93a00', fontSize: 13, marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           {error}
@@ -367,19 +388,31 @@ export default function DoctorConsultations() {
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {c.status === 'requested' && (
                       <>
-                        <button onClick={() => setScheduleFor(c)} style={{ ...actionBtn, color: 'var(--cyan)', borderColor: 'var(--cyan)', background: 'rgba(0,188,212,0.06)' }}>
-                          <Calendar size={13} /> Approve & Schedule
+                        <button
+                          onClick={() => isApproved && setScheduleFor(c)}
+                          disabled={!isApproved}
+                          title={!isApproved ? 'Available after account approval' : undefined}
+                          style={{ ...actionBtn, color: isApproved ? 'var(--cyan)' : 'var(--g500)', borderColor: isApproved ? 'var(--cyan)' : 'rgba(0,0,0,0.1)', background: isApproved ? 'rgba(0,188,212,0.06)' : 'rgba(0,0,0,0.03)', cursor: isApproved ? 'pointer' : 'not-allowed', opacity: isApproved ? 1 : 0.5 }}>
+                          {isApproved ? <Calendar size={13} /> : <Lock size={13} />} Approve & Schedule
                         </button>
-                        <button onClick={() => setRejectFor(c)} style={{ ...actionBtn, color: 'var(--err)', borderColor: 'var(--err)', background: 'rgba(255,61,0,0.06)' }}>
-                          <XCircle size={13} /> Reject
+                        <button
+                          onClick={() => isApproved && setRejectFor(c)}
+                          disabled={!isApproved}
+                          title={!isApproved ? 'Available after account approval' : undefined}
+                          style={{ ...actionBtn, color: isApproved ? 'var(--err)' : 'var(--g500)', borderColor: isApproved ? 'var(--err)' : 'rgba(0,0,0,0.1)', background: isApproved ? 'rgba(255,61,0,0.06)' : 'rgba(0,0,0,0.03)', cursor: isApproved ? 'pointer' : 'not-allowed', opacity: isApproved ? 1 : 0.5 }}>
+                          {isApproved ? <XCircle size={13} /> : <Lock size={13} />} Reject
                         </button>
                       </>
                     )}
                     {(c.status === 'scheduled' || c.status === 'ongoing') && (
                       <>
                         {c.consultation_type === 'video' && (
-                          <button onClick={() => handleJoin(c)} disabled={actionLoading === c.id} style={{ ...actionBtn, color: '#fff', borderColor: '#1930AA', background: '#1930AA' }}>
-                            <Video size={13} /> {actionLoading === c.id ? 'Joining…' : 'Join Video Call'}
+                          <button
+                            onClick={() => isApproved && handleJoin(c)}
+                            disabled={!isApproved || actionLoading === c.id}
+                            title={!isApproved ? 'Available after account approval' : undefined}
+                            style={{ ...actionBtn, color: '#fff', borderColor: '#1930AA', background: isApproved ? '#1930AA' : 'rgba(25,48,170,0.3)', cursor: isApproved ? 'pointer' : 'not-allowed' }}>
+                            {isApproved ? <Video size={13} /> : <Lock size={13} />} {actionLoading === c.id ? 'Joining…' : 'Join Video Call'}
                           </button>
                         )}
                         {c.started_at && (

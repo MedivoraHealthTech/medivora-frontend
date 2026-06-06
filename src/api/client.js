@@ -165,6 +165,8 @@ export const doctorAPI = {
   // Approval
   submitApproval: (token) =>
     apiFetch('/doctors/me/submit-approval', { method: 'POST', token }),
+  getJoinRequest: (token) =>
+    apiFetch('/doctors/me/join-request', { token }),
 
   // Patients
   getPatients: (token) =>

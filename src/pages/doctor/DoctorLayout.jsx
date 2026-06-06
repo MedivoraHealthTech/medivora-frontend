@@ -4,8 +4,10 @@ import { useBreakpoint } from '../../hooks/useBreakpoint'
 import {
   LayoutDashboard, CalendarDays, ClipboardList, UserCircle,
   Bell, Moon, Sun, X, CheckCircle, Info, AlertTriangle, LogOut,
+  Clock, AlertCircle, XCircle,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { doctorAPI } from '../../api/client'
 import Logo from '../../components/Logo'
 
 const navItems = [
@@ -27,22 +29,93 @@ const notifIcon = type => {
   return <Info size={14} color='var(--cyan)' />
 }
 
+// ── Approval status banner config ────────────────────────────────────────────
+const APPROVAL_BANNERS = {
+  draft: {
+    bg: 'rgba(251,191,36,0.08)',
+    border: 'rgba(251,191,36,0.3)',
+    icon: Clock,
+    iconColor: '#d97706',
+    text: 'Complete your profile and submit for approval to start receiving patients.',
+    linkLabel: 'Go to Profile',
+    linkPath: '/doctor/profile',
+  },
+  submitted: {
+    bg: 'rgba(59,130,246,0.08)',
+    border: 'rgba(59,130,246,0.3)',
+    icon: Info,
+    iconColor: '#2563eb',
+    text: 'Your application is under review. We\'ll notify you once approved.',
+    linkLabel: null,
+    linkPath: null,
+  },
+  under_review: {
+    bg: 'rgba(59,130,246,0.08)',
+    border: 'rgba(59,130,246,0.3)',
+    icon: Info,
+    iconColor: '#2563eb',
+    text: 'Your application is under review. We\'ll notify you once approved.',
+    linkLabel: null,
+    linkPath: null,
+  },
+  changes_requested: {
+    bg: 'rgba(249,115,22,0.08)',
+    border: 'rgba(249,115,22,0.3)',
+    icon: AlertTriangle,
+    iconColor: '#ea580c',
+    text: 'Admin requested changes. Please update your profile and resubmit.',
+    linkLabel: 'Update Profile',
+    linkPath: '/doctor/profile',
+  },
+  rejected: {
+    bg: 'rgba(239,68,68,0.08)',
+    border: 'rgba(239,68,68,0.3)',
+    icon: XCircle,
+    iconColor: '#dc2626',
+    text: 'Your application was rejected.',
+    linkLabel: null,
+    linkPath: null,
+  },
+}
+
 export default function DoctorLayout() {
   const { displayName, logout, getToken } = useAuth()
   const navigate  = useNavigate()
   const location  = useLocation()
   const { isMobile, isSmallScreen } = useBreakpoint()
 
-  const [darkMode,   setDarkMode]   = useState(() => localStorage.getItem('darkMode') === 'true')
-  const [notifOpen,  setNotifOpen]  = useState(false)
-  const [notifs,     setNotifs]     = useState(sampleNotifs)
+  const [darkMode,      setDarkMode]      = useState(() => localStorage.getItem('darkMode') === 'true')
+  const [notifOpen,     setNotifOpen]     = useState(false)
+  const [notifs,        setNotifs]        = useState(sampleNotifs)
+  const [joinRequest,   setJoinRequest]   = useState(null)     // { status, review_note }
+  const [doctorStatus,  setDoctorStatus]  = useState(null)     // available_status from doctors table
   const unreadCount = notifs.filter(n => !n.read).length
+
+  // Fetch join request status once on mount
+  useEffect(() => {
+    async function fetchJoinRequest() {
+      try {
+        const data = await doctorAPI.getJoinRequest(getToken())
+        setJoinRequest(data.join_request || null)
+        setDoctorStatus(data.available_status || null)
+      } catch {
+        // Non-blocking — banner simply won't show if fetch fails
+      }
+    }
+    fetchJoinRequest()
+  }, [])
 
   useEffect(() => {
     if (darkMode) document.documentElement.classList.add('dark')
     else document.documentElement.classList.remove('dark')
     localStorage.setItem('darkMode', String(darkMode))
   }, [darkMode])
+
+  // Show banner when doctor is not yet available (not fully approved)
+  const showBanner = doctorStatus && doctorStatus !== 'available'
+  const bannerStatus = joinRequest?.status || 'draft'
+  const bannerCfg = APPROVAL_BANNERS[bannerStatus] || APPROVAL_BANNERS.draft
+  const BannerIcon = bannerCfg.icon
 
   const handleLogout = () => { logout(); navigate('/') }
   const cleanName = displayName.replace(/^Dr\.\s*/i, '')
@@ -90,6 +163,47 @@ export default function DoctorLayout() {
           </button>
         </div>
       </header>
+
+      {/* ── Approval Status Banner (persistent, non-dismissible) ── */}
+      {showBanner && (
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', gap: 12,
+          padding: isMobile ? '10px 14px' : '11px 24px',
+          background: bannerCfg.bg,
+          borderBottom: `1.5px solid ${bannerCfg.border}`,
+          flexShrink: 0, zIndex: 90,
+        }}>
+          <BannerIcon size={16} color={bannerCfg.iconColor} style={{ marginTop: 2, flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ fontSize: 13, color: 'var(--g300)', lineHeight: 1.5 }}>
+              {bannerCfg.text}
+              {bannerStatus === 'changes_requested' && joinRequest?.review_note && (
+                <span style={{ display: 'block', fontSize: 12, color: 'var(--g500)', marginTop: 2 }}>
+                  Admin note: {joinRequest.review_note}
+                </span>
+              )}
+              {bannerStatus === 'rejected' && joinRequest?.review_note && (
+                <span style={{ display: 'block', fontSize: 12, color: 'var(--g500)', marginTop: 2 }}>
+                  Reason: {joinRequest.review_note}
+                </span>
+              )}
+            </span>
+          </div>
+          {bannerCfg.linkPath && (
+            <button
+              onClick={() => navigate(bannerCfg.linkPath)}
+              style={{
+                flexShrink: 0, padding: '5px 14px', borderRadius: 8, border: `1.5px solid ${bannerCfg.border}`,
+                background: 'transparent', color: bannerCfg.iconColor,
+                cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 700,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {bannerCfg.linkLabel}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ── Body ── */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0, position: 'relative' }}>

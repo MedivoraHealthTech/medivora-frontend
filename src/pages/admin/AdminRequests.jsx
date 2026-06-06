@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search, User, Phone, Mail, MapPin, GraduationCap, Award, Stethoscope, IndianRupee, CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, X, AlertCircle, Copy } from 'lucide-react'
+import { Search, User, Phone, Mail, MapPin, GraduationCap, Award, Stethoscope, IndianRupee, CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, X, AlertCircle, Copy, MessageSquare } from 'lucide-react'
 
 const API_BASE = '/api'
 function token() { return localStorage.getItem('medivora_admin_token') || '' }
@@ -10,9 +10,13 @@ function formatDate(iso) {
 }
 
 const STATUS_CONFIG = {
-  pending:  { label: 'Pending',  color: '#f59e0b', bg: '#fef3c7', icon: Clock },
-  approved: { label: 'Approved', color: '#10b981', bg: '#d1fae5', icon: CheckCircle },
-  rejected: { label: 'Rejected', color: '#ef4444', bg: '#fee2e2', icon: XCircle },
+  pending:           { label: 'Pending',           color: '#f59e0b', bg: '#fef3c7', icon: Clock },
+  draft:             { label: 'Draft',             color: '#6b7280', bg: '#f3f4f6', icon: Clock },
+  submitted:         { label: 'Submitted',         color: '#3b82f6', bg: '#dbeafe', icon: Clock },
+  under_review:      { label: 'Under Review',      color: '#8b5cf6', bg: '#ede9fe', icon: Clock },
+  approved:          { label: 'Approved',          color: '#10b981', bg: '#d1fae5', icon: CheckCircle },
+  rejected:          { label: 'Rejected',          color: '#ef4444', bg: '#fee2e2', icon: XCircle },
+  changes_requested: { label: 'Changes Requested', color: '#f97316', bg: '#ffedd5', icon: AlertCircle },
 }
 
 function StatusBadge({ status }) {
@@ -126,12 +130,74 @@ function ApproveModal({ req, onClose, onApproved }) {
   )
 }
 
-function RequestCard({ req, onApproved, onRejected }) {
+function RequestChangesModal({ req, onClose, onChanged }) {
+  const [note, setNote] = useState('')
+  const [loading, setLoading] = useState(false)
+  const name = `${req.first_name} ${req.last_name}`.trim()
+
+  async function submit() {
+    setLoading(true)
+    try {
+      const res = await fetch(`${API_BASE}/admin/doctor-requests/${req.id}/request-changes`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || 'Failed to request changes')
+      onChanged(req.id)
+      onClose()
+    } catch (err) {
+      alert(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(10,27,71,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={onClose}>
+      <div style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 440, padding: '28px 28px 24px', boxShadow: '0 20px 60px rgba(10,27,71,0.2)' }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+          <MessageSquare size={18} color="#f97316" />
+          <div style={{ fontSize: 17, fontWeight: 800, color: '#0A1B47' }}>Request Changes from Dr. {name}</div>
+        </div>
+        <p style={{ fontSize: 13, color: '#718096', marginBottom: 16 }}>
+          Describe what the doctor needs to update before their application can be approved.
+        </p>
+        <textarea
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          placeholder="e.g. Please upload your NMC certificate and complete your clinic address."
+          rows={4}
+          style={{
+            width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: 10,
+            border: '1.5px solid #e2e8f0', fontFamily: 'inherit', fontSize: 13,
+            resize: 'vertical', outline: 'none', marginBottom: 16,
+          }}
+          onFocus={e => e.target.style.borderColor = '#f97316'}
+          onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+        />
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={onClose} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1.5px solid #e2e8f0', background: '#fff', color: '#4a5568', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
+            Cancel
+          </button>
+          <button onClick={submit} disabled={loading || !note.trim()} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', background: note.trim() ? '#f97316' : '#fed7aa', color: '#fff', fontWeight: 700, fontSize: 14, cursor: note.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', opacity: loading ? 0.7 : 1 }}>
+            {loading ? 'Sending…' : 'Request Changes'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function RequestCard({ req, onApproved, onRejected, onChanged }) {
   const [expanded, setExpanded] = useState(false)
   const [rejecting, setRejecting] = useState(false)
   const [showApprove, setShowApprove] = useState(false)
+  const [showRequestChanges, setShowRequestChanges] = useState(false)
   const name = `${req.first_name} ${req.last_name}`.trim()
-  const isPending = req.status === 'pending'
+  // Actions are available for any non-terminal status
+  const isActionable = !['approved', 'rejected'].includes(req.status)
 
   async function reject() {
     setRejecting(true)
@@ -193,8 +259,8 @@ function RequestCard({ req, onApproved, onRejected }) {
         )}
 
         {/* Actions */}
-        {isPending && (
-          <div style={{ borderTop: '1px solid #f0f4fa', padding: '12px 20px', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+        {isActionable && (
+          <div style={{ borderTop: '1px solid #f0f4fa', padding: '12px 20px', display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
             <button
               onClick={reject} disabled={rejecting}
               style={{ padding: '8px 20px', borderRadius: 8, border: '1.5px solid #fed7d7', background: '#fff5f5', color: '#e53e3e', fontWeight: 700, fontSize: 13, cursor: rejecting ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: rejecting ? 0.6 : 1 }}
@@ -202,11 +268,25 @@ function RequestCard({ req, onApproved, onRejected }) {
               {rejecting ? 'Rejecting…' : 'Reject'}
             </button>
             <button
+              onClick={() => setShowRequestChanges(true)}
+              style={{ padding: '8px 20px', borderRadius: 8, border: '1.5px solid #fed7aa', background: '#fff7ed', color: '#f97316', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <MessageSquare size={12} /> Request Changes
+            </button>
+            <button
               onClick={() => setShowApprove(true)}
               style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #1930AA, #00AFEF)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 2px 8px rgba(25,48,170,0.2)' }}
             >
               Approve
             </button>
+          </div>
+        )}
+
+        {/* Show review note if changes were requested */}
+        {req.status === 'changes_requested' && req.review_note && (
+          <div style={{ borderTop: '1px solid #f0f4fa', padding: '10px 20px', background: '#fff7ed' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#f97316', textTransform: 'uppercase', letterSpacing: 0.4 }}>Admin Note: </span>
+            <span style={{ fontSize: 13, color: '#4a5568' }}>{req.review_note}</span>
           </div>
         )}
       </div>
@@ -218,6 +298,14 @@ function RequestCard({ req, onApproved, onRejected }) {
           onApproved={(id) => { setShowApprove(false); onApproved(id) }}
         />
       )}
+
+      {showRequestChanges && (
+        <RequestChangesModal
+          req={req}
+          onClose={() => setShowRequestChanges(false)}
+          onChanged={(id) => { onChanged(id); setShowRequestChanges(false) }}
+        />
+      )}
     </>
   )
 }
@@ -225,7 +313,7 @@ function RequestCard({ req, onApproved, onRejected }) {
 export default function AdminRequests() {
   const [requests, setRequests] = useState([])
   const [loading, setLoading]   = useState(true)
-  const [filter, setFilter]     = useState('pending')
+  const [filter, setFilter]     = useState('submitted')
   const [search, setSearch]     = useState('')
 
   useEffect(() => { load() }, [filter])
@@ -245,12 +333,17 @@ export default function AdminRequests() {
 
   function handleApproved(id) {
     setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'approved' } : r))
-    if (filter === 'pending') setRequests(prev => prev.filter(r => r.id !== id))
+    if (!['all', 'approved'].includes(filter)) setRequests(prev => prev.filter(r => r.id !== id))
   }
 
   function handleRejected(id) {
     setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'rejected' } : r))
-    if (filter === 'pending') setRequests(prev => prev.filter(r => r.id !== id))
+    if (!['all', 'rejected'].includes(filter)) setRequests(prev => prev.filter(r => r.id !== id))
+  }
+
+  function handleChanged(id) {
+    setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'changes_requested' } : r))
+    if (filter === 'submitted' || filter === 'draft') setRequests(prev => prev.filter(r => r.id !== id))
   }
 
   const filtered = requests.filter(r => {
@@ -265,10 +358,13 @@ export default function AdminRequests() {
   })
 
   const TABS = [
-    { key: 'pending',  label: 'Pending' },
-    { key: 'approved', label: 'Approved' },
-    { key: 'rejected', label: 'Rejected' },
-    { key: 'all',      label: 'All' },
+    { key: 'submitted',         label: 'Submitted' },
+    { key: 'under_review',      label: 'Under Review' },
+    { key: 'draft',             label: 'Draft' },
+    { key: 'changes_requested', label: 'Changes Needed' },
+    { key: 'approved',          label: 'Approved' },
+    { key: 'rejected',          label: 'Rejected' },
+    { key: 'all',               label: 'All' },
   ]
 
   return (
@@ -323,7 +419,7 @@ export default function AdminRequests() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {filtered.map(req => (
-            <RequestCard key={req.id} req={req} onApproved={handleApproved} onRejected={handleRejected} />
+            <RequestCard key={req.id} req={req} onApproved={handleApproved} onRejected={handleRejected} onChanged={handleChanged} />
           ))}
         </div>
       )}

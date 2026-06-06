@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react'
 import {
   ClipboardList, CheckCircle, XCircle, Edit3, FileText,
   ChevronDown, ChevronUp, AlertTriangle, User, X, Plus, Trash2, Download,
+  Lock,
 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { doctorAPI } from '../../api/client'
 import { useBreakpoint } from '../../hooks/useBreakpoint'
@@ -77,8 +79,38 @@ function MedRow({ med, idx, onChange, onRemove }) {
 }
 
 export default function PrescriptionReview() {
-  const { displayName, getToken } = useAuth()
+  const { displayName, getToken, doctorUser } = useAuth()
+  const navigate = useNavigate()
   const { isMobile, isTablet } = useBreakpoint()
+
+  // ── Feature gate: prescriptions require an approved account ─────────────
+  if (doctorUser?.available_status && doctorUser.available_status !== 'available') {
+    return (
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32, background: 'var(--dark)' }}>
+        <div style={{ textAlign: 'center', maxWidth: 380 }}>
+          <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+            <Lock size={30} color="var(--g500)" />
+          </div>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--g300)', margin: '0 0 10px' }}>
+            Available after approval
+          </h2>
+          <p style={{ fontSize: 14, color: 'var(--g500)', margin: '0 0 24px', lineHeight: 1.6 }}>
+            Prescription management is only available once your account has been approved by a Medivora admin. Complete your profile and submit for review.
+          </p>
+          <button
+            onClick={() => navigate('/doctor/profile')}
+            style={{
+              padding: '11px 28px', borderRadius: 10, border: 'none',
+              background: 'linear-gradient(135deg, #1930AA, #00AFEF)',
+              color: '#fff', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 14, fontWeight: 700,
+            }}
+          >
+            Go to Profile
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   const [tab,        setTab]        = useState('sent')   // 'sent' | 'ai'
   const [approvals,  setApprovals]  = useState([])
