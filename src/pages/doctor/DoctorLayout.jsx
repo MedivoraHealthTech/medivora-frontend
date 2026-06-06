@@ -111,14 +111,15 @@ export default function DoctorLayout() {
     localStorage.setItem('darkMode', String(darkMode))
   }, [darkMode])
 
+  const bannerStatus = joinRequest?.status || 'draft'
+  const bannerCfg = APPROVAL_BANNERS[bannerStatus] || APPROVAL_BANNERS.draft
+  const BannerIcon = bannerCfg.icon
+
   // Hide the generic "go to profile" banner when already on profile page.
   // But keep it visible for changes_requested/rejected so the admin note stays visible.
   const onProfilePage = location.pathname === '/doctor/profile'
   const bannerNeedsProfilePage = bannerStatus === 'changes_requested' || bannerStatus === 'rejected'
   const showBanner = doctorStatus && doctorStatus !== 'available' && (!onProfilePage || bannerNeedsProfilePage)
-  const bannerStatus = joinRequest?.status || 'draft'
-  const bannerCfg = APPROVAL_BANNERS[bannerStatus] || APPROVAL_BANNERS.draft
-  const BannerIcon = bannerCfg.icon
 
   const handleLogout = () => { logout(); navigate('/') }
   const cleanName = displayName.replace(/^Dr\.\s*/i, '')
