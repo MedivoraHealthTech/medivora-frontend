@@ -111,8 +111,8 @@ export default function DoctorLayout() {
     localStorage.setItem('darkMode', String(darkMode))
   }, [darkMode])
 
-  // Show banner when doctor is not yet available (not fully approved)
-  const showBanner = doctorStatus && doctorStatus !== 'available'
+  // Show banner when doctor is not yet available — hide on profile page (user is already there)
+  const showBanner = doctorStatus && doctorStatus !== 'available' && location.pathname !== '/doctor/profile'
   const bannerStatus = joinRequest?.status || 'draft'
   const bannerCfg = APPROVAL_BANNERS[bannerStatus] || APPROVAL_BANNERS.draft
   const BannerIcon = bannerCfg.icon

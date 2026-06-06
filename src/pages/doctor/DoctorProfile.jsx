@@ -583,7 +583,7 @@ export default function DoctorProfile() {
               <input value={clinicPhone} onChange={e => setClinicPhone(e.target.value)} placeholder="+91 XXXXX XXXXX" style={fieldInput} />
             </div>
             <div>
-              <label style={fieldLabel}><DollarSign size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} />Consultation Fee (₹)</label>
+              <label style={fieldLabel}>Consultation Fee (₹)</label>
               <input type="number" min="0" value={fee} onChange={e => setFee(e.target.value)} placeholder="e.g. 499" style={fieldInput} />
             </div>
           </div>
