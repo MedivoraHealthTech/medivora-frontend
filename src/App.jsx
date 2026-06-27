@@ -1,0 +1,103 @@
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { useAuth } from './context/AuthContext'
+import HomePage from './pages/HomePage'
+
+function RootRoute() {
+  const { isAuthenticated, loading, initialized, role } = useAuth()
+  if (loading || !initialized) return null
+  if (!isAuthenticated) return <HomePage />
+  return <Navigate to={role === 'doctor' ? '/doctor' : '/dashboard'} replace />
+}
+import ChatPage from './pages/ChatPage'
+import LoginPage from './pages/LoginPage'
+import SignupPage from './pages/SignupPage'
+import ProfileSettings from './pages/ProfileSettings'
+import DoctorsPage from './pages/DoctorsPage'
+import DoctorPublicProfile from './pages/DoctorPublicProfile'
+import ConsultationsPage from './pages/ConsultationsPage'
+import PrescriptionsPage from './pages/PrescriptionsPage'
+import BookAppointment from './pages/BookAppointment'
+import PaymentPage from './pages/PaymentPage'
+import DashboardPage from './pages/DashboardPage'
+import VideoCallPage from './pages/VideoCallPage'
+import AppLayout from './pages/AppLayout'
+import ProtectedRoute from './components/ProtectedRoute'
+import DoctorLayout from './pages/doctor/DoctorLayout'
+import DoctorLoginPage from './pages/doctor/DoctorLoginPage'
+import DoctorDashboard from './pages/doctor/DoctorDashboard'
+import DoctorConsultations from './pages/doctor/DoctorConsultations'
+import DoctorProfile from './pages/doctor/DoctorProfile'
+import PrescriptionReview from './pages/doctor/PrescriptionReview'
+import WelcomeDoctorPage from './pages/WelcomeDoctorPage'
+import AdminLoginPage from './pages/admin/AdminLoginPage'
+import AdminLayout from './pages/admin/AdminLayout'
+import AdminDashboard from './pages/admin/AdminDashboard'
+import AdminPatients from './pages/admin/AdminPatients'
+import AdminDoctors from './pages/admin/AdminDoctors'
+import AdminRequests from './pages/admin/AdminRequests'
+import AdminWaitlist from './pages/admin/AdminWaitlist'
+import PharmacyLoginPage from './pages/pharmacy/PharmacyLoginPage'
+import PharmacyLayout from './pages/pharmacy/PharmacyLayout'
+import PharmacyOrders from './pages/pharmacy/PharmacyOrders'
+import LabLoginPage from './pages/lab/LabLoginPage'
+import LabLayout from './pages/lab/LabLayout'
+import LabOrders from './pages/lab/LabOrders'
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<RootRoute />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<SignupPage />} />
+      <Route path="/doctor/login" element={<DoctorLoginPage />} />
+      <Route path="/welcome-doctor" element={<WelcomeDoctorPage />} />
+      <Route path="/admin/login" element={<AdminLoginPage />} />
+      <Route path="/admin" element={<AdminLayout />}>
+        <Route index element={<AdminDashboard />} />
+        <Route path="patients" element={<AdminPatients />} />
+        <Route path="doctors" element={<AdminDoctors />} />
+        <Route path="requests" element={<AdminRequests />} />
+        <Route path="waitlist" element={<AdminWaitlist />} />
+      </Route>
+
+      {/* Patient routes */}
+      <Route element={<ProtectedRoute />}>
+        <Route path="payment" element={<PaymentPage />} />
+        <Route path="consultation/:id/call" element={<VideoCallPage />} />
+        <Route element={<AppLayout />}>
+          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="chat" element={<ChatPage />} />
+          <Route path="settings" element={<ProfileSettings />} />
+          <Route path="doctors" element={<DoctorsPage />} />
+          <Route path="doctors/:id" element={<DoctorPublicProfile />} />
+          <Route path="consultations" element={<ConsultationsPage />} />
+          <Route path="prescriptions" element={<PrescriptionsPage />} />
+          <Route path="book-appointment" element={<BookAppointment />} />
+        </Route>
+      </Route>
+
+      {/* Pharmacy portal */}
+      <Route path="/pharmacy/login" element={<PharmacyLoginPage />} />
+      <Route path="/pharmacy" element={<PharmacyLayout />}>
+        <Route index element={<PharmacyOrders />} />
+      </Route>
+
+      {/* Lab portal */}
+      <Route path="/lab/login" element={<LabLoginPage />} />
+      <Route path="/lab" element={<LabLayout />}>
+        <Route index element={<LabOrders />} />
+      </Route>
+
+      {/* Doctor routes */}
+      <Route element={<ProtectedRoute requiredRole="doctor" redirectTo="/login" />}>
+        <Route path="doctor/consultation/:id/call" element={<VideoCallPage />} />
+        <Route element={<DoctorLayout />}>
+          <Route path="doctor" element={<DoctorDashboard />} />
+          <Route path="doctor/consultations" element={<DoctorConsultations />} />
+          <Route path="doctor/prescriptions" element={<PrescriptionReview />} />
+          <Route path="doctor/profile" element={<DoctorProfile />} />
+        </Route>
+      </Route>
+    </Routes>
+  )
+}
